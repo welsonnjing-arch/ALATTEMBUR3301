@@ -92,6 +92,14 @@ export interface TeamBoardItem {
   createdAt: string;
 }
 
+export interface CanvasViewportState {
+  panX: number;
+  panY: number;
+  zoom: number;
+  updatedBy?: string;
+  updatedAt: string;
+}
+
 export interface CreateProjectInput {
   name: string;
   clientId: string;

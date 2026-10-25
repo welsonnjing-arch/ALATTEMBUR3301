@@ -18,6 +18,8 @@ import {
   updateTaskStatus,
   updateTeamBoardItem,
   updateTeamBoardItemPosition,
+  getCanvasViewport,
+  updateCanvasViewport,
 } from "./projects.service";
 import { CreateProjectInput, CreateTaskInput, ExternalLink, TeamBoardItem } from "./types";
 import { ProjectStatus, TaskStatus } from "@/types/enums";
@@ -240,5 +242,23 @@ export async function deleteTeamBoardItemAction(id: string) {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Gagal menghapus item.";
     return { success: false, error: message };
+  }
+}
+
+export async function fetchCanvasViewportAction() {
+  return await getCanvasViewport();
+}
+
+export async function updateCanvasViewportAction(
+  panX: number,
+  panY: number,
+  zoom: number
+) {
+  try {
+    const session = await getSessionCookie();
+    const actorName = session ? session.fullName : undefined;
+    return await updateCanvasViewport(panX, panY, zoom, actorName);
+  } catch {
+    return { success: false };
   }
 }

@@ -1,4 +1,13 @@
-import { CreateProjectInput, CreateTaskInput, ExternalLink, Project, ProjectChatMessage, Task, TeamBoardItem } from "./types";
+import {
+  CanvasViewportState,
+  CreateProjectInput,
+  CreateTaskInput,
+  ExternalLink,
+  Project,
+  ProjectChatMessage,
+  Task,
+  TeamBoardItem,
+} from "./types";
 import { ProjectStatus, TaskPriority, TaskStatus } from "@/types/enums";
 import { logActivity } from "@/lib/logger";
 
@@ -564,4 +573,32 @@ export async function deleteTeamBoardItem(id: string): Promise<{ success: boolea
   if (idx === -1) return { success: false, error: "Item tidak ditemukan." };
   teamBoardData.splice(idx, 1);
   return { success: true };
+}
+
+let sharedCanvasViewportData: CanvasViewportState = {
+  panX: 40,
+  panY: 40,
+  zoom: 1.0,
+  updatedBy: "Faiz Aditama (Owner)",
+  updatedAt: new Date().toISOString(),
+};
+
+export async function getCanvasViewport(): Promise<CanvasViewportState> {
+  return { ...sharedCanvasViewportData };
+}
+
+export async function updateCanvasViewport(
+  panX: number,
+  panY: number,
+  zoom: number,
+  updatedBy?: string
+): Promise<{ success: boolean; viewport: CanvasViewportState }> {
+  sharedCanvasViewportData = {
+    panX,
+    panY,
+    zoom,
+    updatedBy: updatedBy || sharedCanvasViewportData.updatedBy,
+    updatedAt: new Date().toISOString(),
+  };
+  return { success: true, viewport: { ...sharedCanvasViewportData } };
 }

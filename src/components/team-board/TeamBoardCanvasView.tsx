@@ -29,10 +29,16 @@ import {
   Sparkles,
   Palette,
 } from "lucide-react";
-import { BoardAttachment, TeamBoardItem, TextStyleConfig } from "@/modules/projects/types";
+import {
+  BoardAttachment,
+  CanvasViewportState,
+  TeamBoardItem,
+  TextStyleConfig,
+} from "@/modules/projects/types";
 import {
   createTeamBoardItemAction,
   deleteTeamBoardItemAction,
+  updateCanvasViewportAction,
   updateTeamBoardItemAction,
   updateTeamBoardItemPositionAction,
 } from "@/modules/projects/projects.actions";
@@ -40,6 +46,7 @@ import { DocumentPreviewModal } from "./DocumentPreviewModal";
 
 interface TeamBoardCanvasViewProps {
   initialItems: TeamBoardItem[];
+  initialViewport?: CanvasViewportState;
   currentUserRole?: string;
 }
 
@@ -331,6 +338,7 @@ function DesktopInlineField({
 
 export function TeamBoardCanvasView({
   initialItems,
+  initialViewport,
   currentUserRole = "OWNER",
 }: TeamBoardCanvasViewProps) {
   const [items, setItems] = useState<TeamBoardItem[]>(initialItems);
@@ -348,11 +356,27 @@ export function TeamBoardCanvasView({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Canvas Viewport Pan & Zoom State
-  const [pan, setPan] = useState({ x: 30, y: 30 });
-  const [zoom, setZoom] = useState(1.0);
+  // Canvas Viewport Pan & Zoom State (Option B - Shared/Global persistence)
+  const [pan, setPan] = useState({
+    x: initialViewport?.panX ?? 40,
+    y: initialViewport?.panY ?? 40,
+  });
+  const [zoom, setZoom] = useState(initialViewport?.zoom ?? 1.0);
+  const panRef = useRef(pan);
+  panRef.current = pan;
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef({ x: 0, y: 0 });
+
+  // Viewport autosave debouncer for shared/global coordinates
+  const viewportSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scheduleViewportSave = (newPanX: number, newPanY: number, newZoom: number) => {
+    if (viewportSaveTimeoutRef.current) clearTimeout(viewportSaveTimeoutRef.current);
+    viewportSaveTimeoutRef.current = setTimeout(async () => {
+      await updateCanvasViewportAction(newPanX, newPanY, newZoom);
+    }, 600);
+  };
 
   // Node Dragging State
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -427,12 +451,17 @@ export function TeamBoardCanvasView({
 
   // Zoom handlers
   const handleZoom = (delta: number) => {
-    setZoom((prev) => Math.min(2.0, Math.max(0.3, Math.round((prev + delta) * 10) / 10)));
+    setZoom((prev) => {
+      const nextZoom = Math.min(2.0, Math.max(0.3, Math.round((prev + delta) * 10) / 10));
+      scheduleViewportSave(panRef.current.x, panRef.current.y, nextZoom);
+      return nextZoom;
+    });
   };
 
   const handleResetView = () => {
-    setPan({ x: 30, y: 30 });
+    setPan({ x: 40, y: 40 });
     setZoom(1.0);
+    scheduleViewportSave(40, 40, 1.0);
   };
 
   // Canvas Mouse Events for Panning, Dragging, Resizing
@@ -484,6 +513,7 @@ export function TeamBoardCanvasView({
   const handleMouseUp = async () => {
     if (isPanning) {
       setIsPanning(false);
+      scheduleViewportSave(panRef.current.x, panRef.current.y, zoomRef.current);
     }
     if (draggingId) {
       const draggedNode = items.find((i) => i.id === draggingId);
@@ -674,11 +704,13 @@ export function TeamBoardCanvasView({
         return;
       }
 
+      const cardIdFromEl = cardEl.getAttribute("data-card-id");
+
       setSelectionBubble({
         visible: true,
         x: rect.left + rect.width / 2,
         y: Math.max(10, rect.top - 54),
-        targetCardId: activeCardId,
+        targetCardId: cardIdFromEl || activeCardId,
       });
     };
 
@@ -711,8 +743,9 @@ export function TeamBoardCanvasView({
   // Selection Format Toolbar Handlers
   const handleApplyFormatting = (command: "bold" | "italic" | "strikeThrough") => {
     document.execCommand(command, false);
-    if (activeCardId) {
-      syncCardDomToState(activeCardId);
+    const targetId = selectionBubble.targetCardId || activeCardId;
+    if (targetId) {
+      syncCardDomToState(targetId);
     }
   };
 
@@ -734,8 +767,38 @@ export function TeamBoardCanvasView({
     newRange.selectNodeContents(span);
     sel.addRange(newRange);
 
-    if (activeCardId) {
-      syncCardDomToState(activeCardId);
+    const targetId = selectionBubble.targetCardId || activeCardId;
+    if (targetId) {
+      syncCardDomToState(targetId);
+    }
+  };
+
+  const handleApplyColorToSelection = (colorHex: string) => {
+    try {
+      document.execCommand("styleWithCSS", false, "true");
+      document.execCommand("foreColor", false, colorHex);
+    } catch {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const range = sel.getRangeAt(0);
+      const span = document.createElement("span");
+      span.style.color = colorHex;
+      try {
+        range.surroundContents(span);
+      } catch {
+        const fragment = range.extractContents();
+        span.appendChild(fragment);
+        range.insertNode(span);
+      }
+      sel.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.selectNodeContents(span);
+      sel.addRange(newRange);
+    }
+
+    const targetId = selectionBubble.targetCardId || activeCardId;
+    if (targetId) {
+      syncCardDomToState(targetId);
     }
   };
 
@@ -1134,6 +1197,31 @@ export function TeamBoardCanvasView({
             <Strikethrough className="w-3.5 h-3.5" />
           </button>
 
+          <div className="h-4 w-px bg-slate-700/80 mx-0.5" />
+
+          {/* Custom Text Color Palette: Merah, Hijau, Biru, Oren, Abu-abu, Putih */}
+          <div className="flex items-center gap-1 bg-slate-800/80 px-1 py-0.5 rounded-lg border border-slate-700/60">
+            {[
+              { name: "Merah", hex: "#ef4444", bgClass: "bg-red-500 hover:ring-red-400" },
+              { name: "Hijau", hex: "#22c55e", bgClass: "bg-emerald-500 hover:ring-emerald-400" },
+              { name: "Biru", hex: "#3b82f6", bgClass: "bg-blue-500 hover:ring-blue-400" },
+              { name: "Oren", hex: "#f97316", bgClass: "bg-orange-500 hover:ring-orange-400" },
+              { name: "Abu-abu", hex: "#94a3b8", bgClass: "bg-slate-400 hover:ring-slate-300" },
+              { name: "Putih", hex: "#ffffff", bgClass: "bg-white hover:ring-slate-200" },
+            ].map((col) => (
+              <button
+                key={col.name}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleApplyColorToSelection(col.hex);
+                }}
+                className={`w-3.5 h-3.5 rounded-full ${col.bgClass} transition-transform hover:scale-125 hover:ring-2 shadow-sm border border-slate-900`}
+                title={`Warna teks ${col.name}`}
+              />
+            ))}
+          </div>
+
           {/* Downward triangle arrow */}
           <div className="absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-3 h-3 bg-slate-900 border-r border-b border-slate-700/80 rotate-45" />
         </div>
@@ -1149,7 +1237,7 @@ export function TeamBoardCanvasView({
 
       {/* Top Floating Control Bar */}
       <div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
-        {/* Left: Title & Quick Category Filter Dropdown */}
+        {/* Left: Title & Quick Category Filter Dropdown & Shared Canvas Badge */}
         <div className="flex items-center gap-2.5 bg-slate-900/90 backdrop-blur-md px-3.5 py-2 rounded-xl border border-slate-800 shadow-xl pointer-events-auto">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-brand-orange animate-pulse" />
@@ -1159,6 +1247,15 @@ export function TeamBoardCanvasView({
           </div>
 
           <div className="h-4 w-px bg-slate-800" />
+
+          {/* Shared Canvas View Indicator */}
+          <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 bg-slate-950/80 rounded-lg border border-slate-800 text-[10px] text-slate-300">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-semibold text-emerald-400">Shared Viewport</span>
+            <span className="text-slate-500 font-mono">Sync</span>
+          </div>
+
+          <div className="hidden lg:block h-4 w-px bg-slate-800" />
 
           {/* Category Filter Dropdown */}
           <div className="relative flex items-center">

@@ -1,4 +1,4 @@
-import { getTeamBoardItems } from "@/modules/projects/projects.service";
+import { getCanvasViewport, getTeamBoardItems } from "@/modules/projects/projects.service";
 import { getSessionCookie } from "@/modules/auth/session";
 import { TeamBoardCanvasView } from "@/components/team-board/TeamBoardCanvasView";
 
@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function TeamBoardPage() {
   const session = await getSessionCookie();
   const items = await getTeamBoardItems();
+  const sharedViewport = await getCanvasViewport();
 
   return (
     <div className="space-y-4">
@@ -23,6 +24,7 @@ export default async function TeamBoardPage() {
 
       <TeamBoardCanvasView
         initialItems={items}
+        initialViewport={sharedViewport}
         currentUserRole={session?.role}
       />
     </div>
