@@ -1,26 +1,30 @@
-import { ShieldAlert, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { getAllApprovalRequests } from "@/modules/approval/approval.service";
+import { getSessionCookie } from "@/modules/auth/session";
+import { ApprovalQueueList } from "@/components/approval/ApprovalQueueList";
+import { ShieldAlert } from "lucide-react";
 
-export default function ApprovalQueuePage() {
+export default async function ApprovalQueuePage() {
+  const session = await getSessionCookie();
+  const requests = await getAllApprovalRequests();
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          Approval Queue (Persetujuan Owner)
-        </h1>
+        <div className="flex items-center gap-2 text-indigo-700">
+          <ShieldAlert className="w-6 h-6" />
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Approval Queue (Pusat Otorisasi Owner)
+          </h1>
+        </div>
         <p className="text-xs text-slate-500 mt-1">
-          Pusat otorisasi Owner untuk komitmen komersial di luar ketentuan: diskon, harga khusus, termin, dan refund
+          Hanya Owner yang berwenang menyetujui komitmen komersial di luar katalog: diskon, harga khusus, perubahan termin pembayaran, refund, dan pembatalan proyek.
         </p>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
-        <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
-        <h3 className="text-sm font-semibold text-slate-800">
-          Antrean persetujuan kosong
-        </h3>
-        <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-          AI atau Sales tidak dapat memberikan diskon atau janji komersial tanpa permohonan persetujuan masuk ke antrean ini.
-        </p>
-      </div>
+      <ApprovalQueueList
+        initialRequests={requests}
+        isOwner={session?.role === "OWNER"}
+      />
     </div>
   );
 }

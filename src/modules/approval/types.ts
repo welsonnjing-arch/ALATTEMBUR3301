@@ -6,6 +6,7 @@ export type ApprovalRequestType =
   | "PAYMENT_TERMS"
   | "REFUND"
   | "PROJECT_CANCELLATION"
+  | "CONTRACTUAL_COMMITMENT"
   | "AI_COMMERCIAL_ACTION";
 
 export interface ApprovalRequest {
