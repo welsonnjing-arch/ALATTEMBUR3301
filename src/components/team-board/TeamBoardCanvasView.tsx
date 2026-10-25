@@ -336,11 +336,23 @@ function DesktopInlineField({
   );
 }
 
+const LOCAL_STORAGE_ITEMS_KEY = "fynux_team_board_items_v2";
+const LOCAL_STORAGE_VIEWPORT_KEY = "fynux_team_board_viewport_v2";
+
+function safeNumber(val: unknown, fallback: number): number {
+  if (typeof val === "number" && !isNaN(val)) return val;
+  return fallback;
+}
+
 export function TeamBoardCanvasView({
   initialItems,
   initialViewport,
   currentUserRole = "OWNER",
 }: TeamBoardCanvasViewProps) {
+  const initialSafePanX = safeNumber(initialViewport?.panX, 40);
+  const initialSafePanY = safeNumber(initialViewport?.panY, 40);
+  const initialSafeZoom = safeNumber(initialViewport?.zoom, 1.0);
+
   const [items, setItems] = useState<TeamBoardItem[]>(initialItems);
   const [selectedCategory, setSelectedCategory] = useState<
     "ALL" | "ANNOUNCEMENT" | "SOP" | "TARGET" | "IDEA"
@@ -358,10 +370,10 @@ export function TeamBoardCanvasView({
 
   // Canvas Viewport Pan & Zoom State (Option B - Shared/Global persistence)
   const [pan, setPan] = useState({
-    x: initialViewport?.panX ?? 40,
-    y: initialViewport?.panY ?? 40,
+    x: initialSafePanX,
+    y: initialSafePanY,
   });
-  const [zoom, setZoom] = useState(initialViewport?.zoom ?? 1.0);
+  const [zoom, setZoom] = useState(initialSafeZoom > 0.1 ? initialSafeZoom : 1.0);
   const panRef = useRef(pan);
   panRef.current = pan;
   const zoomRef = useRef(zoom);
@@ -369,14 +381,79 @@ export function TeamBoardCanvasView({
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef({ x: 0, y: 0 });
 
-  // Viewport autosave debouncer for shared/global coordinates
+  // Viewport autosave debouncer for shared/global coordinates + local storage backup
   const viewportSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const scheduleViewportSave = (newPanX: number, newPanY: number, newZoom: number) => {
+    const safeX = safeNumber(newPanX, 40);
+    const safeY = safeNumber(newPanY, 40);
+    const safeZ = safeNumber(newZoom, 1.0);
+
+    try {
+      localStorage.setItem(
+        LOCAL_STORAGE_VIEWPORT_KEY,
+        JSON.stringify({ panX: safeX, panY: safeY, zoom: safeZ })
+      );
+    } catch {}
+
     if (viewportSaveTimeoutRef.current) clearTimeout(viewportSaveTimeoutRef.current);
     viewportSaveTimeoutRef.current = setTimeout(async () => {
-      await updateCanvasViewportAction(newPanX, newPanY, newZoom);
+      await updateCanvasViewportAction(safeX, safeY, safeZ);
     }, 600);
   };
+
+  // Restore and merge items from localStorage on initial client mount
+  useEffect(() => {
+    try {
+      const storedItems = localStorage.getItem(LOCAL_STORAGE_ITEMS_KEY);
+      if (storedItems) {
+        const parsed = JSON.parse(storedItems);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setItems((prev) => {
+            const map = new Map<string, TeamBoardItem>();
+            prev.forEach((it) => map.set(it.id, it));
+            parsed.forEach((it: TeamBoardItem) => {
+              if (it && it.id) map.set(it.id, { ...map.get(it.id), ...it });
+            });
+            return Array.from(map.values());
+          });
+        }
+      }
+
+      const storedVp = localStorage.getItem(LOCAL_STORAGE_VIEWPORT_KEY);
+      if (storedVp) {
+        const parsed = JSON.parse(storedVp);
+        if (typeof parsed?.panX === "number" && !isNaN(parsed.panX)) {
+          setPan({ x: parsed.panX, y: parsed.panY });
+          if (typeof parsed.zoom === "number" && !isNaN(parsed.zoom)) {
+            setZoom(parsed.zoom);
+          }
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Sync state when initialItems prop updates from server revalidation
+  useEffect(() => {
+    if (initialItems && initialItems.length > 0) {
+      setItems((prev) => {
+        const map = new Map<string, TeamBoardItem>();
+        initialItems.forEach((it) => map.set(it.id, it));
+        prev.forEach((it) => {
+          if (!map.has(it.id)) map.set(it.id, it);
+        });
+        return Array.from(map.values());
+      });
+    }
+  }, [initialItems]);
+
+  // Persist items to localStorage whenever items change
+  useEffect(() => {
+    if (items.length > 0) {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_ITEMS_KEY, JSON.stringify(items));
+      } catch {}
+    }
+  }, [items]);
 
   // Node Dragging State
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -463,6 +540,58 @@ export function TeamBoardCanvasView({
     setZoom(1.0);
     scheduleViewportSave(40, 40, 1.0);
   };
+
+  // Check if cards are currently out of view
+  const areCardsOffScreen =
+    items.length > 0 &&
+    !items.some((item) => {
+      const itemX = item.x ?? 60;
+      const itemY = item.y ?? 60;
+      const itemW = item.width ?? 390;
+      const itemH = item.height ?? 320;
+
+      const screenX = pan.x + itemX * zoom;
+      const screenY = pan.y + itemY * zoom;
+      const screenW = itemW * zoom;
+      const screenH = itemH * zoom;
+
+      const vW = typeof window !== "undefined" ? window.innerWidth : 1200;
+      const vH = typeof window !== "undefined" ? window.innerHeight : 800;
+
+      return (
+        screenX + screenW > 40 &&
+        screenX < vW &&
+        screenY + screenH > 40 &&
+        screenY < vH
+      );
+    });
+
+  // Auto-recovery: if on load all cards would be completely off-screen, auto-reset to origin
+  useEffect(() => {
+    if (items.length > 0 && typeof window !== "undefined") {
+      const vW = window.innerWidth || 1200;
+      const vH = window.innerHeight || 800;
+      const hasAnyVisible = items.some((item) => {
+        const itemX = item.x ?? 60;
+        const itemY = item.y ?? 60;
+        const itemW = item.width ?? 390;
+        const itemH = item.height ?? 320;
+        const screenX = pan.x + itemX * zoom;
+        const screenY = pan.y + itemY * zoom;
+        return (
+          screenX + itemW * zoom > 40 &&
+          screenX < vW &&
+          screenY + itemH * zoom > 40 &&
+          screenY < vH
+        );
+      });
+      if (!hasAnyVisible) {
+        setPan({ x: 40, y: 40 });
+        setZoom(1.0);
+        scheduleViewportSave(40, 40, 1.0);
+      }
+    }
+  }, [items]);
 
   // Canvas Mouse Events for Panning, Dragging, Resizing
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
@@ -1322,10 +1451,11 @@ export function TeamBoardCanvasView({
             <div className="h-4 w-px bg-slate-800 mx-1" />
             <button
               onClick={handleResetView}
-              title="Reset View 1:1"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              title="Fokuskan Sudut Pandang ke Kotak (Reset 1:1)"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors text-xs font-semibold"
             >
-              <Maximize2 className="w-3.5 h-3.5" />
+              <Maximize2 className="w-3.5 h-3.5 text-brand-orange" />
+              <span className="hidden sm:inline">Fokus Kotak</span>
             </button>
           </div>
 
@@ -1339,6 +1469,23 @@ export function TeamBoardCanvasView({
           </button>
         </div>
       </div>
+
+      {/* Off-screen recovery alert: appears if cards were panned out of view */}
+      {areCardsOffScreen && items.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-slate-900/95 border border-amber-500/60 backdrop-blur-md shadow-2xl text-amber-200 text-xs font-medium animate-in fade-in slide-in-from-bottom-3 duration-200">
+          <span className="flex items-center gap-1.5">
+            <Target className="w-4 h-4 text-amber-400" />
+            Kotak kanban berada di luar sudut pandang layar.
+          </span>
+          <button
+            type="button"
+            onClick={handleResetView}
+            className="px-3 py-1 bg-gradient-to-r from-brand-orange to-amber-500 hover:opacity-90 text-white font-bold rounded-lg shadow-sm transition-all hover:scale-105 active:scale-95"
+          >
+            Bawa ke Layar (Fokus Kotak)
+          </button>
+        </div>
+      )}
 
       {/* Infinite Canvas Area */}
       <div

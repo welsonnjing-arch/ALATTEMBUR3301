@@ -159,7 +159,7 @@ let tasksData: Task[] = [
   },
 ];
 
-let teamBoardData: TeamBoardItem[] = [
+const INITIAL_TEAM_BOARD_DATA: TeamBoardItem[] = [
   {
     id: "tb-01",
     category: "TARGET",
@@ -220,6 +220,30 @@ let teamBoardData: TeamBoardItem[] = [
     createdAt: "2026-10-24T10:00:00Z",
   },
 ];
+
+const INITIAL_CANVAS_VIEWPORT: CanvasViewportState = {
+  panX: 40,
+  panY: 40,
+  zoom: 1.0,
+  updatedBy: "Faiz Aditama (Owner)",
+  updatedAt: new Date().toISOString(),
+};
+
+interface ProjectsGlobalStore {
+  teamBoardData?: TeamBoardItem[];
+  sharedCanvasViewportData?: CanvasViewportState;
+}
+
+const projectsGlobal = globalThis as unknown as ProjectsGlobalStore;
+if (!projectsGlobal.teamBoardData || projectsGlobal.teamBoardData.length === 0) {
+  projectsGlobal.teamBoardData = [...INITIAL_TEAM_BOARD_DATA];
+}
+if (!projectsGlobal.sharedCanvasViewportData) {
+  projectsGlobal.sharedCanvasViewportData = { ...INITIAL_CANVAS_VIEWPORT };
+}
+
+// Exported alias for compatibility
+export const teamBoardData = projectsGlobal.teamBoardData;
 
 // Methods
 export async function getAllProjects(filterStatus?: ProjectStatus | "ALL"): Promise<Project[]> {
@@ -481,7 +505,10 @@ export async function sendProjectChatMessage(
 }
 
 export async function getTeamBoardItems(): Promise<TeamBoardItem[]> {
-  return [...teamBoardData];
+  if (!projectsGlobal.teamBoardData || projectsGlobal.teamBoardData.length === 0) {
+    projectsGlobal.teamBoardData = [...INITIAL_TEAM_BOARD_DATA];
+  }
+  return [...projectsGlobal.teamBoardData];
 }
 
 export async function createTeamBoardItem(
@@ -503,6 +530,15 @@ export async function createTeamBoardItem(
     height?: number;
   }
 ): Promise<TeamBoardItem> {
+  if (!projectsGlobal.teamBoardData) {
+    projectsGlobal.teamBoardData = [...INITIAL_TEAM_BOARD_DATA];
+  }
+
+  const safeX = typeof extra?.x === "number" && !isNaN(extra.x) ? extra.x : Math.floor(Math.random() * 300) + 100;
+  const safeY = typeof extra?.y === "number" && !isNaN(extra.y) ? extra.y : Math.floor(Math.random() * 200) + 100;
+  const safeW = typeof extra?.width === "number" && !isNaN(extra.width) ? extra.width : 380;
+  const safeH = typeof extra?.height === "number" && !isNaN(extra.height) ? extra.height : 260;
+
   const newItem: TeamBoardItem = {
     id: `tb-${Date.now()}`,
     category,
@@ -514,16 +550,16 @@ export async function createTeamBoardItem(
     contentStyle: extra?.contentStyle,
     authorId,
     authorName,
-    x: extra?.x ?? Math.floor(Math.random() * 300) + 100,
-    y: extra?.y ?? Math.floor(Math.random() * 200) + 100,
-    width: extra?.width ?? 380,
-    height: extra?.height ?? 260,
+    x: safeX,
+    y: safeY,
+    width: safeW,
+    height: safeH,
     colorTheme: extra?.colorTheme ?? "indigo",
     attachments: extra?.attachments ?? [],
     createdAt: new Date().toISOString(),
   };
 
-  teamBoardData.unshift(newItem);
+  projectsGlobal.teamBoardData.unshift(newItem);
 
   logActivity({
     category: "SYSTEM",
@@ -541,15 +577,18 @@ export async function updateTeamBoardItem(
   id: string,
   updates: Partial<TeamBoardItem>
 ): Promise<{ success: boolean; item?: TeamBoardItem; error?: string }> {
-  const idx = teamBoardData.findIndex((item) => item.id === id);
+  if (!projectsGlobal.teamBoardData) {
+    projectsGlobal.teamBoardData = [...INITIAL_TEAM_BOARD_DATA];
+  }
+  const idx = projectsGlobal.teamBoardData.findIndex((item) => item.id === id);
   if (idx === -1) return { success: false, error: "Item tidak ditemukan." };
 
-  teamBoardData[idx] = {
-    ...teamBoardData[idx],
+  projectsGlobal.teamBoardData[idx] = {
+    ...projectsGlobal.teamBoardData[idx],
     ...updates,
   };
 
-  return { success: true, item: { ...teamBoardData[idx] } };
+  return { success: true, item: { ...projectsGlobal.teamBoardData[idx] } };
 }
 
 export async function updateTeamBoardItemPosition(
@@ -559,32 +598,40 @@ export async function updateTeamBoardItemPosition(
   width?: number,
   height?: number
 ): Promise<{ success: boolean; error?: string }> {
-  const idx = teamBoardData.findIndex((item) => item.id === id);
+  if (!projectsGlobal.teamBoardData) {
+    projectsGlobal.teamBoardData = [...INITIAL_TEAM_BOARD_DATA];
+  }
+  const idx = projectsGlobal.teamBoardData.findIndex((item) => item.id === id);
   if (idx === -1) return { success: false, error: "Item tidak ditemukan." };
-  teamBoardData[idx].x = x;
-  teamBoardData[idx].y = y;
-  if (width !== undefined) teamBoardData[idx].width = width;
-  if (height !== undefined) teamBoardData[idx].height = height;
+  
+  const safeX = typeof x === "number" && !isNaN(x) ? x : 60;
+  const safeY = typeof y === "number" && !isNaN(y) ? y : 60;
+  projectsGlobal.teamBoardData[idx].x = safeX;
+  projectsGlobal.teamBoardData[idx].y = safeY;
+  if (width !== undefined && !isNaN(width)) projectsGlobal.teamBoardData[idx].width = width;
+  if (height !== undefined && !isNaN(height)) projectsGlobal.teamBoardData[idx].height = height;
   return { success: true };
 }
 
 export async function deleteTeamBoardItem(id: string): Promise<{ success: boolean; error?: string }> {
-  const idx = teamBoardData.findIndex((item) => item.id === id);
+  if (!projectsGlobal.teamBoardData) {
+    projectsGlobal.teamBoardData = [...INITIAL_TEAM_BOARD_DATA];
+  }
+  const idx = projectsGlobal.teamBoardData.findIndex((item) => item.id === id);
   if (idx === -1) return { success: false, error: "Item tidak ditemukan." };
-  teamBoardData.splice(idx, 1);
+  projectsGlobal.teamBoardData.splice(idx, 1);
   return { success: true };
 }
 
-let sharedCanvasViewportData: CanvasViewportState = {
-  panX: 40,
-  panY: 40,
-  zoom: 1.0,
-  updatedBy: "Faiz Aditama (Owner)",
-  updatedAt: new Date().toISOString(),
-};
-
 export async function getCanvasViewport(): Promise<CanvasViewportState> {
-  return { ...sharedCanvasViewportData };
+  if (!projectsGlobal.sharedCanvasViewportData) {
+    projectsGlobal.sharedCanvasViewportData = { ...INITIAL_CANVAS_VIEWPORT };
+  }
+  const vp = projectsGlobal.sharedCanvasViewportData;
+  const safePanX = typeof vp.panX === "number" && !isNaN(vp.panX) ? vp.panX : 40;
+  const safePanY = typeof vp.panY === "number" && !isNaN(vp.panY) ? vp.panY : 40;
+  const safeZoom = typeof vp.zoom === "number" && !isNaN(vp.zoom) && vp.zoom > 0.1 ? vp.zoom : 1.0;
+  return { ...vp, panX: safePanX, panY: safePanY, zoom: safeZoom };
 }
 
 export async function updateCanvasViewport(
@@ -593,12 +640,16 @@ export async function updateCanvasViewport(
   zoom: number,
   updatedBy?: string
 ): Promise<{ success: boolean; viewport: CanvasViewportState }> {
-  sharedCanvasViewportData = {
-    panX,
-    panY,
-    zoom,
-    updatedBy: updatedBy || sharedCanvasViewportData.updatedBy,
+  const safePanX = typeof panX === "number" && !isNaN(panX) ? panX : 40;
+  const safePanY = typeof panY === "number" && !isNaN(panY) ? panY : 40;
+  const safeZoom = typeof zoom === "number" && !isNaN(zoom) && zoom > 0.1 ? zoom : 1.0;
+
+  projectsGlobal.sharedCanvasViewportData = {
+    panX: safePanX,
+    panY: safePanY,
+    zoom: safeZoom,
+    updatedBy: updatedBy || projectsGlobal.sharedCanvasViewportData?.updatedBy || "Faiz Aditama (Owner)",
     updatedAt: new Date().toISOString(),
   };
-  return { success: true, viewport: { ...sharedCanvasViewportData } };
+  return { success: true, viewport: { ...projectsGlobal.sharedCanvasViewportData } };
 }

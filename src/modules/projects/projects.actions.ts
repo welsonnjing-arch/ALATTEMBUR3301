@@ -222,6 +222,9 @@ export async function updateTeamBoardItemPositionAction(
     if (!session) return { success: false, error: "Sesi telah berakhir." };
 
     const res = await updateTeamBoardItemPosition(id, x, y, width, height);
+    if (res.success) {
+      revalidatePath("/team-board");
+    }
     return res;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Gagal memindahkan posisi item.";
@@ -257,7 +260,11 @@ export async function updateCanvasViewportAction(
   try {
     const session = await getSessionCookie();
     const actorName = session ? session.fullName : undefined;
-    return await updateCanvasViewport(panX, panY, zoom, actorName);
+    const res = await updateCanvasViewport(panX, panY, zoom, actorName);
+    if (res.success) {
+      revalidatePath("/team-board");
+    }
+    return res;
   } catch {
     return { success: false };
   }
