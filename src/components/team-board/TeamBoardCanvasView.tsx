@@ -206,7 +206,6 @@ interface DesktopInlineCardContentProps {
   cardId: string;
   initialContent: string;
   onContentChange: (newHtml: string) => void;
-  onSelectText: () => void;
   onTriggerUpload: () => void;
   className?: string;
 }
@@ -215,7 +214,6 @@ function DesktopInlineCardContent({
   cardId,
   initialContent,
   onContentChange,
-  onSelectText,
   onTriggerUpload,
   className,
 }: DesktopInlineCardContentProps) {
@@ -255,13 +253,78 @@ function DesktopInlineCardContent({
     <div
       ref={contentRef}
       data-card-content={cardId}
+      data-field="content"
       contentEditable
       suppressContentEditableWarning
       onInput={handleInput}
       onBlur={handleBlur}
-      onMouseUp={onSelectText}
-      onKeyUp={onSelectText}
-      className={className}
+      style={{ userSelect: "text", WebkitUserSelect: "text" }}
+      className={`select-text cursor-text ${className || ""}`}
+    />
+  );
+}
+
+// Uncontrolled ContentEditable field for Judul & Subjudul (supports text selection & styling)
+interface DesktopInlineFieldProps {
+  fieldKey: string;
+  dataField: "title" | "subtitle";
+  initialValue: string;
+  placeholder: string;
+  onValueChange: (val: string) => void;
+  onEnterPress?: () => void;
+  className?: string;
+}
+
+function DesktopInlineField({
+  fieldKey,
+  dataField,
+  initialValue,
+  placeholder,
+  onValueChange,
+  onEnterPress,
+  className,
+}: DesktopInlineFieldProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isEditingRef = useRef(false);
+
+  useEffect(() => {
+    if (ref.current && !isEditingRef.current) {
+      ref.current.innerHTML = initialValue;
+    }
+  }, [fieldKey, initialValue]);
+
+  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+    isEditingRef.current = true;
+    const html = e.currentTarget.innerHTML;
+    onValueChange(html);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (onEnterPress) onEnterPress();
+    }
+  };
+
+  const handleBlur = () => {
+    isEditingRef.current = false;
+    if (ref.current) {
+      onValueChange(ref.current.innerHTML);
+    }
+  };
+
+  return (
+    <div
+      ref={ref}
+      data-field={dataField}
+      contentEditable
+      suppressContentEditableWarning
+      onInput={handleInput}
+      onKeyDown={handleKeyDown}
+      onBlur={handleBlur}
+      style={{ userSelect: "text", WebkitUserSelect: "text" }}
+      className={`select-text cursor-text focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-slate-600 ${className || ""}`}
+      data-placeholder={placeholder}
     />
   );
 }
@@ -581,44 +644,75 @@ export function TeamBoardCanvasView({
     }
   };
 
-  // Text Selection Detector for Floating Bubble
-  const checkTextSelection = (cardId: string) => {
+  // Global Selection Change Listener for instant floating toolbar detection on any selected text (Judul, Subjudul, Deskripsi)
+  useEffect(() => {
     if (isMobile) return;
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed || !sel.toString().trim()) {
-      setSelectionBubble((prev) => (prev.visible ? { ...prev, visible: false } : prev));
-      return;
-    }
 
-    const range = sel.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    if (rect.width === 0 && rect.height === 0) {
-      setSelectionBubble((prev) => (prev.visible ? { ...prev, visible: false } : prev));
-      return;
-    }
+    const handleSelectionChange = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+        setSelectionBubble((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+        return;
+      }
 
-    setSelectionBubble({
-      visible: true,
-      x: rect.left + rect.width / 2,
-      y: Math.max(10, rect.top - 48),
-      targetCardId: cardId,
-    });
+      // Check if the selection is inside an active canvas node
+      const anchorNode = sel.anchorNode;
+      if (!anchorNode) return;
+      const cardEl = (
+        anchorNode instanceof Element ? anchorNode : anchorNode.parentElement
+      )?.closest(".canvas-node");
+
+      if (!cardEl) {
+        setSelectionBubble((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+        return;
+      }
+
+      const range = sel.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) {
+        setSelectionBubble((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+        return;
+      }
+
+      setSelectionBubble({
+        visible: true,
+        x: rect.left + rect.width / 2,
+        y: Math.max(10, rect.top - 54),
+        targetCardId: activeCardId,
+      });
+    };
+
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => {
+      document.removeEventListener("selectionchange", handleSelectionChange);
+    };
+  }, [isMobile, activeCardId]);
+
+  // Sync any DOM text changes back to card state and autosave
+  const syncCardDomToState = (cardId: string) => {
+    const cardEl = document.querySelector(`[data-card-id="${cardId}"]`);
+    if (!cardEl) return;
+
+    const titleEl = cardEl.querySelector("[data-field='title']");
+    const subtitleEl = cardEl.querySelector("[data-field='subtitle']");
+    const contentEl = cardEl.querySelector("[data-field='content']");
+
+    const updates: Partial<TeamBoardItem> = {};
+    if (titleEl) updates.title = titleEl.innerHTML;
+    if (subtitleEl) updates.subtitle = subtitleEl.innerHTML;
+    if (contentEl) updates.content = contentEl.innerHTML;
+
+    setItems((prev) =>
+      prev.map((i) => (i.id === cardId ? { ...i, ...updates } : i))
+    );
+    scheduleAutoSave(cardId, updates);
   };
 
   // Selection Format Toolbar Handlers
   const handleApplyFormatting = (command: "bold" | "italic" | "strikeThrough") => {
     document.execCommand(command, false);
     if (activeCardId) {
-      const activeEl = document.querySelector(
-        `[data-card-content="${activeCardId}"]`
-      ) as HTMLElement | null;
-      const html = activeEl ? activeEl.innerHTML : "";
-      if (html) {
-        setItems((prev) =>
-          prev.map((i) => (i.id === activeCardId ? { ...i, content: html } : i))
-        );
-        scheduleAutoSave(activeCardId, { content: html });
-      }
+      syncCardDomToState(activeCardId);
     }
   };
 
@@ -641,16 +735,7 @@ export function TeamBoardCanvasView({
     sel.addRange(newRange);
 
     if (activeCardId) {
-      const activeEl = document.querySelector(
-        `[data-card-content="${activeCardId}"]`
-      ) as HTMLElement | null;
-      const html = activeEl ? activeEl.innerHTML : "";
-      if (html) {
-        setItems((prev) =>
-          prev.map((i) => (i.id === activeCardId ? { ...i, content: html } : i))
-        );
-        scheduleAutoSave(activeCardId, { content: html });
-      }
+      syncCardDomToState(activeCardId);
     }
   };
 
@@ -966,7 +1051,7 @@ export function TeamBoardCanvasView({
   };
 
   return (
-    <div className="relative w-full h-[calc(100vh-4.5rem)] bg-slate-950 overflow-hidden select-none font-sans">
+    <div className="relative w-full h-[calc(100vh-4.5rem)] bg-slate-950 overflow-hidden font-sans">
       {/* Hidden file input for desktop /upload & side panel trigger */}
       <input
         ref={cardFileInputRef}
@@ -1165,7 +1250,7 @@ export function TeamBoardCanvasView({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onDoubleClick={handleCanvasDoubleClick}
-        className={`w-full h-full relative cursor-${
+        className={`w-full h-full relative select-none cursor-${
           isPanning ? "grabbing" : "grab"
         } overflow-hidden`}
         style={{
@@ -1196,8 +1281,9 @@ export function TeamBoardCanvasView({
             return (
               <div
                 key={item.id}
+                data-card-id={item.id}
                 onClick={(e) => handleCardClick(item, e)}
-                className={`canvas-node absolute bg-slate-900/95 backdrop-blur-md rounded-2xl border ${
+                className={`canvas-node select-text absolute bg-slate-900/95 backdrop-blur-md rounded-2xl border ${
                   styles.border
                 } ${styles.glow} shadow-2xl flex flex-col group transition-shadow ${
                   isActive ? "ring-2 ring-brand-orange/80 shadow-brand-orange/10 z-30" : "hover:shadow-indigo-500/10 z-10"
@@ -1212,7 +1298,7 @@ export function TeamBoardCanvasView({
                 {/* Header (Draggable Handle + Actions) */}
                 <div
                   onMouseDown={(e) => handleNodeHeaderMouseDown(e, item)}
-                  className="px-4 py-2.5 border-b border-slate-800/80 flex items-center justify-between cursor-move bg-slate-950/50 rounded-t-2xl"
+                  className="px-4 py-2.5 border-b border-slate-800/80 flex items-center justify-between cursor-move bg-slate-950/50 rounded-t-2xl select-none"
                 >
                   <div className="flex items-center gap-2">
                     <span
@@ -1253,14 +1339,21 @@ export function TeamBoardCanvasView({
                 </div>
 
                 {/* Content Body: Direct Desktop Inline Typing OR Rendered Text */}
-                <div className="p-4 flex-1 overflow-y-auto space-y-2.5">
-                  {/* Judul: Direct typing on desktop if active, otherwise rendered */}
+                <div className="p-4 flex-1 overflow-y-auto space-y-2.5 select-text">
+                  {/* Judul: Direct rich text field on desktop if active, otherwise rendered */}
                   {isActive && !isMobile ? (
-                    <input
-                      type="text"
-                      value={item.title}
-                      onChange={(e) => handleUpdateCardTitle(item.id, e.target.value)}
+                    <DesktopInlineField
+                      fieldKey={`${item.id}-title`}
+                      dataField="title"
+                      initialValue={item.title}
                       placeholder="Tulis judul kotak..."
+                      onValueChange={(val) => handleUpdateCardTitle(item.id, val)}
+                      onEnterPress={() => {
+                        const sub = document.querySelector(
+                          `[data-card-id="${item.id}"] [data-field="subtitle"]`
+                        ) as HTMLElement | null;
+                        sub?.focus();
+                      }}
                       className={`w-full bg-slate-950/70 border border-slate-700/80 rounded-lg px-2.5 py-1 text-white focus:outline-none focus:border-brand-orange transition-colors ${getStyleClasses(
                         item.titleStyle,
                         "text-base",
@@ -1274,18 +1367,24 @@ export function TeamBoardCanvasView({
                         "text-base",
                         "font-extrabold"
                       )}`}
-                    >
-                      {item.title}
-                    </h3>
+                      dangerouslySetInnerHTML={{ __html: item.title }}
+                    />
                   )}
 
-                  {/* Subjudul: Direct typing on desktop if active, otherwise rendered */}
+                  {/* Subjudul: Direct rich text field on desktop if active, otherwise rendered */}
                   {isActive && !isMobile ? (
-                    <input
-                      type="text"
-                      value={item.subtitle || ""}
-                      onChange={(e) => handleUpdateCardSubtitle(item.id, e.target.value)}
+                    <DesktopInlineField
+                      fieldKey={`${item.id}-subtitle`}
+                      dataField="subtitle"
+                      initialValue={item.subtitle || ""}
                       placeholder="Tulis subjudul catatan (opsional)..."
+                      onValueChange={(val) => handleUpdateCardSubtitle(item.id, val)}
+                      onEnterPress={() => {
+                        const cont = document.querySelector(
+                          `[data-card-id="${item.id}"] [data-field="content"]`
+                        ) as HTMLElement | null;
+                        cont?.focus();
+                      }}
                       className={`w-full bg-slate-950/60 border border-slate-700/60 rounded-lg px-2 py-0.5 text-brand-orange focus:outline-none focus:border-brand-orange transition-colors ${getStyleClasses(
                         item.subtitleStyle,
                         "text-xs",
@@ -1300,9 +1399,8 @@ export function TeamBoardCanvasView({
                           "text-xs",
                           "font-semibold"
                         )}`}
-                      >
-                        {item.subtitle}
-                      </h4>
+                        dangerouslySetInnerHTML={{ __html: item.subtitle }}
+                      />
                     )
                   )}
 
@@ -1318,7 +1416,6 @@ export function TeamBoardCanvasView({
                           );
                           scheduleAutoSave(item.id, { content: newHtml });
                         }}
-                        onSelectText={() => checkTextSelection(item.id)}
                         onTriggerUpload={() => {
                           targetCardUploadIdRef.current = item.id;
                           cardFileInputRef.current?.click();
