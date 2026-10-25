@@ -1,44 +1,61 @@
-import { Flame, MessageCircle, Calendar, Target, PlusCircle } from "lucide-react";
-import Link from "next/link";
+import { getAllProspects } from "@/modules/crm/crm.service";
+import { getSessionCookie } from "@/modules/auth/session";
+import { FollowUpQueueCard } from "@/components/crm/FollowUpQueueCard";
+import { ProspectListTable } from "@/components/crm/ProspectListTable";
+import { Flame, Calendar, MessageCircle, Target, Users } from "lucide-react";
+import { isFollowUpDueTodayOrOverdue } from "@/modules/follow-up/follow-up.service";
 
-export default function SalesWorkspacePage() {
+export default async function SalesWorkspacePage() {
+  const session = await getSessionCookie();
+
+  const assignedSalesId =
+    session?.role === "OWNER" || session?.permissions.includes("crm.view_all")
+      ? undefined
+      : session?.id;
+
+  const prospects = await getAllProspects({ assignedSalesId });
+
+  const assignedCount = prospects.length;
+  const dueTodayCount = prospects.filter((p) =>
+    isFollowUpDueTodayOrOverdue(p.nextFollowUpDate)
+  ).length;
+  const needReplyCount = prospects.filter(
+    (p) => p.stage === "RESPONDED" || p.nextAction === "REPLY_TO_CLIENT"
+  ).length;
+  const wonCount = prospects.filter((p) => p.stage === "CLOSED_WON").length;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Sales Workspace
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Area kerja operasional sales: follow-up prospek, chat WhatsApp, dan closing
-          </p>
-        </div>
-        <Link
-          href="/crm"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
-        >
-          <PlusCircle className="w-4 h-4" />
-          Tambah Prospek Baru
-        </Link>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          Sales Workspace
+        </h1>
+        <p className="text-xs text-slate-500 mt-1">
+          Area kerja operasional: antrean outreach WhatsApp hari ini, tindak lanjut respon prospek, dan pencapaian closing
+        </p>
       </div>
 
       {/* Target Pribadi & Indikator Harian */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Prospek Ter-assign</span>
-            <Flame className="w-4 h-4 text-amber-500" />
+            <span className="text-xs font-semibold">Prospek Tanggung Jawab</span>
+            <Users className="w-4 h-4 text-indigo-500" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-slate-900">0</div>
-          <p className="text-[10px] text-slate-400 mt-1">Hanya prospek tanggung jawab Anda</p>
+          <div className="mt-2 text-2xl font-bold text-slate-900">
+            {assignedCount}
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1">Prospek dalam assignment Anda</p>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-semibold">Follow-Up Hari Ini</span>
-            <Calendar className="w-4 h-4 text-indigo-500" />
+            <Calendar className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-slate-900">0</div>
+          <div className="mt-2 text-2xl font-bold text-amber-700">
+            {dueTodayCount}
+          </div>
           <p className="text-[10px] text-slate-400 mt-1">Jatuh tempo jadwal kalender</p>
         </div>
 
@@ -47,28 +64,36 @@ export default function SalesWorkspacePage() {
             <span className="text-xs font-semibold">Respon Masuk (Perlu Balas)</span>
             <MessageCircle className="w-4 h-4 text-emerald-500" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-slate-900">0</div>
+          <div className="mt-2 text-2xl font-bold text-emerald-700">
+            {needReplyCount}
+          </div>
           <p className="text-[10px] text-slate-400 mt-1">Client merespons pesan outreach</p>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Pencapaian Target</span>
+            <span className="text-xs font-semibold">Deals Closed Won</span>
             <Target className="w-4 h-4 text-purple-500" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-slate-900">0%</div>
-          <p className="text-[10px] text-slate-400 mt-1">Target bulanan yang ditetapkan Owner</p>
+          <div className="mt-2 text-2xl font-bold text-purple-700">
+            {wonCount}
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1">Bulan kalender berjalan</p>
         </div>
       </div>
 
-      {/* Daftar Tugas Outreach Hari Ini */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-        <h2 className="text-sm font-semibold text-slate-900 mb-4">
-          Antrean Follow-up & Outreach WhatsApp Hari Ini
+      {/* Antrean Follow-up Jatuh Tempo */}
+      <FollowUpQueueCard prospects={prospects} />
+
+      {/* Tabel Prospek Sales */}
+      <div className="space-y-3 pt-2">
+        <h2 className="text-sm font-bold text-slate-900">
+          Daftar Seluruh Prospek Penjualan
         </h2>
-        <div className="text-center py-8 text-xs text-slate-500">
-          Belum ada jadwal outreach yang jatuh tempo hari ini.
-        </div>
+        <ProspectListTable
+          initialProspects={prospects}
+          userRole={session?.role || "SALES"}
+        />
       </div>
     </div>
   );
