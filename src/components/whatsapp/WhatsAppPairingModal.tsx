@@ -35,58 +35,91 @@ export function WhatsAppPairingModal({
   const [isLoading, setIsLoading] = useState(false);
   const [customPhone, setCustomPhone] = useState("62895324069850");
 
+  const fetchSession = async () => {
+    try {
+      const res = await fetch("/api/whatsapp/session", { cache: "no-store" });
+      if (res.ok) {
+        const data: WhatsAppSessionInfo = await res.json();
+        onSessionUpdated(data);
+      }
+    } catch (err) {
+      console.error("Gagal memuat status WhatsApp Web:", err);
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) return;
 
-    if (session.status === "DISCONNECTED") {
-      handleGenerateQR();
-    }
+    // Panggil langsung saat modal dibuka
+    fetchSession();
 
-    // Polling otomatis untuk mendeteksi scan QR dari ponsel secara real-time
-    const interval = setInterval(async () => {
-      try {
-        const current = await getWhatsAppSessionAction();
-        if (
-          current.status !== session.status ||
-          current.qrCodeDataUrl !== session.qrCodeDataUrl ||
-          current.phoneNumber !== session.phoneNumber
-        ) {
-          onSessionUpdated(current);
-        }
-      } catch (err) {
-        // Abaikan error polling background
-      }
+    // Polling setiap 2 detik untuk menangkap emisi QR Code atau perubahan status koneksi
+    const interval = setInterval(() => {
+      fetchSession();
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [isOpen, session.status, session.qrCodeDataUrl, session.phoneNumber]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleGenerateQR = async () => {
     setIsLoading(true);
-    const updated = await startWhatsAppPairingAction();
-    onSessionUpdated(updated);
-    setIsLoading(false);
+    try {
+      const res = await fetch("/api/whatsapp/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "refresh" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        onSessionUpdated(data);
+      }
+    } catch (err) {
+      console.error("Gagal memperbarui QR code:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleConfirmPairing = async (phoneToUse?: string) => {
     setIsLoading(true);
-    const targetPhone = phoneToUse || customPhone;
-    const updated = await confirmWhatsAppPairingAction(
-      targetPhone,
-      "Fynux Official Sales"
-    );
-    onSessionUpdated(updated);
-    setIsLoading(false);
+    try {
+      const targetPhone = phoneToUse || customPhone;
+      const res = await fetch("/api/whatsapp/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "confirm", phoneNumber: targetPhone }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        onSessionUpdated(data);
+      }
+    } catch (err) {
+      console.error("Gagal menyambungkan:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDisconnect = async () => {
     if (!confirm("Yakin ingin memutuskan koneksi WhatsApp Web dari Fynux?")) return;
     setIsLoading(true);
-    const updated = await disconnectWhatsAppAction();
-    onSessionUpdated(updated);
-    setIsLoading(false);
+    try {
+      const res = await fetch("/api/whatsapp/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "disconnect" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        onSessionUpdated(data);
+      }
+    } catch (err) {
+      console.error("Gagal memutuskan koneksi:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

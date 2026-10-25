@@ -30,6 +30,7 @@ interface WhatsAppGlobalStore {
   waSession?: WhatsAppSessionInfo;
   waSocket?: WASocket | null;
   isInitializing?: boolean;
+  initStartTime?: number;
 }
 
 const waGlobal = globalThis as unknown as WhatsAppGlobalStore;
@@ -63,18 +64,39 @@ export async function getWhatsAppSession(): Promise<WhatsAppSessionInfo> {
  * Memulai sesi Baileys WhatsApp Multi-Device resmi.
  * Menghubungkan WebSocket ke wss://web.whatsapp.com/ws/chat dan menerima QR code kriptografis asli dari WhatsApp.
  */
-export async function startWhatsAppPairing(): Promise<WhatsAppSessionInfo> {
-  // Jika sudah terhubung, langsung kembalikan status aktif
-  if (waGlobal.waSession?.status === "CONNECTED" && waGlobal.waSocket) {
+export async function startWhatsAppPairing(
+  forceRestart = false
+): Promise<WhatsAppSessionInfo> {
+  // 1. Jika sudah terhubung, langsung kembalikan status aktif
+  if (!forceRestart && waGlobal.waSession?.status === "CONNECTED" && waGlobal.waSocket) {
     return { ...waGlobal.waSession };
   }
 
-  // Jika socket sedang berjalan atau sudah ada, jangan buat dobel
+  // 2. Jika QR code sudah ada dan masih aktif (tidak force restart), kembalikan langsung
+  if (!forceRestart && waGlobal.waSession?.status === "SCANNING_QR" && waGlobal.waSession.qrCodeDataUrl) {
+    return { ...waGlobal.waSession };
+  }
+
+  // 3. Jika force restart atau socket lama perlu dibersihkan
+  if (forceRestart && waGlobal.waSocket) {
+    try {
+      waGlobal.waSocket.end(undefined);
+    } catch {}
+    waGlobal.waSocket = null;
+    waGlobal.waSession!.qrCodeDataUrl = null;
+    waGlobal.waSession!.status = "DISCONNECTED";
+  }
+
+  // 4. Cegah double-init yang macet (timeout 10 detik)
   if (waGlobal.isInitializing) {
-    return { ...waGlobal.waSession! };
+    const elapsed = Date.now() - (waGlobal.initStartTime || 0);
+    if (elapsed < 10000) {
+      return { ...waGlobal.waSession! };
+    }
   }
 
   waGlobal.isInitializing = true;
+  waGlobal.initStartTime = Date.now();
   ensureAuthDir();
 
   try {
@@ -87,6 +109,7 @@ export async function startWhatsAppPairing(): Promise<WhatsAppSessionInfo> {
       browser: ["Fynux OS", "Chrome", "120.0.0"],
       connectTimeoutMs: 30000,
       defaultQueryTimeoutMs: 30000,
+      keepAliveIntervalMs: 15000,
     });
 
     waGlobal.waSocket = sock;
@@ -94,9 +117,11 @@ export async function startWhatsAppPairing(): Promise<WhatsAppSessionInfo> {
     // Simpan credentials saat terupdate
     sock.ev.on("creds.update", saveCreds);
 
-    // Promise untuk menunggu emisi QR pertama dari server WhatsApp (maks 5 detik)
+    // Promise untuk menunggu emisi QR pertama dari server WhatsApp (maks 10 detik)
     const qrPromise = new Promise<string | null>((resolve) => {
-      const timeout = setTimeout(() => resolve(null), 5000);
+      const timeout = setTimeout(() => {
+        resolve(waGlobal.waSession?.qrCodeDataUrl || null);
+      }, 10000);
 
       const connHandler = async (update: any) => {
         const { connection, lastDisconnect, qr } = update;
@@ -151,7 +176,6 @@ export async function startWhatsAppPairing(): Promise<WhatsAppSessionInfo> {
 
         if (connection === "close") {
           const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
-          const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
           if (statusCode === DisconnectReason.loggedOut) {
             waGlobal.waSession = {
