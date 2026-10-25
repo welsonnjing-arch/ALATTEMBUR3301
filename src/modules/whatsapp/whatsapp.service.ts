@@ -200,21 +200,43 @@ export async function startWhatsAppPairing(
     });
 
     // Dengarkan pesan masuk secara real-time dari WhatsApp
-    sock.ev.on("messages.upsert", async ({ messages, type }) => {
-      if (type !== "notify") return;
-
+    sock.ev.on("messages.upsert", async ({ messages }) => {
       for (const msg of messages) {
-        if (!msg.key.fromMe && msg.key.remoteJid?.endsWith("@s.whatsapp.net")) {
-          const rawJid = msg.key.remoteJid;
-          const phone = rawJid.replace("@s.whatsapp.net", "").replace(/:\d+/, "");
-          const text =
-            msg.message?.conversation ||
-            msg.message?.extendedTextMessage?.text ||
-            "";
+        // Abaikan pesan yang dikirim oleh akun kita sendiri
+        if (msg.key.fromMe) continue;
 
-          if (text) {
-            await handleIncomingWhatsAppMessage(phone, text);
-          }
+        const rawJid = msg.key.remoteJid || "";
+        // Abaikan pesan broadcast atau status WhatsApp
+        if (!rawJid || rawJid.includes("@broadcast") || rawJid.includes("status@broadcast")) continue;
+
+        // Normalisasi nomor telepon pengirim dari JID WhatsApp
+        const rawPhone = rawJid.split("@")[0].split(":")[0];
+        const participantPhone = msg.key.participant?.split("@")[0].split(":")[0];
+        const phone = /^\d+$/.test(rawPhone) ? rawPhone : (participantPhone || rawPhone);
+
+        // Ekstraksi teks dari seluruh variasi format pesan WhatsApp (teks biasa, pesan sementara/ephemeral, media caption, dsb)
+        const content = msg.message;
+        let text = "";
+
+        if (content) {
+          text =
+            content.conversation ||
+            content.extendedTextMessage?.text ||
+            content.ephemeralMessage?.message?.conversation ||
+            content.ephemeralMessage?.message?.extendedTextMessage?.text ||
+            content.viewOnceMessage?.message?.conversation ||
+            content.viewOnceMessage?.message?.extendedTextMessage?.text ||
+            content.viewOnceMessageV2?.message?.conversation ||
+            content.viewOnceMessageV2?.message?.extendedTextMessage?.text ||
+            content.documentWithCaptionMessage?.message?.documentMessage?.caption ||
+            content.imageMessage?.caption ||
+            content.videoMessage?.caption ||
+            "";
+        }
+
+        if (text && text.trim()) {
+          console.log(`[WA_INCOMING] Pesan diterima dari +${phone}: "${text.trim().slice(0, 50)}"`);
+          await handleIncomingWhatsAppMessage(phone, text.trim());
         }
       }
     });

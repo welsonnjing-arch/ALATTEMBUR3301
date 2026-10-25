@@ -78,6 +78,36 @@ export function WhatsAppInboxView({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeConv?.messages]);
 
+  // Real-time auto-sync percakapan dari server setiap 2 detik
+  useEffect(() => {
+    const syncInterval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/whatsapp/conversations", { cache: "no-store" });
+        if (res.ok) {
+          const latest: ConversationThread[] = await res.json();
+          setConversations((prev) => {
+            const hasChange =
+              prev.length !== latest.length ||
+              latest.some((c) => {
+                const prevItem = prev.find((p) => p.id === c.id);
+                return (
+                  !prevItem ||
+                  prevItem.messages.length !== c.messages.length ||
+                  prevItem.lastMessageSnippet !== c.lastMessageSnippet ||
+                  prevItem.unreadCount !== c.unreadCount
+                );
+              });
+            return hasChange ? latest : prev;
+          });
+        }
+      } catch (err) {
+        // Abaikan error polling background
+      }
+    }, 2000);
+
+    return () => clearInterval(syncInterval);
+  }, []);
+
   // Filter daftar percakapan
   const filteredConversations = conversations.filter((c) => {
     const q = searchQuery.toLowerCase();

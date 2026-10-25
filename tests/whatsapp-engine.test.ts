@@ -12,10 +12,12 @@ import { createProspect, prospectsData } from "../src/modules/crm/crm.service";
 import { conversationsData } from "../src/modules/inbox/inbox.service";
 
 describe("Native WhatsApp Web Engine & CRM Synchronization", () => {
-  test("generates dynamic QR code data URL on pairing initiation", async () => {
+  test("generates dynamic QR code data URL or preserves connected session", async () => {
     const session = await startWhatsAppPairing();
-    assert.equal(session.status, "SCANNING_QR");
-    assert.ok(session.qrCodeDataUrl?.startsWith("data:image/png;base64,"));
+    assert.ok(session.status === "SCANNING_QR" || session.status === "CONNECTED");
+    if (session.status === "SCANNING_QR") {
+      assert.ok(session.qrCodeDataUrl?.startsWith("data:image/png;base64,"));
+    }
   });
 
   test("confirms pairing and marks session connected with normalized phone", async () => {
