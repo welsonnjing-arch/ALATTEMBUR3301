@@ -1,6 +1,13 @@
 import QRCode from "qrcode";
+import fs from "node:fs";
+import path from "node:path";
+import makeWASocket, {
+  useMultiFileAuthState,
+  DisconnectReason,
+  WASocket,
+} from "@whiskeysockets/baileys";
+import pino from "pino";
 import {
-  WhatsAppConnectionStatus,
   WhatsAppSessionInfo,
   WhatsAppSendMessageInput,
   WhatsAppMessageResult,
@@ -21,22 +28,31 @@ import { logActivity } from "@/lib/logger";
 
 interface WhatsAppGlobalStore {
   waSession?: WhatsAppSessionInfo;
+  waSocket?: WASocket | null;
+  isInitializing?: boolean;
 }
 
 const waGlobal = globalThis as unknown as WhatsAppGlobalStore;
 
 if (!waGlobal.waSession) {
-  // Sesi default inisial (dapat diaktifkan langsung atau melalui scan QR)
   waGlobal.waSession = {
     status: "DISCONNECTED",
     qrCodeDataUrl: null,
     phoneNumber: null,
     pushName: null,
-    platform: "Fynux Native Engine (Multi-Device)",
+    platform: "WhatsApp Multi-Device (Fynux Engine)",
     connectedAt: null,
     lastActiveAt: null,
     error: null,
   };
+}
+
+const AUTH_DIR = path.join(process.cwd(), ".whatsapp-auth");
+
+function ensureAuthDir() {
+  if (!fs.existsSync(AUTH_DIR)) {
+    fs.mkdirSync(AUTH_DIR, { recursive: true });
+  }
 }
 
 export async function getWhatsAppSession(): Promise<WhatsAppSessionInfo> {
@@ -44,52 +60,156 @@ export async function getWhatsAppSession(): Promise<WhatsAppSessionInfo> {
 }
 
 /**
- * Memulai proses pairing (menghasilkan QR Code dinamis untuk scan WhatsApp Web)
+ * Memulai sesi Baileys WhatsApp Multi-Device resmi.
+ * Menghubungkan WebSocket ke wss://web.whatsapp.com/ws/chat dan menerima QR code kriptografis asli dari WhatsApp.
  */
 export async function startWhatsAppPairing(): Promise<WhatsAppSessionInfo> {
-  const pairingPayload = `2@fynux_os_wa_${Date.now()}_${Math.random().toString(36).substring(2, 10)},s4t91P,${Date.now()}`;
+  // Jika sudah terhubung, langsung kembalikan status aktif
+  if (waGlobal.waSession?.status === "CONNECTED" && waGlobal.waSocket) {
+    return { ...waGlobal.waSession };
+  }
+
+  // Jika socket sedang berjalan atau sudah ada, jangan buat dobel
+  if (waGlobal.isInitializing) {
+    return { ...waGlobal.waSession! };
+  }
+
+  waGlobal.isInitializing = true;
+  ensureAuthDir();
 
   try {
-    const qrDataUrl = await QRCode.toDataURL(pairingPayload, {
-      width: 280,
-      margin: 2,
-      color: {
-        dark: "#128C7E", // WhatsApp Teal
-        light: "#FFFFFF",
-      },
-      errorCorrectionLevel: "M",
+    const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+
+    const sock = makeWASocket({
+      auth: state,
+      logger: pino({ level: "silent" }),
+      printQRInTerminal: false,
+      browser: ["Fynux OS", "Chrome", "120.0.0"],
+      connectTimeoutMs: 30000,
+      defaultQueryTimeoutMs: 30000,
     });
 
-    waGlobal.waSession = {
-      status: "SCANNING_QR",
-      qrCodeDataUrl: qrDataUrl,
-      phoneNumber: null,
-      pushName: null,
-      platform: "Fynux Native Engine (Multi-Device)",
-      connectedAt: null,
-      lastActiveAt: new Date().toISOString(),
-      error: null,
-    };
+    waGlobal.waSocket = sock;
 
-    logActivity({
-      category: "CRM",
-      action: "WHATSAPP_PAIRING_INITIATED",
-      actorId: "SYSTEM_WHATSAPP",
-      targetId: "session-active",
-      metadata: { status: "SCANNING_QR" },
+    // Simpan credentials saat terupdate
+    sock.ev.on("creds.update", saveCreds);
+
+    // Promise untuk menunggu emisi QR pertama dari server WhatsApp (maks 5 detik)
+    const qrPromise = new Promise<string | null>((resolve) => {
+      const timeout = setTimeout(() => resolve(null), 5000);
+
+      const connHandler = async (update: any) => {
+        const { connection, lastDisconnect, qr } = update;
+
+        if (qr) {
+          clearTimeout(timeout);
+          try {
+            const dataUrl = await QRCode.toDataURL(qr, {
+              width: 280,
+              margin: 2,
+              color: {
+                dark: "#128C7E", // WhatsApp Teal
+                light: "#FFFFFF",
+              },
+            });
+            waGlobal.waSession!.status = "SCANNING_QR";
+            waGlobal.waSession!.qrCodeDataUrl = dataUrl;
+            waGlobal.waSession!.lastActiveAt = new Date().toISOString();
+            resolve(dataUrl);
+          } catch (e) {
+            resolve(null);
+          }
+        }
+
+        if (connection === "open") {
+          clearTimeout(timeout);
+          const rawId = sock.user?.id || "";
+          const phone = rawId.split("@")[0].split(":")[0];
+          const pushName = sock.user?.name || "Akun Bisnis Fynux";
+
+          waGlobal.waSession = {
+            status: "CONNECTED",
+            qrCodeDataUrl: null,
+            phoneNumber: phone,
+            pushName: pushName,
+            platform: "WhatsApp Multi-Device (WhatsApp Web)",
+            connectedAt: new Date().toISOString(),
+            lastActiveAt: new Date().toISOString(),
+            error: null,
+          };
+
+          logActivity({
+            category: "CRM",
+            action: "WHATSAPP_CONNECTED",
+            actorId: "SYSTEM_WHATSAPP",
+            targetId: phone,
+            metadata: { pushName, platform: "WhatsApp Web Multi-Device" },
+          });
+
+          resolve(null);
+        }
+
+        if (connection === "close") {
+          const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
+          const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+          if (statusCode === DisconnectReason.loggedOut) {
+            waGlobal.waSession = {
+              status: "DISCONNECTED",
+              qrCodeDataUrl: null,
+              phoneNumber: null,
+              pushName: null,
+              platform: null,
+              connectedAt: null,
+              lastActiveAt: new Date().toISOString(),
+              error: "Sesi telah logout dari WhatsApp ponsel.",
+            };
+            try {
+              fs.rmSync(AUTH_DIR, { recursive: true, force: true });
+            } catch {}
+            waGlobal.waSocket = null;
+          }
+        }
+      };
+
+      sock.ev.on("connection.update", connHandler);
     });
 
-    return { ...waGlobal.waSession };
+    // Dengarkan pesan masuk secara real-time dari WhatsApp
+    sock.ev.on("messages.upsert", async ({ messages, type }) => {
+      if (type !== "notify") return;
+
+      for (const msg of messages) {
+        if (!msg.key.fromMe && msg.key.remoteJid?.endsWith("@s.whatsapp.net")) {
+          const rawJid = msg.key.remoteJid;
+          const phone = rawJid.replace("@s.whatsapp.net", "").replace(/:\d+/, "");
+          const text =
+            msg.message?.conversation ||
+            msg.message?.extendedTextMessage?.text ||
+            "";
+
+          if (text) {
+            await handleIncomingWhatsAppMessage(phone, text);
+          }
+        }
+      }
+    });
+
+    await qrPromise;
+    waGlobal.isInitializing = false;
+
+    return { ...waGlobal.waSession! };
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : "Gagal membuat QR Code";
+    waGlobal.isInitializing = false;
+    const msg = err instanceof Error ? err.message : "Gagal memulai koneksi WhatsApp";
     waGlobal.waSession!.status = "ERROR";
-    waGlobal.waSession!.error = errorMsg;
+    waGlobal.waSession!.error = msg;
     return { ...waGlobal.waSession! };
   }
 }
 
 /**
- * Mengonfirmasi pairing (saat QR di-scan oleh aplikasi WhatsApp ponsel)
+ * Konfirmasi pairing instan (digunakan untuk testing developer jika tidak ada HP sekunder)
  */
 export async function confirmWhatsAppPairing(
   phoneNumber: string = "62895324069850",
@@ -126,6 +246,20 @@ export async function confirmWhatsAppPairing(
 export async function disconnectWhatsApp(): Promise<WhatsAppSessionInfo> {
   const previousPhone = waGlobal.waSession?.phoneNumber;
 
+  if (waGlobal.waSocket) {
+    try {
+      await waGlobal.waSocket.logout();
+    } catch {}
+    try {
+      waGlobal.waSocket.end(undefined);
+    } catch {}
+    waGlobal.waSocket = null;
+  }
+
+  try {
+    fs.rmSync(AUTH_DIR, { recursive: true, force: true });
+  } catch {}
+
   waGlobal.waSession = {
     status: "DISCONNECTED",
     qrCodeDataUrl: null,
@@ -149,6 +283,7 @@ export async function disconnectWhatsApp(): Promise<WhatsAppSessionInfo> {
 
 /**
  * Mengirim pesan keluar dari dashboard WhatsApp Web
+ * Jika Baileys tersambung, mengirim langsung lewat WhatsApp Socket
  * Secara otomatis memicu sinkronisasi status prospek CRM ke 'CONTACTED'
  */
 export async function sendWhatsAppMessage(
@@ -171,7 +306,6 @@ export async function sendWhatsAppMessage(
     (c) => c.whatsappNumber.replace(/\D/g, "") === waFormatted
   );
 
-  // Cari prospek yang sesuai di database CRM
   const matchedProspect = prospectsData.find(
     (p) => p.whatsappNumber === waFormatted && !p.isArchived
   );
@@ -190,14 +324,28 @@ export async function sendWhatsAppMessage(
     }
   }
 
-  // 2. Tambahkan pesan keluar ke thread
+  // 2. Tambahkan pesan keluar ke thread Inbox Fynux
   const appendRes = await appendOutgoingMessage(
     matchedThread.id,
     input.text.trim(),
     "SALES"
   );
 
-  // 3. Update logika status CRM secara otomatis
+  // 3. Jika socket Baileys aktif terhubung ke WhatsApp asli, kirim secara nyata!
+  if (
+    waGlobal.waSocket &&
+    waGlobal.waSession?.status === "CONNECTED" &&
+    waGlobal.waSocket.user
+  ) {
+    try {
+      const jid = `${waFormatted}@s.whatsapp.net`;
+      await waGlobal.waSocket.sendMessage(jid, { text: input.text.trim() });
+    } catch (sendErr) {
+      console.error("Gagal mengirim via socket Baileys:", sendErr);
+    }
+  }
+
+  // 4. Update logika status CRM secara otomatis
   let updatedStage = matchedProspect?.stage;
 
   if (matchedProspect) {
@@ -216,7 +364,6 @@ export async function sendWhatsAppMessage(
         updatedStage = "CONTACTED";
       }
     } else {
-      // Jika sudah contacted, perbarui timestamp terakhir outreach
       matchedProspect.lastReachAt = new Date().toISOString();
       matchedProspect.updatedAt = new Date().toISOString();
     }
@@ -235,7 +382,7 @@ export async function sendWhatsAppMessage(
 }
 
 /**
- * Menangani pesan masuk dari klien / prospek (melalui Webhook atau Simulasi)
+ * Menangani pesan masuk dari klien / prospek (melalui Socket Baileys, Webhook, atau Simulasi)
  * Secara otomatis memicu transisi status CRM menjadi 'RESPONDED'
  */
 export async function handleIncomingWhatsAppMessage(

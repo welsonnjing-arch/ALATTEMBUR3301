@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { WhatsAppSessionInfo } from "@/modules/whatsapp/types";
 import {
+  getWhatsAppSessionAction,
   startWhatsAppPairingAction,
   confirmWhatsAppPairingAction,
   disconnectWhatsAppAction,
@@ -35,10 +36,30 @@ export function WhatsAppPairingModal({
   const [customPhone, setCustomPhone] = useState("62895324069850");
 
   useEffect(() => {
-    if (isOpen && session.status === "DISCONNECTED") {
+    if (!isOpen) return;
+
+    if (session.status === "DISCONNECTED") {
       handleGenerateQR();
     }
-  }, [isOpen]);
+
+    // Polling otomatis untuk mendeteksi scan QR dari ponsel secara real-time
+    const interval = setInterval(async () => {
+      try {
+        const current = await getWhatsAppSessionAction();
+        if (
+          current.status !== session.status ||
+          current.qrCodeDataUrl !== session.qrCodeDataUrl ||
+          current.phoneNumber !== session.phoneNumber
+        ) {
+          onSessionUpdated(current);
+        }
+      } catch (err) {
+        // Abaikan error polling background
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [isOpen, session.status, session.qrCodeDataUrl, session.phoneNumber]);
 
   if (!isOpen) return null;
 

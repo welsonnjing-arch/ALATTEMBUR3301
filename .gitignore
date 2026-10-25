@@ -33,3 +33,7 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# WhatsApp Multi-Device Auth Session
+.whatsapp-auth/
+
