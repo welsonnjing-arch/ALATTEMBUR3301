@@ -7,6 +7,7 @@ import {
   createProject,
   createTask,
   createTeamBoardItem,
+  deleteTeamBoardItem,
   getAllProjects,
   getAllTasks,
   getProjectById,
@@ -15,6 +16,7 @@ import {
   updateProjectProgress,
   updateProjectStatus,
   updateTaskStatus,
+  updateTeamBoardItemPosition,
 } from "./projects.service";
 import { CreateProjectInput, CreateTaskInput, ExternalLink, TeamBoardItem } from "./types";
 import { ProjectStatus, TaskStatus } from "@/types/enums";
@@ -151,19 +153,54 @@ export async function fetchTeamBoardAction() {
 export async function createTeamBoardItemAction(
   category: TeamBoardItem["category"],
   title: string,
-  content: string
+  content: string,
+  extra?: {
+    subtitle?: string;
+    colorTheme?: TeamBoardItem["colorTheme"];
+    attachments?: TeamBoardItem["attachments"];
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+  }
 ) {
   const session = await getSessionCookie();
   if (!session) return { success: false, error: "Sesi telah berakhir." };
 
-  await createTeamBoardItem(
+  const newItem = await createTeamBoardItem(
     category,
     title,
     content,
     session.id,
-    session.fullName
+    session.fullName,
+    extra
   );
 
   revalidatePath("/team-board");
-  return { success: true };
+  return { success: true, item: newItem };
+}
+
+export async function updateTeamBoardItemPositionAction(
+  id: string,
+  x: number,
+  y: number,
+  width?: number,
+  height?: number
+) {
+  const session = await getSessionCookie();
+  if (!session) return { success: false, error: "Sesi telah berakhir." };
+
+  const res = await updateTeamBoardItemPosition(id, x, y, width, height);
+  return res;
+}
+
+export async function deleteTeamBoardItemAction(id: string) {
+  const session = await getSessionCookie();
+  if (!session) return { success: false, error: "Sesi telah berakhir." };
+
+  const res = await deleteTeamBoardItem(id);
+  if (res.success) {
+    revalidatePath("/team-board");
+  }
+  return res;
 }

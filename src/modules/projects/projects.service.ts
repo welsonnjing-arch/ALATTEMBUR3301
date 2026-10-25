@@ -154,31 +154,60 @@ let teamBoardData: TeamBoardItem[] = [
   {
     id: "tb-01",
     category: "TARGET",
-    title: "Target Operasional Q4 2026: 10 Website Baru & Peningkatan Retensi",
+    title: "Target Operasional Q4 2026",
+    subtitle: "10 Website Baru & Peningkatan Retensi Maintenance",
     content:
       "Fokus kuartal ini adalah penyelesaian tepat waktu proyek aktif PT Padma, ekspansi outreach ke 50 prospek baru teriset, dan pengawalan renewal kontrak maintenance.",
     authorId: "11111111-1111-1111-1111-111111111111",
     authorName: "Faiz Aditama (Owner)",
+    x: 60,
+    y: 60,
+    width: 380,
+    height: 250,
+    colorTheme: "emerald",
+    attachments: [
+      {
+        id: "att-01",
+        name: "Target_Q4_Roadmap.pdf",
+        size: "1.2 MB",
+        type: "application/pdf",
+        url: "https://drive.google.com/example-target-q4",
+      },
+    ],
     createdAt: "2026-10-20T08:00:00Z",
   },
   {
     id: "tb-02",
     category: "SOP",
-    title: "SOP Handoff Deal ke Proyek Delivery Fynux",
+    title: "SOP Handoff Deal ke Proyek Delivery",
+    subtitle: "Standar Operasional Penyerahan Dokumen Sales ke Developer",
     content:
       "1. Deal wajib accepted dan invoice resmi berformat FYN telah terbit.\n2. Sales wajib mengisi checklist ruang lingkup dan link Google Drive aset klien.\n3. Jika data wajib (logo/materi inti) belum lengkap, proyek tetap dapat dibuat namun status task ditandai BLOCKED.",
     authorId: "11111111-1111-1111-1111-111111111111",
     authorName: "Faiz Aditama (Owner)",
+    x: 480,
+    y: 60,
+    width: 420,
+    height: 300,
+    colorTheme: "indigo",
+    attachments: [],
     createdAt: "2026-10-21T09:00:00Z",
   },
   {
     id: "tb-03",
     category: "ANNOUNCEMENT",
     title: "Update Standar Invoice & Pembayaran Gateway",
+    subtitle: "Ketentuan Format FYN-YYYYMM-XXXX & Duitku PG",
     content:
       "Sistem sekarang telah mendukung pembayaran otomatis via Duitku PG (QRIS & Virtual Account) serta konfirmasi manual transfer Bank BCA.",
     authorId: "11111111-1111-1111-1111-111111111111",
     authorName: "Faiz Aditama (Owner)",
+    x: 940,
+    y: 60,
+    width: 400,
+    height: 240,
+    colorTheme: "amber",
+    attachments: [],
     createdAt: "2026-10-24T10:00:00Z",
   },
 ];
@@ -451,15 +480,31 @@ export async function createTeamBoardItem(
   title: string,
   content: string,
   authorId: string,
-  authorName: string
+  authorName: string,
+  extra?: {
+    subtitle?: string;
+    colorTheme?: TeamBoardItem["colorTheme"];
+    attachments?: TeamBoardItem["attachments"];
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+  }
 ): Promise<TeamBoardItem> {
   const newItem: TeamBoardItem = {
     id: `tb-${Date.now()}`,
     category,
     title: title.trim(),
+    subtitle: extra?.subtitle?.trim(),
     content: content.trim(),
     authorId,
     authorName,
+    x: extra?.x ?? Math.floor(Math.random() * 300) + 100,
+    y: extra?.y ?? Math.floor(Math.random() * 200) + 100,
+    width: extra?.width ?? 380,
+    height: extra?.height ?? 260,
+    colorTheme: extra?.colorTheme ?? "indigo",
+    attachments: extra?.attachments ?? [],
     createdAt: new Date().toISOString(),
   };
 
@@ -475,4 +520,27 @@ export async function createTeamBoardItem(
   });
 
   return newItem;
+}
+
+export async function updateTeamBoardItemPosition(
+  id: string,
+  x: number,
+  y: number,
+  width?: number,
+  height?: number
+): Promise<{ success: boolean }> {
+  const idx = teamBoardData.findIndex((item) => item.id === id);
+  if (idx === -1) return { success: false };
+  teamBoardData[idx].x = x;
+  teamBoardData[idx].y = y;
+  if (width !== undefined) teamBoardData[idx].width = width;
+  if (height !== undefined) teamBoardData[idx].height = height;
+  return { success: true };
+}
+
+export async function deleteTeamBoardItem(id: string): Promise<{ success: boolean }> {
+  const idx = teamBoardData.findIndex((item) => item.id === id);
+  if (idx === -1) return { success: false };
+  teamBoardData.splice(idx, 1);
+  return { success: true };
 }

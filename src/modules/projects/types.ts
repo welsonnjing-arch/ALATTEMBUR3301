@@ -57,13 +57,28 @@ export interface Task {
   updatedAt: string;
 }
 
+export interface BoardAttachment {
+  id: string;
+  name: string;
+  size?: string;
+  type: string; // "image" | "pdf" | "document"
+  url: string; // Data URL or external link
+}
+
 export interface TeamBoardItem {
   id: string;
   category: "ANNOUNCEMENT" | "SOP" | "TARGET" | "IDEA";
   title: string;
+  subtitle?: string;
   content: string;
   authorId: string;
   authorName: string;
+  x?: number; // Posisi horizontal di canvas
+  y?: number; // Posisi vertikal di canvas
+  width?: number; // Lebar kustom kotak (px)
+  height?: number; // Tinggi kustom kotak (px)
+  colorTheme?: "slate" | "indigo" | "emerald" | "amber" | "rose" | "purple";
+  attachments?: BoardAttachment[];
   createdAt: string;
 }
 
