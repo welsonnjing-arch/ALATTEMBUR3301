@@ -15,6 +15,8 @@ export function formatIDR(amount: number | null | undefined): string {
   }).format(amount);
 }
 
+export const formatRupiah = formatIDR;
+
 export function parseCurrencyInput(val: string): number {
   const cleanStr = val.replace(/[^0-9]/g, "");
   const num = parseInt(cleanStr, 10);
