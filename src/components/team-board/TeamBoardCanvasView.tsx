@@ -259,7 +259,7 @@ function DesktopInlineCardContent({
       onInput={handleInput}
       onBlur={handleBlur}
       style={{ userSelect: "text", WebkitUserSelect: "text" }}
-      className={`select-text cursor-text ${className || ""}`}
+      className={`select-text cursor-text selection:bg-blue-600 selection:text-white ${className || ""}`}
     />
   );
 }
@@ -323,7 +323,7 @@ function DesktopInlineField({
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
       style={{ userSelect: "text", WebkitUserSelect: "text" }}
-      className={`select-text cursor-text focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-slate-600 ${className || ""}`}
+      className={`select-text cursor-text focus:outline-none selection:bg-blue-600 selection:text-white empty:before:content-[attr(data-placeholder)] empty:before:text-slate-600 ${className || ""}`}
       data-placeholder={placeholder}
     />
   );
@@ -1051,7 +1051,7 @@ export function TeamBoardCanvasView({
   };
 
   return (
-    <div className="relative w-full h-[calc(100vh-4.5rem)] bg-slate-950 overflow-hidden font-sans">
+    <div className="relative w-full h-[calc(100vh-4.5rem)] bg-slate-950 overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
       {/* Hidden file input for desktop /upload & side panel trigger */}
       <input
         ref={cardFileInputRef}
@@ -1087,7 +1087,7 @@ export function TeamBoardCanvasView({
                   e.preventDefault();
                   handleApplyFontSizeToSelection(opt.size);
                 }}
-                className="px-1.5 py-0.5 text-[10px] font-bold text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                className="px-1.5 py-0.5 text-[10px] font-bold text-slate-300 hover:text-white hover:bg-blue-600 rounded transition-colors"
                 title={`Ukuran font ${opt.label}`}
               >
                 {opt.label}
@@ -1102,7 +1102,7 @@ export function TeamBoardCanvasView({
               e.preventDefault();
               handleApplyFormatting("bold");
             }}
-            className="p-1 rounded hover:bg-slate-800 text-slate-300 hover:text-brand-orange transition-colors"
+            className="p-1 rounded hover:bg-blue-600/20 text-slate-300 hover:text-blue-400 transition-colors"
             title="Tebal (Bold)"
           >
             <Bold className="w-3.5 h-3.5" />
@@ -1115,7 +1115,7 @@ export function TeamBoardCanvasView({
               e.preventDefault();
               handleApplyFormatting("italic");
             }}
-            className="p-1 rounded hover:bg-slate-800 text-slate-300 hover:text-brand-orange transition-colors"
+            className="p-1 rounded hover:bg-blue-600/20 text-slate-300 hover:text-blue-400 transition-colors"
             title="Miring (Italic)"
           >
             <Italic className="w-3.5 h-3.5" />
@@ -1128,7 +1128,7 @@ export function TeamBoardCanvasView({
               e.preventDefault();
               handleApplyFormatting("strikeThrough");
             }}
-            className="p-1 rounded hover:bg-slate-800 text-slate-300 hover:text-brand-orange transition-colors"
+            className="p-1 rounded hover:bg-blue-600/20 text-slate-300 hover:text-blue-400 transition-colors"
             title="Coret (Strikethrough)"
           >
             <Strikethrough className="w-3.5 h-3.5" />
@@ -1283,7 +1283,7 @@ export function TeamBoardCanvasView({
                 key={item.id}
                 data-card-id={item.id}
                 onClick={(e) => handleCardClick(item, e)}
-                className={`canvas-node select-text absolute bg-slate-900/95 backdrop-blur-md rounded-2xl border ${
+                className={`canvas-node select-text selection:bg-blue-600 selection:text-white absolute bg-slate-900/95 backdrop-blur-md rounded-2xl border ${
                   styles.border
                 } ${styles.glow} shadow-2xl flex flex-col group transition-shadow ${
                   isActive ? "ring-2 ring-brand-orange/80 shadow-brand-orange/10 z-30" : "hover:shadow-indigo-500/10 z-10"
@@ -1422,7 +1422,7 @@ export function TeamBoardCanvasView({
                           setSlashToast("Membuka pemilih berkas untuk /upload...");
                           setTimeout(() => setSlashToast(null), 3000);
                         }}
-                        className={`w-full min-h-[90px] bg-slate-950/50 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs focus:outline-none focus:border-brand-orange/70 transition-colors whitespace-pre-wrap selection:bg-brand-orange/40 selection:text-white leading-relaxed ${getStyleClasses(
+                        className={`w-full min-h-[90px] bg-slate-950/50 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs focus:outline-none focus:border-brand-orange/70 transition-colors whitespace-pre-wrap selection:bg-blue-600 selection:text-white leading-relaxed ${getStyleClasses(
                           item.contentStyle,
                           "text-xs",
                           "font-normal"
