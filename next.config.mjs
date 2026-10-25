@@ -6,6 +6,13 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '25mb',
     },
+    serverComponentsExternalPackages: [
+      '@whiskeysockets/baileys',
+      'ws',
+      'pino',
+      'qrcode',
+      'libsignal',
+    ],
   },
   images: {
     remotePatterns: [
