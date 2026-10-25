@@ -201,6 +201,71 @@ function TextFormatToolbar({
   );
 }
 
+// Uncontrolled ContentEditable sub-component to prevent React from resetting caret/cursor to line 1 on enter or keystrokes
+interface DesktopInlineCardContentProps {
+  cardId: string;
+  initialContent: string;
+  onContentChange: (newHtml: string) => void;
+  onSelectText: () => void;
+  onTriggerUpload: () => void;
+  className?: string;
+}
+
+function DesktopInlineCardContent({
+  cardId,
+  initialContent,
+  onContentChange,
+  onSelectText,
+  onTriggerUpload,
+  className,
+}: DesktopInlineCardContentProps) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const isEditingRef = useRef(false);
+
+  // Set innerHTML initially or when card changes, but NEVER overwrite while actively typing
+  useEffect(() => {
+    if (contentRef.current && !isEditingRef.current) {
+      contentRef.current.innerHTML = initialContent;
+    }
+  }, [cardId, initialContent]);
+
+  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+    isEditingRef.current = true;
+    const el = e.currentTarget;
+    let html = el.innerHTML;
+    const text = el.innerText || el.textContent || "";
+
+    if (text.includes("/upload") || html.includes("/upload")) {
+      html = html.replace(/\/upload/g, "");
+      el.innerHTML = html;
+      onTriggerUpload();
+    }
+
+    onContentChange(html);
+  };
+
+  const handleBlur = () => {
+    isEditingRef.current = false;
+    if (contentRef.current) {
+      onContentChange(contentRef.current.innerHTML);
+    }
+  };
+
+  return (
+    <div
+      ref={contentRef}
+      data-card-content={cardId}
+      contentEditable
+      suppressContentEditableWarning
+      onInput={handleInput}
+      onBlur={handleBlur}
+      onMouseUp={onSelectText}
+      onKeyUp={onSelectText}
+      className={className}
+    />
+  );
+}
+
 export function TeamBoardCanvasView({
   initialItems,
   currentUserRole = "OWNER",
@@ -544,8 +609,16 @@ export function TeamBoardCanvasView({
   const handleApplyFormatting = (command: "bold" | "italic" | "strikeThrough") => {
     document.execCommand(command, false);
     if (activeCardId) {
-      const card = items.find((i) => i.id === activeCardId);
-      if (card) scheduleAutoSave(activeCardId, { content: card.content });
+      const activeEl = document.querySelector(
+        `[data-card-content="${activeCardId}"]`
+      ) as HTMLElement | null;
+      const html = activeEl ? activeEl.innerHTML : "";
+      if (html) {
+        setItems((prev) =>
+          prev.map((i) => (i.id === activeCardId ? { ...i, content: html } : i))
+        );
+        scheduleAutoSave(activeCardId, { content: html });
+      }
     }
   };
 
@@ -568,8 +641,16 @@ export function TeamBoardCanvasView({
     sel.addRange(newRange);
 
     if (activeCardId) {
-      const card = items.find((i) => i.id === activeCardId);
-      if (card) scheduleAutoSave(activeCardId, { content: card.content });
+      const activeEl = document.querySelector(
+        `[data-card-content="${activeCardId}"]`
+      ) as HTMLElement | null;
+      const html = activeEl ? activeEl.innerHTML : "";
+      if (html) {
+        setItems((prev) =>
+          prev.map((i) => (i.id === activeCardId ? { ...i, content: html } : i))
+        );
+        scheduleAutoSave(activeCardId, { content: html });
+      }
     }
   };
 
@@ -586,30 +667,6 @@ export function TeamBoardCanvasView({
       prev.map((i) => (i.id === cardId ? { ...i, subtitle: val } : i))
     );
     scheduleAutoSave(cardId, { subtitle: val });
-  };
-
-  // Desktop Content Input & Slash Command /upload Detector
-  const handleContentInput = (cardId: string, e: React.FormEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    let html = el.innerHTML;
-    const text = el.innerText || el.textContent || "";
-
-    // Detect /upload command
-    if (text.includes("/upload") || html.includes("/upload")) {
-      html = html.replace(/\/upload/g, "");
-      el.innerHTML = html;
-
-      targetCardUploadIdRef.current = cardId;
-      cardFileInputRef.current?.click();
-
-      setSlashToast("Membuka pemilih berkas untuk /upload...");
-      setTimeout(() => setSlashToast(null), 3000);
-    }
-
-    setItems((prev) =>
-      prev.map((i) => (i.id === cardId ? { ...i, content: html } : i))
-    );
-    scheduleAutoSave(cardId, { content: html });
   };
 
   // Side popover category & theme updates
@@ -1252,18 +1309,27 @@ export function TeamBoardCanvasView({
                   {/* Deskripsi: Direct ContentEditable on desktop if active, otherwise rendered */}
                   {isActive && !isMobile ? (
                     <div className="space-y-1">
-                      <div
-                        contentEditable
-                        suppressContentEditableWarning
-                        onInput={(e) => handleContentInput(item.id, e)}
-                        onMouseUp={() => checkTextSelection(item.id)}
-                        onKeyUp={() => checkTextSelection(item.id)}
+                      <DesktopInlineCardContent
+                        cardId={item.id}
+                        initialContent={item.content}
+                        onContentChange={(newHtml) => {
+                          setItems((prev) =>
+                            prev.map((i) => (i.id === item.id ? { ...i, content: newHtml } : i))
+                          );
+                          scheduleAutoSave(item.id, { content: newHtml });
+                        }}
+                        onSelectText={() => checkTextSelection(item.id)}
+                        onTriggerUpload={() => {
+                          targetCardUploadIdRef.current = item.id;
+                          cardFileInputRef.current?.click();
+                          setSlashToast("Membuka pemilih berkas untuk /upload...");
+                          setTimeout(() => setSlashToast(null), 3000);
+                        }}
                         className={`w-full min-h-[90px] bg-slate-950/50 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs focus:outline-none focus:border-brand-orange/70 transition-colors whitespace-pre-wrap selection:bg-brand-orange/40 selection:text-white leading-relaxed ${getStyleClasses(
                           item.contentStyle,
                           "text-xs",
                           "font-normal"
                         )}`}
-                        dangerouslySetInnerHTML={{ __html: item.content }}
                       />
                       <div className="text-[10px] text-slate-500 flex items-center justify-between px-1">
                         <span className="flex items-center gap-1">
