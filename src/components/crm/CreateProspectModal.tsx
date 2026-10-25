@@ -230,18 +230,17 @@ export function CreateProspectModal({
             </div>
           </div>
 
-          {/* Catatan Riset Bisnis (Wajib & Bebas) */}
+          {/* Catatan Riset Bisnis (Opsional) */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-xs font-semibold text-slate-700">
-                Catatan Hasil Riset Bisnis <span className="text-rose-500">*</span>
+                Catatan Hasil Riset Bisnis <span className="text-slate-400 font-normal">(Opsional)</span>
               </label>
               <span className="text-[10px] text-slate-400">Teks bebas analisis peluang</span>
             </div>
             <textarea
-              required
-              rows={4}
-              placeholder="Jelaskan temuan riset: mengapa bisnis ini relevan, masalah apa yang ditemukan (contoh: belum punya website, presensi manual, dsb.), dan nilai tambah apa yang dapat Fynux tawarkan..."
+              rows={3}
+              placeholder="Jelaskan temuan riset (opsional): mengapa bisnis ini relevan, masalah apa yang ditemukan, dsb..."
               value={formData.researchNotes}
               onChange={(e) =>
                 setFormData({ ...formData, researchNotes: e.target.value })

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Filter,
   Plus,
+  Upload,
   Phone,
   Calendar,
   Clock,
@@ -18,6 +19,7 @@ import { Prospect } from "@/modules/crm/types";
 import { PipelineStage } from "@/types/enums";
 import { CreateProspectModal } from "./CreateProspectModal";
 import { ProspectDetailModal } from "./ProspectDetailModal";
+import { BulkImportModal } from "./BulkImportModal";
 import { isFollowUpDueTodayOrOverdue, isFollowUpOverdue } from "@/modules/follow-up/follow-up.service";
 import { formatDateWIB } from "@/lib/date";
 
@@ -49,7 +51,12 @@ export function ProspectListTable({
   const [selectedStage, setSelectedStage] = useState<PipelineStage | "ALL">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
+
+  useEffect(() => {
+    setProspects(initialProspects);
+  }, [initialProspects]);
 
   // Filter List
   const filteredProspects = prospects.filter((p) => {
@@ -121,15 +128,26 @@ export function ProspectListTable({
           />
         </div>
 
-        {/* Create Button */}
-        <button
-          type="button"
-          onClick={() => setIsCreateOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Input Prospek Riset Baru
-        </button>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsBulkImportOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 shadow-sm transition-colors"
+          >
+            <Upload className="w-3.5 h-3.5 text-slate-500" />
+            <span>Bulk Import CSV / Excel</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Input Prospek Riset Baru
+          </button>
+        </div>
       </div>
 
       {/* Stage Filter Tabs */}
@@ -312,6 +330,15 @@ export function ProspectListTable({
       </div>
 
       {/* Modals */}
+      <BulkImportModal
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        onSuccess={() => {
+          if (onRefresh) onRefresh();
+        }}
+        existingPhones={prospects.map((p) => p.whatsappNumber)}
+      />
+
       <CreateProspectModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}

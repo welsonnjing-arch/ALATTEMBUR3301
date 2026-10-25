@@ -3,8 +3,8 @@ import { FailedReason, NextAction, PipelineStage } from "@/types/enums";
 import { calculateNextFollowUp } from "../follow-up/follow-up.service";
 import { logActivity } from "@/lib/logger";
 
-// In-Memory Database Store (Dipertahankan di memory server Next.js untuk operasional cepat)
-let prospectsData: Prospect[] = [
+// In-Memory Database Store dengan globalThis agar konsisten di Server Action, Server Component, & HMR
+const INITIAL_PROSPECTS_DATA: Prospect[] = [
   {
     id: "p-001",
     companyName: "SMAN 2 Ngaglik",
@@ -126,6 +126,17 @@ let prospectsData: Prospect[] = [
   },
 ];
 
+interface CRMGlobalStore {
+  prospectsData?: Prospect[];
+}
+
+const crmGlobal = globalThis as unknown as CRMGlobalStore;
+if (!crmGlobal.prospectsData || crmGlobal.prospectsData.length === 0) {
+  crmGlobal.prospectsData = [...INITIAL_PROSPECTS_DATA];
+}
+
+export const prospectsData = crmGlobal.prospectsData;
+
 export async function getAllProspects(filter?: {
   stage?: PipelineStage | "ALL";
   assignedSalesId?: string;
@@ -192,27 +203,26 @@ export async function createProspect(
     };
   }
 
-  if (!input.companyName.trim()) {
+  if (!input.companyName || !input.companyName.trim()) {
     return { success: false, error: "Nama perusahaan/bisnis wajib diisi." };
   }
 
-  if (!input.researchNotes.trim()) {
-    return { success: false, error: "Catatan hasil riset bisnis wajib diisi." };
-  }
+  // Catatan riset bisnis bersifat opsional (sesuai arahan pengguna)
+  const safeNotes = input.researchNotes?.trim() || "Belum ada catatan riset";
 
   const newProspect: Prospect = {
-    id: `p-${Date.now()}`,
+    id: `p-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
     companyName: input.companyName.trim(),
-    contactName: input.contactName.trim() || input.companyName.trim(),
+    contactName: input.contactName?.trim() || input.companyName.trim(),
     whatsappNumber: waFormatted,
     email: input.email?.trim() || undefined,
     website: input.website?.trim() || undefined,
     industry: input.industry?.trim() || undefined,
     location: input.location?.trim() || undefined,
     source: input.source?.trim() || "Riset Internal Fynux",
-    researchNotes: input.researchNotes.trim(),
+    researchNotes: safeNotes,
     painPoints: input.painPoints?.trim() || undefined,
-    potentialServices: input.potentialServices?.trim() || undefined,
+    potentialServices: input.potentialServices?.trim() || "Basic Website Development",
     assignedSalesId:
       actorRole === "SALES"
         ? actorUserId
@@ -228,7 +238,8 @@ export async function createProspect(
     updatedAt: new Date().toISOString(),
   };
 
-  prospectsData.unshift(newProspect);
+  const store = crmGlobal.prospectsData || prospectsData;
+  store.unshift(newProspect);
 
   logActivity({
     category: "CRM",
@@ -243,6 +254,130 @@ export async function createProspect(
   });
 
   return { success: true, prospect: newProspect };
+}
+
+export interface BulkImportResult {
+  success: boolean;
+  importedCount: number;
+  skippedCount: number;
+  prospects: Prospect[];
+  errors: Array<{ row: number; companyName: string; reason: string }>;
+}
+
+export async function bulkCreateProspects(
+  inputs: CreateProspectInput[],
+  actorUserId: string,
+  actorRole: string
+): Promise<BulkImportResult> {
+  const store = crmGlobal.prospectsData || prospectsData;
+  const created: Prospect[] = [];
+  const errors: Array<{ row: number; companyName: string; reason: string }> = [];
+
+  for (let i = 0; i < inputs.length; i++) {
+    const input = inputs[i];
+    const rowNum = i + 1;
+
+    if (!input.companyName || !input.companyName.trim()) {
+      errors.push({
+        row: rowNum,
+        companyName: input.companyName || `Baris ${rowNum}`,
+        reason: "Nama bisnis wajib diisi.",
+      });
+      continue;
+    }
+
+    const { formatted: waFormatted, isValid } = normalizeWhatsAppNumber(
+      input.whatsappNumber || ""
+    );
+    if (!isValid) {
+      errors.push({
+        row: rowNum,
+        companyName: input.companyName,
+        reason: `Nomor WhatsApp tidak valid: "${input.whatsappNumber || ""}". Format harus diawali 08 atau 628 (10-15 digit).`,
+      });
+      continue;
+    }
+
+    // Periksa duplikasi kontak di database CRM
+    const existingInStore = store.find(
+      (p) => p.whatsappNumber === waFormatted && !p.isArchived
+    );
+    const existingInBatch = created.find((p) => p.whatsappNumber === waFormatted);
+
+    if (existingInStore) {
+      errors.push({
+        row: rowNum,
+        companyName: input.companyName,
+        reason: `Nomor WhatsApp (${waFormatted}) sudah ada di database CRM atas nama "${existingInStore.companyName}" (Stage: ${existingInStore.stage}).`,
+      });
+      continue;
+    }
+
+    if (existingInBatch) {
+      errors.push({
+        row: rowNum,
+        companyName: input.companyName,
+        reason: `Nomor WhatsApp (${waFormatted}) duplikat dengan baris sebelumnya dalam file yang sama.`,
+      });
+      continue;
+    }
+
+    const safeNotes = input.researchNotes?.trim() || "Di-import dari Excel/CSV";
+
+    const newProspect: Prospect = {
+      id: `p-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      companyName: input.companyName.trim(),
+      contactName: input.contactName?.trim() || input.companyName.trim(),
+      whatsappNumber: waFormatted,
+      email: input.email?.trim() || undefined,
+      website: input.website?.trim() || undefined,
+      industry: input.industry?.trim() || undefined,
+      location: input.location?.trim() || undefined,
+      source: input.source?.trim() || "Bulk Import Excel/CSV",
+      researchNotes: safeNotes,
+      painPoints: input.painPoints?.trim() || undefined,
+      potentialServices:
+        input.potentialServices?.trim() || "Basic Website Development",
+      assignedSalesId:
+        actorRole === "SALES"
+          ? actorUserId
+          : input.assignedSalesId || actorUserId,
+      assignedSalesName:
+        actorRole === "SALES" ? "Budi Santoso (Sales)" : "Faiz Aditama (Owner)",
+      stage: "NEW",
+      nextAction: "REACH_NOW",
+      followUpStep: "INITIAL",
+      isArchived: false,
+      followUpLogs: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    store.unshift(newProspect);
+    created.push(newProspect);
+  }
+
+  if (created.length > 0) {
+    logActivity({
+      category: "CRM",
+      action: "PROSPECT_BULK_IMPORTED",
+      actorId: actorUserId,
+      targetId: `batch-${Date.now()}`,
+      targetType: "PROSPECT_BATCH",
+      metadata: {
+        totalImported: created.length,
+        totalSkipped: errors.length,
+      },
+    });
+  }
+
+  return {
+    success: created.length > 0,
+    importedCount: created.length,
+    skippedCount: errors.length,
+    prospects: created,
+    errors,
+  };
 }
 
 export async function updateProspectStage(

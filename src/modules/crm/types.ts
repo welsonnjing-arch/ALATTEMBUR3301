@@ -40,14 +40,14 @@ export interface Prospect {
 
 export interface CreateProspectInput {
   companyName: string;
-  contactName: string;
+  contactName?: string;
   whatsappNumber: string;
   email?: string;
   website?: string;
   industry?: string;
   location?: string;
   source?: string;
-  researchNotes: string;
+  researchNotes?: string;
   painPoints?: string;
   potentialServices?: string;
   assignedSalesId?: string;

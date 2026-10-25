@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getSessionCookie } from "../auth/session";
 import {
+  bulkCreateProspects,
   checkDuplicateWhatsApp,
   confirmOutreachSent,
   createProspect,
@@ -45,6 +46,26 @@ export async function createProspectAction(input: CreateProspectInput) {
   }
 
   const res = await createProspect(input, session.id, session.role);
+  if (res.success) {
+    revalidatePath("/crm");
+    revalidatePath("/sales-workspace");
+  }
+  return res;
+}
+
+export async function bulkCreateProspectsAction(inputs: CreateProspectInput[]) {
+  const session = await getSessionCookie();
+  if (!session) {
+    return {
+      success: false,
+      importedCount: 0,
+      skippedCount: inputs.length,
+      prospects: [],
+      errors: [{ row: 0, companyName: "Semua", reason: "Sesi telah berakhir. Silakan login kembali." }],
+    };
+  }
+
+  const res = await bulkCreateProspects(inputs, session.id, session.role);
   if (res.success) {
     revalidatePath("/crm");
     revalidatePath("/sales-workspace");
