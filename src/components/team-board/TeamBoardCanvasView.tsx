@@ -156,6 +156,53 @@ function TextFormatToolbar({
   );
 }
 
+// Helper to safely optimize and compress user images before sending to server action
+function compressImageFile(file: File): Promise<{ url: string; sizeFormatted: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 1600;
+        let { width, height } = img;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve({
+            url: dataUrl,
+            sizeFormatted: `${(file.size / 1024).toFixed(1)} KB`,
+          });
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        // Use JPEG 0.82 for optimal web payload and sharp fidelity
+        const compressed = canvas.toDataURL("image/jpeg", 0.82);
+        const approxBytes = Math.round((compressed.length * 3) / 4);
+        resolve({
+          url: compressed,
+          sizeFormatted: `${(approxBytes / 1024).toFixed(1)} KB`,
+        });
+      };
+      img.onerror = () => reject(new Error("Gagal membaca gambar"));
+      img.src = dataUrl;
+    };
+    reader.onerror = () => reject(new Error("Gagal memuat file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function TeamBoardCanvasView({
   initialItems,
   currentUserRole = "OWNER",
@@ -363,27 +410,59 @@ export function TeamBoardCanvasView({
     }
   };
 
-  // File Upload Handlers (converts to base64 DataURL for instant local preview)
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Helper to read non-image files directly
+  const readFileDirect = (file: File, fileType: string) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = reader.result as string;
+      const newAttachment: BoardAttachment = {
+        id: `att-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        name: file.name,
+        size: `${(file.size / 1024).toFixed(1)} KB`,
+        type: fileType,
+        url,
+      };
+      setAttachments((prev) => [...prev, newAttachment]);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // File Upload Handlers (safely compresses images and handles docs)
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const url = reader.result as string;
-        const isImg = file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(file.name);
-        const newAttachment: BoardAttachment = {
-          id: `att-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-          name: file.name,
-          size: `${(file.size / 1024).toFixed(1)} KB`,
-          type: isImg ? "image" : file.type || "document",
-          url,
-        };
-        setAttachments((prev) => [...prev, newAttachment]);
-      };
-      reader.readAsDataURL(file);
-    });
+    const fileList = Array.from(files);
+    e.target.value = ""; // Reset file input so user can re-upload if needed
+
+    for (const file of fileList) {
+      if (file.size > 20 * 1024 * 1024) {
+        setErrorMessage(`File "${file.name}" melebihi batas maksimal 20MB.`);
+        continue;
+      }
+
+      const isImg =
+        file.type.startsWith("image/") ||
+        /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(file.name);
+
+      if (isImg && file.type !== "image/svg+xml" && file.type !== "image/gif") {
+        try {
+          const compressed = await compressImageFile(file);
+          const newAttachment: BoardAttachment = {
+            id: `att-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+            name: file.name,
+            size: compressed.sizeFormatted,
+            type: "image",
+            url: compressed.url,
+          };
+          setAttachments((prev) => [...prev, newAttachment]);
+        } catch {
+          readFileDirect(file, "image");
+        }
+      } else {
+        readFileDirect(file, isImg ? "image" : file.type || "document");
+      }
+    }
   };
 
   const handleRemoveAttachment = (attId: string) => {
@@ -452,8 +531,10 @@ export function TeamBoardCanvasView({
           setErrorMessage(res.error || "Gagal menyimpan kotak kanban.");
         }
       }
-    } catch {
-      setErrorMessage("Terjadi kesalahan saat memproses data.");
+    } catch (err: unknown) {
+      console.error("Gagal menyimpan kotak kanban:", err);
+      const msg = err instanceof Error ? err.message : "Terjadi kesalahan saat memproses data.";
+      setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
     }

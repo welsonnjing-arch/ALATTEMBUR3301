@@ -168,34 +168,44 @@ export async function createTeamBoardItemAction(
     height?: number;
   }
 ) {
-  const session = await getSessionCookie();
-  if (!session) return { success: false, error: "Sesi telah berakhir." };
+  try {
+    const session = await getSessionCookie();
+    if (!session) return { success: false, error: "Sesi telah berakhir. Silakan login kembali." };
 
-  const newItem = await createTeamBoardItem(
-    category,
-    title,
-    content,
-    session.id,
-    session.fullName,
-    extra
-  );
+    const newItem = await createTeamBoardItem(
+      category,
+      title,
+      content,
+      session.id,
+      session.fullName,
+      extra
+    );
 
-  revalidatePath("/team-board");
-  return { success: true, item: newItem };
+    revalidatePath("/team-board");
+    return { success: true, item: newItem };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Gagal menyimpan item ke team board.";
+    return { success: false, error: message };
+  }
 }
 
 export async function updateTeamBoardItemAction(
   id: string,
   updates: Partial<TeamBoardItem>
 ) {
-  const session = await getSessionCookie();
-  if (!session) return { success: false, error: "Sesi telah berakhir." };
+  try {
+    const session = await getSessionCookie();
+    if (!session) return { success: false, error: "Sesi telah berakhir. Silakan login kembali." };
 
-  const res = await updateTeamBoardItem(id, updates);
-  if (res.success) {
-    revalidatePath("/team-board");
+    const res = await updateTeamBoardItem(id, updates);
+    if (res.success) {
+      revalidatePath("/team-board");
+    }
+    return res;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Gagal memperbarui item team board.";
+    return { success: false, error: message };
   }
-  return res;
 }
 
 export async function updateTeamBoardItemPositionAction(
@@ -205,20 +215,30 @@ export async function updateTeamBoardItemPositionAction(
   width?: number,
   height?: number
 ) {
-  const session = await getSessionCookie();
-  if (!session) return { success: false, error: "Sesi telah berakhir." };
+  try {
+    const session = await getSessionCookie();
+    if (!session) return { success: false, error: "Sesi telah berakhir." };
 
-  const res = await updateTeamBoardItemPosition(id, x, y, width, height);
-  return res;
+    const res = await updateTeamBoardItemPosition(id, x, y, width, height);
+    return res;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Gagal memindahkan posisi item.";
+    return { success: false, error: message };
+  }
 }
 
 export async function deleteTeamBoardItemAction(id: string) {
-  const session = await getSessionCookie();
-  if (!session) return { success: false, error: "Sesi telah berakhir." };
+  try {
+    const session = await getSessionCookie();
+    if (!session) return { success: false, error: "Sesi telah berakhir." };
 
-  const res = await deleteTeamBoardItem(id);
-  if (res.success) {
-    revalidatePath("/team-board");
+    const res = await deleteTeamBoardItem(id);
+    if (res.success) {
+      revalidatePath("/team-board");
+    }
+    return res;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Gagal menghapus item.";
+    return { success: false, error: message };
   }
-  return res;
 }
