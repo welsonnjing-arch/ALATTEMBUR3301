@@ -1,392 +1,691 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
-  MessageSquare,
-  Bot,
-  Sparkles,
-  ExternalLink,
+  Search,
   Send,
-  Building2,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  Copy,
+  Paperclip,
+  Smile,
+  Mic,
+  MoreVertical,
+  CheckCheck,
+  Check,
+  Smartphone,
   Plus,
-  FileText,
+  Building2,
+  Phone,
+  Sparkles,
+  RefreshCw,
+  X,
+  MessageSquare,
+  ArrowLeft,
+  ChevronDown,
+  UserCheck,
 } from "lucide-react";
-import { ConversationThread } from "@/modules/inbox/types";
-import { AIChatAnalysisOutput } from "@/modules/ai-agent/types";
-import { pasteIncomingChatAction } from "@/modules/inbox/inbox.actions";
-import { analyzeConversationAction } from "@/modules/ai-agent/ai-agent.actions";
+import { ConversationThread, ChatMessage } from "@/modules/inbox/types";
+import { WhatsAppSessionInfo } from "@/modules/whatsapp/types";
+import { Prospect } from "@/modules/crm/types";
+import {
+  sendWhatsAppMessageAction,
+  simulateIncomingWhatsAppMessageAction,
+} from "@/modules/whatsapp/whatsapp.actions";
+import { WhatsAppPairingModal } from "@/components/whatsapp/WhatsAppPairingModal";
 import { formatDateTimeWIB } from "@/lib/date";
 
 interface WhatsAppInboxViewProps {
   initialConversations: ConversationThread[];
+  initialSession: WhatsAppSessionInfo;
+  prospects: Prospect[];
 }
 
-export function WhatsAppInboxView({ initialConversations }: WhatsAppInboxViewProps) {
+export function WhatsAppInboxView({
+  initialConversations,
+  initialSession,
+  prospects,
+}: WhatsAppInboxViewProps) {
   const [conversations, setConversations] = useState<ConversationThread[]>(initialConversations);
   const [activeConvId, setActiveConvId] = useState<string>(
     initialConversations[0]?.id || ""
   );
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiAnalysis, setAiAnalysis] = useState<AIChatAnalysisOutput | null>(null);
-  const [pasteModalOpen, setPasteModalOpen] = useState(false);
-  const [pastedChat, setPastedChat] = useState("");
-  const [copiedDraft, setCopiedDraft] = useState(false);
+  const [session, setSession] = useState<WhatsAppSessionInfo>(initialSession);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterTab, setFilterTab] = useState<"ALL" | "UNREAD" | "CRM">("ALL");
+
+  // State Pesan Aktif
+  const [inputText, setInputText] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  // Modals
+  const [isPairingModalOpen, setIsPairingModalOpen] = useState(false);
+  const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+
+  // Auto scroll ke pesan terbawah
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const activeConv = conversations.find((c) => c.id === activeConvId);
 
-  const handleSelectConv = (id: string) => {
-    setActiveConvId(id);
-    setAiAnalysis(null);
-  };
+  // Cari data prospek CRM yang bersesuaian dengan percakapan aktif
+  const activeProspect = activeConv
+    ? prospects.find(
+        (p) =>
+          p.whatsappNumber.replace(/\D/g, "") ===
+          activeConv.whatsappNumber.replace(/\D/g, "")
+      )
+    : null;
 
-  const handleAnalyzeChat = async () => {
-    if (!activeConv) return;
-    setIsAnalyzing(true);
-    const res = await analyzeConversationAction(activeConv.id);
-    if (res.success && res.analysis) {
-      setAiAnalysis(res.analysis);
-    }
-    setIsAnalyzing(false);
-  };
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [activeConv?.messages]);
 
-  const handlePasteSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pastedChat.trim() || !activeConv) return;
+  // Filter daftar percakapan
+  const filteredConversations = conversations.filter((c) => {
+    const q = searchQuery.toLowerCase();
+    const matchSearch =
+      c.companyName.toLowerCase().includes(q) ||
+      c.contactName.toLowerCase().includes(q) ||
+      c.whatsappNumber.includes(q) ||
+      c.lastMessageSnippet.toLowerCase().includes(q);
 
-    await pasteIncomingChatAction(activeConv.id, pastedChat);
-    setPastedChat("");
-    setPasteModalOpen(false);
+    if (!matchSearch) return false;
 
-    // Update local state for immediate feedback
+    if (filterTab === "UNREAD") return c.unreadCount > 0;
+    if (filterTab === "CRM") return !!c.prospectId;
+    return true;
+  });
+
+  // Kirim Pesan
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!inputText.trim() || !activeConv || isSending) return;
+
+    const textToSend = inputText.trim();
+    setInputText("");
+    setIsSending(true);
+
+    // Optimistic UI update
+    const optimisticMsg: ChatMessage = {
+      id: `temp-${Date.now()}`,
+      conversationId: activeConv.id,
+      sender: "SALES",
+      text: textToSend,
+      isDraft: false,
+      timestamp: new Date().toISOString(),
+    };
+
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id === activeConv.id) {
           return {
             ...c,
-            lastMessageSnippet: pastedChat.slice(0, 80),
-            messages: [
-              ...c.messages,
-              {
-                id: `msg-${Date.now()}`,
-                conversationId: c.id,
-                sender: "PROSPECT",
-                text: pastedChat,
-                isDraft: false,
-                timestamp: new Date().toISOString(),
-              },
-            ],
+            lastMessageSnippet: textToSend.slice(0, 80),
+            lastMessageAt: optimisticMsg.timestamp,
+            messages: [...c.messages, optimisticMsg],
           };
         }
         return c;
       })
     );
+
+    // Panggil Server Action pengiriman pesan & sinkronisasi CRM
+    await sendWhatsAppMessageAction({
+      whatsappNumber: activeConv.whatsappNumber,
+      text: textToSend,
+      prospectId: activeConv.prospectId,
+    });
+
+    setIsSending(false);
   };
 
-  const handleCopyDraft = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedDraft(true);
-    setTimeout(() => setCopiedDraft(false), 2000);
+  // Simulasi pesan masuk dari klien (untuk menguji pemicu panggung CRM ke RESPONDED)
+  const handleSimulateClientReply = async () => {
+    if (!activeConv || isSimulating) return;
+
+    const sampleReplies = [
+      "Halo mas, terima kasih infonya. Boleh minta proposal dan rincian harga untuk paket website-nya?",
+      "Siang, kami tertarik dengan penawaran ini. Apakah bisa dijadwalkan demo singkat via Google Meet?",
+      "Halo Mas Budi, apakah ada diskon khusus jika kami memesan paket business website bulan ini?",
+      "Terima kasih atas follow-up-nya, kami pelajari dulu dengan tim direksi ya.",
+    ];
+
+    const randomReply =
+      sampleReplies[Math.floor(Math.random() * sampleReplies.length)];
+
+    setIsSimulating(true);
+
+    // Optimistic UI
+    const incomingMsg: ChatMessage = {
+      id: `sim-${Date.now()}`,
+      conversationId: activeConv.id,
+      sender: "PROSPECT",
+      text: randomReply,
+      isDraft: false,
+      timestamp: new Date().toISOString(),
+    };
+
+    setConversations((prev) =>
+      prev.map((c) => {
+        if (c.id === activeConv.id) {
+          return {
+            ...c,
+            lastMessageSnippet: randomReply.slice(0, 80),
+            lastMessageAt: incomingMsg.timestamp,
+            unreadCount: c.unreadCount + 1,
+            messages: [...c.messages, incomingMsg],
+          };
+        }
+        return c;
+      })
+    );
+
+    await simulateIncomingWhatsAppMessageAction(
+      activeConv.whatsappNumber,
+      randomReply
+    );
+
+    setIsSimulating(false);
   };
 
-  const handleOpenWhatsAppWeb = (draftText?: string) => {
-    if (!activeConv) return;
-    const text = draftText || "";
-    const url = `https://wa.me/${activeConv.whatsappNumber}?text=${encodeURIComponent(text)}`;
-    window.open(url, "_blank");
+  // Warna badge status panggung CRM
+  const getStageBadge = (stage?: string) => {
+    switch (stage) {
+      case "NEW":
+        return "bg-slate-100 text-slate-700 border-slate-300";
+      case "CONTACTED":
+        return "bg-sky-50 text-sky-700 border-sky-300";
+      case "RESPONDED":
+        return "bg-emerald-50 text-emerald-700 border-emerald-300 font-bold";
+      case "ENGAGED":
+        return "bg-indigo-50 text-indigo-700 border-indigo-300 font-bold";
+      case "QUALIFIED":
+        return "bg-purple-50 text-purple-700 border-purple-300 font-bold";
+      case "NEGOTIATION":
+        return "bg-amber-50 text-amber-700 border-amber-300 font-bold";
+      case "PENDING":
+        return "bg-orange-50 text-orange-700 border-orange-300";
+      case "CLOSED_WON":
+        return "bg-emerald-600 text-white font-bold border-emerald-600";
+      default:
+        return "bg-slate-100 text-slate-600 border-slate-200";
+    }
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-140px)] min-h-[600px]">
-      {/* 1. KOLOM KIRI: DAFTAR PERCAKAPAN (4 Kolom) */}
-      <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-          <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-              WhatsApp Shared Inbox
-            </h2>
-            <p className="text-[11px] text-slate-500">Percakapan terhubung ke kontak CRM</p>
-          </div>
-          <span className="text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
-            {conversations.length}
-          </span>
-        </div>
-
-        <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
-          {conversations.map((c) => {
-            const isSelected = c.id === activeConvId;
-
-            return (
-              <div
-                key={c.id}
-                onClick={() => handleSelectConv(c.id)}
-                className={`p-4 transition-colors cursor-pointer flex flex-col gap-1 ${
-                  isSelected ? "bg-indigo-50/80 border-l-4 border-indigo-600" : "hover:bg-slate-50"
+    <div className="flex h-full w-full bg-[#f0f2f5] overflow-hidden border border-[#d1d7db] shadow-xl rounded-xl">
+      {/* ======================================================== */}
+      {/* 1. SIDEBAR KIRI: DAFTAR CHAT (1:1 WHATSAPP WEB STYLE)   */}
+      {/* ======================================================== */}
+      <div className="w-full md:w-[380px] lg:w-[420px] bg-white flex flex-col border-r border-[#e9edef] flex-shrink-0">
+        {/* Header Sidebar Khas WhatsApp Web */}
+        <div className="h-16 bg-[#f0f2f5] px-4 py-2.5 flex items-center justify-between border-b border-[#e9edef]">
+          {/* Avatar & Identitas */}
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="w-10 h-10 rounded-full bg-[#00a884] text-white font-bold flex items-center justify-center text-sm shadow-sm">
+                FN
+              </div>
+              <span
+                className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
+                  session.status === "CONNECTED"
+                    ? "bg-[#25d366]"
+                    : "bg-amber-400 animate-pulse"
                 }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 text-xs truncate">
-                    {c.companyName}
-                  </span>
-                  <span className="text-[10px] text-slate-400">
-                    {formatDateTimeWIB(c.lastMessageAt).split(",")[1]}
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-600 font-medium truncate">
-                  {c.contactName}
-                </div>
-                <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                  {c.lastMessageSnippet}
-                </p>
+              />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-[#111b21] leading-tight">
+                Fynux WhatsApp
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 2. KOLOM TENGAH: THREAD CHAT AKTIF (5 Kolom) */}
-      <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-        {activeConv ? (
-          <>
-            {/* Header Thread */}
-            <div className="p-3.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-indigo-600" />
-                  {activeConv.companyName}
-                </h3>
-                <div className="text-[11px] text-slate-500">
-                  {activeConv.contactName} · +{activeConv.whatsappNumber}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPasteModalOpen(true)}
-                  className="px-2.5 py-1 text-[11px] font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg border border-indigo-200 transition-colors"
-                >
-                  + Paste Chat WA
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleOpenWhatsAppWeb()}
-                  title="Buka Chat di WhatsApp Web"
-                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-emerald-200"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </button>
+              <div className="text-[11px] text-[#667781] leading-tight">
+                {session.status === "CONNECTED"
+                  ? `+${session.phoneNumber}`
+                  : "Perangkat Belum Tertaut"}
               </div>
             </div>
-
-            {/* Bubble Messages List */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
-              {activeConv.messages.map((m) => {
-                const isSales = m.sender === "SALES";
-                const isAI = m.sender === "AI";
-
-                return (
-                  <div
-                    key={m.id}
-                    className={`flex flex-col ${
-                      isSales ? "items-end" : "items-start"
-                    }`}
-                  >
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs shadow-sm ${
-                        isSales
-                          ? "bg-indigo-600 text-white rounded-br-sm"
-                          : isAI
-                          ? "bg-amber-50 text-slate-800 border-2 border-amber-300 rounded-bl-sm"
-                          : "bg-white text-slate-800 border border-slate-200 rounded-bl-sm"
-                      }`}
-                    >
-                      {isAI && (
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1">
-                          <Bot className="w-3 h-3 text-amber-600" />
-                          Draf Rekomendasi AI
-                        </div>
-                      )}
-                      <p className="whitespace-pre-wrap leading-relaxed">{m.text}</p>
-                    </div>
-                    <span className="text-[9px] text-slate-400 mt-1 px-1">
-                      {isSales ? "Sales" : isAI ? "AI Draft" : activeConv.contactName} ·{" "}
-                      {formatDateTimeWIB(m.timestamp)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Quick Action Footer */}
-            <div className="p-3 border-t border-slate-200 bg-white flex items-center gap-2">
-              <span className="text-[11px] text-slate-500 italic flex-1">
-                Gunakan asisten AI di panel kanan untuk menyusun balasan cerdas.
-              </span>
-              <button
-                type="button"
-                onClick={() => handleOpenWhatsAppWeb()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Buka WhatsApp Web
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-xs text-slate-400">
-            Pilih percakapan untuk membaca riwayat pesan.
           </div>
-        )}
-      </div>
 
-      {/* 3. KOLOM KANAN: AI SALES AGENT ASSISTANT (GEMINI) (3 Kolom) */}
-      <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-2 text-indigo-700">
-          <Bot className="w-4 h-4" />
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-            AI Sales Agent (Gemini)
-          </h2>
+          {/* Action Icons: Pairing & New Chat */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setIsPairingModalOpen(true)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                session.status === "CONNECTED"
+                  ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
+                  : "bg-[#00a884] text-white hover:bg-[#008f6f] shadow-sm animate-pulse"
+              }`}
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>
+                {session.status === "CONNECTED" ? "Terhubung" : "Tautkan WA"}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsNewChatModalOpen(true)}
+              title="Mulai Chat Prospek Baru"
+              className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-full transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {activeConv ? (
-            <>
-              {/* Konteks Riset Prospek */}
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Konteks Riset Bisnis
-                </span>
-                <p className="text-xs text-slate-700 mt-1 leading-relaxed line-clamp-3">
-                  {activeConv.researchNotes}
-                </p>
-              </div>
-
-              {/* Tombol Analisis AI */}
+        {/* Kolom Pencarian WhatsApp Web */}
+        <div className="p-2 border-b border-[#f0f2f5] bg-white">
+          <div className="relative flex items-center bg-[#f0f2f5] rounded-lg px-3 py-1.5 focus-within:bg-white focus-within:ring-1 focus-within:ring-[#00a884] transition-all">
+            <Search className="w-4 h-4 text-[#54656f] mr-2 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Cari atau mulai chat baru"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-transparent text-xs text-[#111b21] placeholder-[#667781] focus:outline-none"
+            />
+            {searchQuery && (
               <button
                 type="button"
-                onClick={handleAnalyzeChat}
-                disabled={isAnalyzing}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-semibold rounded-xl shadow-md transition-all disabled:opacity-50"
+                onClick={() => setSearchQuery("")}
+                className="text-slate-400 hover:text-slate-600"
               >
-                <Sparkles className="w-4 h-4" />
-                {isAnalyzing ? "Gemini Menganalisis..." : "Analisis Percakapan dengan AI"}
+                <X className="w-3.5 h-3.5" />
               </button>
+            )}
+          </div>
 
-              {/* Hasil Analisis Gemini AI */}
-              {aiAnalysis && (
-                <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  {/* Warning jika butuh persetujuan Owner */}
-                  {aiAnalysis.requiresCommercialApproval && (
-                    <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-1">
-                      <div className="flex items-center gap-1.5 font-bold text-rose-900">
-                        <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                        Persetujuan Owner Diperlukan
-                      </div>
-                      <p className="text-[11px] leading-relaxed">
-                        Terdeteksi permintaan komersial: {aiAnalysis.commercialApprovalDetails?.description}. Tiket otomatis diteruskan ke <strong>Approval Queue</strong>.
-                      </p>
-                    </div>
-                  )}
+          {/* Filter Chips */}
+          <div className="flex items-center gap-1.5 mt-2 px-1">
+            <button
+              type="button"
+              onClick={() => setFilterTab("ALL")}
+              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                filterTab === "ALL"
+                  ? "bg-[#e7fce3] text-[#008069] font-bold"
+                  : "bg-[#f0f2f5] text-[#54656f] hover:bg-slate-200/60"
+              }`}
+            >
+              Semua
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterTab("UNREAD")}
+              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                filterTab === "UNREAD"
+                  ? "bg-[#e7fce3] text-[#008069] font-bold"
+                  : "bg-[#f0f2f5] text-[#54656f] hover:bg-slate-200/60"
+              }`}
+            >
+              Belum Dibaca
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterTab("CRM")}
+              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                filterTab === "CRM"
+                  ? "bg-[#e7fce3] text-[#008069] font-bold"
+                  : "bg-[#f0f2f5] text-[#54656f] hover:bg-slate-200/60"
+              }`}
+            >
+              Prospek CRM
+            </button>
+          </div>
+        </div>
 
-                  {/* Ringkasan & Sentimen */}
-                  <div className="p-3 bg-indigo-50/60 rounded-lg border border-indigo-100 text-xs space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-900">
-                        Rekomendasi Stage
-                      </span>
-                      <span className="font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded text-[10px]">
-                        {aiAnalysis.suggestedStage}
-                      </span>
-                    </div>
-                    <p className="text-slate-700 leading-relaxed text-[11px]">
-                      {aiAnalysis.summary}
-                    </p>
+        {/* Daftar Chat List (WhatsApp Web Item List) */}
+        <div className="flex-1 overflow-y-auto divide-y divide-[#f0f2f5]">
+          {filteredConversations.length > 0 ? (
+            filteredConversations.map((c) => {
+              const isSelected = c.id === activeConvId;
+              const prospect = prospects.find(
+                (p) =>
+                  p.whatsappNumber.replace(/\D/g, "") ===
+                  c.whatsappNumber.replace(/\D/g, "")
+              );
+
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => {
+                    setActiveConvId(c.id);
+                    // Mark as read
+                    if (c.unreadCount > 0) {
+                      setConversations((prev) =>
+                        prev.map((item) =>
+                          item.id === c.id ? { ...item, unreadCount: 0 } : item
+                        )
+                      );
+                    }
+                  }}
+                  className={`px-4 py-3 flex items-center gap-3 cursor-pointer transition-colors ${
+                    isSelected
+                      ? "bg-[#f0f2f5]"
+                      : "hover:bg-[#f5f6f6] bg-white"
+                  }`}
+                >
+                  {/* Round Avatar */}
+                  <div className="w-12 h-12 rounded-full bg-slate-200 text-slate-600 font-bold flex items-center justify-center text-sm flex-shrink-0 shadow-inner">
+                    {c.companyName.substring(0, 2).toUpperCase()}
                   </div>
 
-                  {/* Draf Balasan Siap Kirim */}
-                  <div className="p-3.5 bg-amber-50/60 rounded-xl border border-amber-200 space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold text-amber-900">
-                      <span>Draf Balasan Siap Kirim</span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyDraft(aiAnalysis.suggestedDraftReply)}
-                        className="text-[10px] text-amber-700 hover:text-amber-900 flex items-center gap-1"
-                      >
-                        {copiedDraft ? (
-                          <>
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Tersalin
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" /> Salin Draf
-                          </>
-                        )}
-                      </button>
+                  {/* Konten Chat Item */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-semibold text-[#111b21] truncate">
+                        {c.contactName}
+                      </h4>
+                      <span className="text-[10px] text-[#667781] flex-shrink-0">
+                        {c.lastMessageAt
+                          ? new Date(c.lastMessageAt).toLocaleTimeString("id-ID", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : ""}
+                      </span>
                     </div>
 
-                    <p className="text-xs text-slate-800 bg-white p-3 rounded-lg border border-amber-200 leading-relaxed whitespace-pre-wrap">
-                      {aiAnalysis.suggestedDraftReply}
-                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-indigo-700 font-medium truncate max-w-[150px]">
+                        {c.companyName}
+                      </span>
+                      {prospect && (
+                        <span
+                          className={`text-[9px] px-1.5 py-0.2 rounded border font-semibold ${getStageBadge(
+                            prospect.stage
+                          )}`}
+                        >
+                          {prospect.stage}
+                        </span>
+                      )}
+                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleOpenWhatsAppWeb(aiAnalysis.suggestedDraftReply)}
-                      className="w-full inline-flex items-center justify-center gap-1.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors mt-2"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      Kirim via WhatsApp Web
-                    </button>
+                    {/* Snippet Pesan & Double Check */}
+                    <div className="flex items-center justify-between mt-1">
+                      <div className="flex items-center gap-1 text-[11px] text-[#667781] truncate">
+                        <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] flex-shrink-0" />
+                        <span className="truncate">{c.lastMessageSnippet}</span>
+                      </div>
+
+                      {c.unreadCount > 0 && (
+                        <span className="w-4 h-4 rounded-full bg-[#25d366] text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 ml-1">
+                          {c.unreadCount}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              )}
-            </>
+              );
+            })
           ) : (
-            <div className="text-center py-12 text-xs text-slate-400">
-              Pilih percakapan untuk mengaktifkan AI Sales Agent.
+            <div className="p-8 text-center text-xs text-[#667781]">
+              Tidak ada percakapan ditemukan.
             </div>
           )}
         </div>
       </div>
 
-      {/* DIALOG PASTE RAW WHATSAPP CHAT */}
-      {pasteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-indigo-600" />
-              Paste Pesan Masuk dari WhatsApp Web
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Salin teks balasan yang Anda terima di WhatsApp Web dan tempelkan di sini agar riwayat tersimpan dan dapat dianalisis AI.
-            </p>
-            <form onSubmit={handlePasteSubmit} className="space-y-4">
-              <textarea
-                required
-                rows={4}
-                placeholder="Tempelkan pesan client di sini..."
-                value={pastedChat}
-                onChange={(e) => setPastedChat(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-              />
-              <div className="flex items-center justify-end gap-2">
+      {/* ======================================================== */}
+      {/* 2. RUANG CHAT AKTIF (1:1 WHATSAPP WEB CHAT WINDOW)       */}
+      {/* ======================================================== */}
+      <div className="flex-1 flex flex-col h-full bg-[#efeae2] relative">
+        {activeConv ? (
+          <>
+            {/* Header Ruang Chat */}
+            <div className="h-16 bg-[#f0f2f5] px-4 py-2.5 flex items-center justify-between border-b border-[#d1d7db] z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-slate-300 text-slate-700 font-bold flex items-center justify-center text-sm shadow-sm flex-shrink-0">
+                  {activeConv.companyName.substring(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-bold text-[#111b21]">
+                      {activeConv.contactName}
+                    </h3>
+                    {activeProspect && (
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${getStageBadge(
+                          activeProspect.stage
+                        )}`}
+                      >
+                        CRM: {activeProspect.stage}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-[#667781] flex items-center gap-1">
+                    <span>{activeConv.companyName}</span>
+                    <span>·</span>
+                    <span>+{activeConv.whatsappNumber}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons di Header Chat */}
+              <div className="flex items-center gap-2">
+                {/* Tombol Simulasi Balasan Klien */}
                 <button
                   type="button"
-                  onClick={() => setPasteModalOpen(false)}
-                  className="px-3 py-1.5 border border-slate-300 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-50"
+                  onClick={handleSimulateClientReply}
+                  disabled={isSimulating}
+                  title="Simulasi pesan masuk dari prospek ini untuk memicu status CRM ke RESPONDED"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 shadow-sm transition-colors"
                 >
-                  Batal
+                  <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                  <span>{isSimulating ? "Menerima..." : "Simulasi Klien Balas"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-full transition-colors"
+                >
+                  <Search className="w-4 h-4" />
                 </button>
                 <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm"
+                  type="button"
+                  className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-full transition-colors"
                 >
-                  Simpan Pesan
+                  <MoreVertical className="w-4 h-4" />
                 </button>
               </div>
-            </form>
+            </div>
+
+            {/* Bubble Messages Area (Wallpaper WhatsApp) */}
+            <div
+              className="flex-1 overflow-y-auto p-4 md:px-8 space-y-2.5"
+              style={{
+                backgroundImage: `radial-gradient(#d3cbbd 0.8px, transparent 0.8px)`,
+                backgroundSize: "16px 16px",
+              }}
+            >
+              {/* Tanggal Separator WhatsApp */}
+              <div className="flex justify-center my-3">
+                <span className="bg-white/90 text-[#54656f] text-[10px] font-bold px-3 py-1 rounded-lg shadow-sm border border-slate-200/60 uppercase tracking-wider">
+                  Hari Ini
+                </span>
+              </div>
+
+              {/* Daftar Pesan Bubble */}
+              {activeConv.messages.map((m) => {
+                const isSales = m.sender === "SALES";
+
+                return (
+                  <div
+                    key={m.id}
+                    className={`flex ${isSales ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`relative max-w-[85%] md:max-w-[70%] px-3.5 py-2 rounded-lg text-xs shadow-sm ${
+                        isSales
+                          ? "bg-[#d9fdd3] text-[#111b21] rounded-tr-none"
+                          : "bg-white text-[#111b21] rounded-tl-none border border-slate-200/40"
+                      }`}
+                    >
+                      {/* Teks Pesan */}
+                      <p className="whitespace-pre-wrap leading-relaxed pr-14 text-xs">
+                        {m.text}
+                      </p>
+
+                      {/* Micro Timestamp & Centang Pengiriman */}
+                      <div className="absolute bottom-1 right-2 flex items-center gap-1 select-none">
+                        <span className="text-[9px] text-[#667781]">
+                          {new Date(m.timestamp).toLocaleTimeString("id-ID", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                        {isSales && (
+                          <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Bottom Bar: Kolom Input Pesan 1:1 WhatsApp Web */}
+            <div className="bg-[#f0f2f5] px-4 py-2.5 flex items-center gap-2 border-t border-[#d1d7db] z-10">
+              <button
+                type="button"
+                className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-full transition-colors"
+              >
+                <Smile className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-full transition-colors"
+              >
+                <Paperclip className="w-5 h-5" />
+              </button>
+
+              {/* Input Form Pill */}
+              <form onSubmit={handleSendMessage} className="flex-1 flex items-center">
+                <input
+                  type="text"
+                  placeholder="Ketik pesan WhatsApp..."
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  disabled={isSending}
+                  className="w-full bg-white px-4 py-2 text-xs text-[#111b21] rounded-lg border border-transparent focus:outline-none focus:ring-1 focus:ring-[#00a884] placeholder-[#667781] shadow-sm"
+                />
+              </form>
+
+              {/* Tombol Kirim / Mic */}
+              {inputText.trim() ? (
+                <button
+                  type="button"
+                  onClick={() => handleSendMessage()}
+                  disabled={isSending}
+                  className="w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#008f6f] text-white flex items-center justify-center transition-transform active:scale-95 shadow-md"
+                >
+                  <Send className="w-4 h-4 ml-0.5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-full transition-colors"
+                >
+                  <Mic className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          /* Empty State (WhatsApp Web Style) */
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-[#f0f2f5]">
+            <div className="w-20 h-20 rounded-full bg-[#00a884]/10 text-[#00a884] flex items-center justify-center mb-4">
+              <MessageSquare className="w-10 h-10" />
+            </div>
+            <h3 className="text-base font-bold text-[#111b21]">
+              WhatsApp Web untuk Fynux OS
+            </h3>
+            <p className="text-xs text-[#667781] max-w-sm mt-1 leading-relaxed">
+              Kirim dan terima pesan WhatsApp langsung dari dashboard. Setiap pesan terkirim atau dibalas otomatis memperbarui panggung prospek di CRM.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ======================================================== */}
+      {/* 3. MODALS (PAIRING & NEW OUTREACH CHAT)                  */}
+      {/* ======================================================== */}
+      <WhatsAppPairingModal
+        isOpen={isPairingModalOpen}
+        onClose={() => setIsPairingModalOpen(false)}
+        session={session}
+        onSessionUpdated={(updated) => setSession(updated)}
+      />
+
+      {/* Modal Mulai Chat Baru dari Daftar Prospek CRM */}
+      {isNewChatModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+            <div className="bg-[#00a884] text-white px-5 py-4 flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider">
+                Mulai Chat WhatsApp Prospek Baru
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsNewChatModalOpen(false)}
+                className="text-white/80 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 max-h-96 overflow-y-auto divide-y divide-slate-100">
+              <p className="text-[11px] text-slate-500 mb-2">
+                Pilih prospek dari database CRM untuk membuka ruang obrolan:
+              </p>
+              {prospects.map((p) => (
+                <div
+                  key={p.id}
+                  onClick={() => {
+                    const cleanPhone = p.whatsappNumber.replace(/\D/g, "");
+                    const existing = conversations.find(
+                      (c) => c.whatsappNumber.replace(/\D/g, "") === cleanPhone
+                    );
+
+                    if (existing) {
+                      setActiveConvId(existing.id);
+                    } else {
+                      const newThread: ConversationThread = {
+                        id: `conv-${Date.now()}`,
+                        prospectId: p.id,
+                        companyName: p.companyName,
+                        contactName: p.contactName,
+                        whatsappNumber: p.whatsappNumber,
+                        unreadCount: 0,
+                        lastMessageSnippet: "Ruang obrolan baru dimulai",
+                        lastMessageAt: new Date().toISOString(),
+                        researchNotes: p.researchNotes,
+                        messages: [],
+                      };
+                      setConversations((prev) => [newThread, ...prev]);
+                      setActiveConvId(newThread.id);
+                    }
+                    setIsNewChatModalOpen(false);
+                  }}
+                  className="py-2.5 px-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors flex items-center justify-between"
+                >
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-800">
+                      {p.contactName}
+                    </h5>
+                    <div className="text-[11px] text-slate-500">
+                      {p.companyName} · +{p.whatsappNumber}
+                    </div>
+                  </div>
+                  <span
+                    className={`text-[9px] px-2 py-0.5 rounded font-bold border ${getStageBadge(
+                      p.stage
+                    )}`}
+                  >
+                    {p.stage}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

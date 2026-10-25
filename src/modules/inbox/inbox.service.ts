@@ -1,7 +1,7 @@
 import { ChatMessage, ConversationThread } from "./types";
 import { logActivity } from "@/lib/logger";
 
-let conversationsData: ConversationThread[] = [
+const INITIAL_CONVERSATIONS_DATA: ConversationThread[] = [
   {
     id: "conv-002",
     prospectId: "p-002",
@@ -101,6 +101,17 @@ let conversationsData: ConversationThread[] = [
   },
 ];
 
+interface InboxGlobalStore {
+  conversationsData?: ConversationThread[];
+}
+
+const inboxGlobal = globalThis as unknown as InboxGlobalStore;
+if (!inboxGlobal.conversationsData || inboxGlobal.conversationsData.length === 0) {
+  inboxGlobal.conversationsData = [...INITIAL_CONVERSATIONS_DATA];
+}
+
+export const conversationsData = inboxGlobal.conversationsData;
+
 export async function getAllConversations(): Promise<ConversationThread[]> {
   return [...conversationsData];
 }
@@ -108,6 +119,41 @@ export async function getAllConversations(): Promise<ConversationThread[]> {
 export async function getConversationById(id: string): Promise<ConversationThread | null> {
   const conv = conversationsData.find((c) => c.id === id);
   return conv ? { ...conv } : null;
+}
+
+export async function getConversationByPhone(phone: string): Promise<ConversationThread | null> {
+  const cleanPhone = phone.replace(/\D/g, "");
+  const conv = conversationsData.find(
+    (c) => c.whatsappNumber.replace(/\D/g, "") === cleanPhone
+  );
+  return conv ? { ...conv } : null;
+}
+
+export async function getOrCreateConversationByProspect(prospect: {
+  id: string;
+  companyName: string;
+  contactName: string;
+  whatsappNumber: string;
+  researchNotes?: string;
+}): Promise<ConversationThread> {
+  const existing = await getConversationByPhone(prospect.whatsappNumber);
+  if (existing) return existing;
+
+  const newThread: ConversationThread = {
+    id: `conv-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    prospectId: prospect.id,
+    companyName: prospect.companyName,
+    contactName: prospect.contactName,
+    whatsappNumber: prospect.whatsappNumber,
+    unreadCount: 0,
+    lastMessageSnippet: "Percakapan baru dimulai",
+    lastMessageAt: new Date().toISOString(),
+    researchNotes: prospect.researchNotes || "Belum ada catatan riset",
+    messages: [],
+  };
+
+  conversationsData.unshift(newThread);
+  return newThread;
 }
 
 export async function appendIncomingMessage(
@@ -118,7 +164,7 @@ export async function appendIncomingMessage(
   if (idx === -1) return { success: false };
 
   const newMsg: ChatMessage = {
-    id: `msg-${Date.now()}`,
+    id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
     conversationId,
     sender: "PROSPECT",
     text,
@@ -135,6 +181,38 @@ export async function appendIncomingMessage(
     category: "CRM",
     action: "INCOMING_CHAT_RECORDED",
     actorId: "SYSTEM_INBOX",
+    targetId: conversationId,
+    metadata: { snippet: text.slice(0, 100) },
+  });
+
+  return { success: true, message: newMsg };
+}
+
+export async function appendOutgoingMessage(
+  conversationId: string,
+  text: string,
+  sender: "SALES" | "AI" = "SALES"
+): Promise<{ success: boolean; message?: ChatMessage }> {
+  const idx = conversationsData.findIndex((c) => c.id === conversationId);
+  if (idx === -1) return { success: false };
+
+  const newMsg: ChatMessage = {
+    id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    conversationId,
+    sender,
+    text,
+    isDraft: false,
+    timestamp: new Date().toISOString(),
+  };
+
+  conversationsData[idx].messages.push(newMsg);
+  conversationsData[idx].lastMessageSnippet = text.slice(0, 80);
+  conversationsData[idx].lastMessageAt = newMsg.timestamp;
+
+  logActivity({
+    category: "CRM",
+    action: "OUTGOING_CHAT_SENT",
+    actorId: "SALES_OPERATOR",
     targetId: conversationId,
     metadata: { snippet: text.slice(0, 100) },
   });
