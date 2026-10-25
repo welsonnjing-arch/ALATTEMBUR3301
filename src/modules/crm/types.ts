@@ -59,7 +59,8 @@ export interface NormalizePhoneResult {
 }
 
 /**
- * Normalisasi nomor WhatsApp ke standar 628xxx
+ * Normalisasi nomor WhatsApp ke format internasional (default 628xxx untuk nomor lokal Indonesia)
+ * Mendukung nomor Indonesia, nomor internasional, serta WhatsApp Linked ID (LID)
  */
 export function normalizeWhatsAppNumber(phone: string): NormalizePhoneResult {
   let cleaned = phone.replace(/[^0-9]/g, "");
@@ -68,7 +69,6 @@ export function normalizeWhatsAppNumber(phone: string): NormalizePhoneResult {
   } else if (cleaned.startsWith("+62")) {
     cleaned = "62" + cleaned.slice(3);
   }
-  const isValid =
-    cleaned.startsWith("62") && cleaned.length >= 10 && cleaned.length <= 15;
+  const isValid = cleaned.length >= 8 && cleaned.length <= 18;
   return { formatted: cleaned, isValid };
 }

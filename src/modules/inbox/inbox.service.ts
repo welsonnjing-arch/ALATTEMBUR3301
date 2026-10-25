@@ -135,9 +135,15 @@ export async function getOrCreateConversationByProspect(prospect: {
   contactName: string;
   whatsappNumber: string;
   researchNotes?: string;
+  remoteJid?: string;
 }): Promise<ConversationThread> {
   const existing = await getConversationByPhone(prospect.whatsappNumber);
-  if (existing) return existing;
+  if (existing) {
+    if (prospect.remoteJid && !existing.remoteJid) {
+      existing.remoteJid = prospect.remoteJid;
+    }
+    return existing;
+  }
 
   const newThread: ConversationThread = {
     id: `conv-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -145,6 +151,7 @@ export async function getOrCreateConversationByProspect(prospect: {
     companyName: prospect.companyName,
     contactName: prospect.contactName,
     whatsappNumber: prospect.whatsappNumber,
+    remoteJid: prospect.remoteJid,
     unreadCount: 0,
     lastMessageSnippet: "Percakapan baru dimulai",
     lastMessageAt: new Date().toISOString(),

@@ -157,14 +157,33 @@ export function WhatsAppInboxView({
       })
     );
 
-    // Panggil Server Action pengiriman pesan & sinkronisasi CRM
-    await sendWhatsAppMessageAction({
-      whatsappNumber: activeConv.whatsappNumber,
-      text: textToSend,
-      prospectId: activeConv.prospectId,
-    });
+    // Kirim pesan langsung ke API socket WhatsApp
+    try {
+      const res = await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          whatsappNumber: activeConv.whatsappNumber,
+          text: textToSend,
+          prospectId: activeConv.prospectId,
+        }),
+      });
 
-    setIsSending(false);
+      if (res.ok) {
+        // Segera perbarui daftar percakapan dari server
+        const convRes = await fetch("/api/whatsapp/conversations", {
+          cache: "no-store",
+        });
+        if (convRes.ok) {
+          const latest = await convRes.json();
+          setConversations(latest);
+        }
+      }
+    } catch (err) {
+      console.error("Gagal mengirim pesan via WhatsApp:", err);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   // Simulasi pesan masuk dari klien (untuk menguji pemicu panggung CRM ke RESPONDED)

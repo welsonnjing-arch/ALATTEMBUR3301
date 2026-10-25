@@ -18,6 +18,7 @@ export interface ConversationThread {
   companyName: string;
   contactName: string;
   whatsappNumber: string;
+  remoteJid?: string;
   unreadCount: number;
   lastMessageSnippet: string;
   lastMessageAt: string;

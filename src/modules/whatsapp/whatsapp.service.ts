@@ -235,8 +235,8 @@ export async function startWhatsAppPairing(
         }
 
         if (text && text.trim()) {
-          console.log(`[WA_INCOMING] Pesan diterima dari +${phone}: "${text.trim().slice(0, 50)}"`);
-          await handleIncomingWhatsAppMessage(phone, text.trim());
+          console.log(`[WA_INCOMING] Pesan diterima dari +${phone} (JID: ${rawJid}): "${text.trim().slice(0, 50)}"`);
+          await handleIncomingWhatsAppMessage(phone, text.trim(), rawJid);
         }
       }
     });
@@ -384,11 +384,26 @@ export async function sendWhatsAppMessage(
     waGlobal.waSocket.user
   ) {
     try {
-      const jid = `${waFormatted}@s.whatsapp.net`;
-      await waGlobal.waSocket.sendMessage(jid, { text: input.text.trim() });
+      // Tentukan JID tujuan WhatsApp (gunakan remoteJid jika ada, atau format @lid / @s.whatsapp.net)
+      let targetJid = matchedThread.remoteJid;
+      if (!targetJid) {
+        if (input.whatsappNumber.includes("@")) {
+          targetJid = input.whatsappNumber;
+        } else if (waFormatted.length >= 14 && /^(10|51)/.test(waFormatted)) {
+          targetJid = `${waFormatted}@lid`;
+        } else {
+          targetJid = `${waFormatted}@s.whatsapp.net`;
+        }
+      }
+
+      console.log(`[WA_SEND] Mengirim pesan ke JID "${targetJid}": "${input.text.trim().slice(0, 50)}"`);
+      await waGlobal.waSocket.sendMessage(targetJid, { text: input.text.trim() });
+      console.log(`[WA_SEND] Pesan berhasil meluncur ke "${targetJid}"!`);
     } catch (sendErr) {
       console.error("Gagal mengirim via socket Baileys:", sendErr);
     }
+  } else {
+    console.log("[WA_SEND] Peringatan: Socket Baileys belum dalam status CONNECTED.");
   }
 
   // 4. Update logika status CRM secara otomatis
@@ -433,7 +448,8 @@ export async function sendWhatsAppMessage(
  */
 export async function handleIncomingWhatsAppMessage(
   rawPhone: string,
-  text: string
+  text: string,
+  rawJid?: string
 ): Promise<{ success: boolean; conversationId?: string; prospectId?: string }> {
   if (!text || !text.trim()) return { success: false };
 
@@ -442,7 +458,9 @@ export async function handleIncomingWhatsAppMessage(
 
   // 1. Cari atau buat thread di Inbox
   let matchedThread = conversationsData.find(
-    (c) => c.whatsappNumber.replace(/\D/g, "") === cleanPhone
+    (c) =>
+      c.whatsappNumber.replace(/\D/g, "") === cleanPhone ||
+      (rawJid && c.remoteJid === rawJid)
   );
 
   const matchedProspect = prospectsData.find(
@@ -451,16 +469,22 @@ export async function handleIncomingWhatsAppMessage(
 
   if (!matchedThread) {
     if (matchedProspect) {
-      matchedThread = await getOrCreateConversationByProspect(matchedProspect);
+      matchedThread = await getOrCreateConversationByProspect({
+        ...matchedProspect,
+        remoteJid: rawJid,
+      });
     } else {
       matchedThread = await getOrCreateConversationByProspect({
         id: `p-incoming-${Date.now()}`,
         companyName: `Bisnis (+${cleanPhone})`,
         contactName: `Klien (+${cleanPhone})`,
         whatsappNumber: cleanPhone,
+        remoteJid: rawJid,
         researchNotes: "Kontak baru menghubungi via WhatsApp Web",
       });
     }
+  } else if (rawJid && !matchedThread.remoteJid) {
+    matchedThread.remoteJid = rawJid;
   }
 
   // 2. Tambahkan pesan masuk ke thread
