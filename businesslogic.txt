@@ -1,0 +1,847 @@
+# Fynux OS — Business Logic Master Document
+
+**Versi:** Business Logic v1.0
+**Status:** Draft konsolidasi keputusan
+**Tujuan:** Menjadi sumber acuan untuk penyusunan blueprint fungsional, desain database, UI/UX, dan implementasi teknis Fynux OS.
+
+---
+
+## 1. Visi dan prinsip utama
+
+Fynux OS adalah sistem operasi internal untuk mengelola operasional Fynux Digital Solutions secara terintegrasi, mulai dari riset prospek, penjualan, komunikasi client, invoice, pembayaran, pengerjaan proyek, hingga maintenance dan repeat order.
+
+Fynux OS bukan SaaS untuk dijual kepada perusahaan lain.
+
+### Prinsip utama
+
+1. Satu sumber data untuk setiap client, prospek, deal, invoice, pembayaran, dan proyek.
+2. AI membantu pekerjaan operasional, tetapi tidak boleh mengarang informasi atau membuat komitmen komersial tanpa persetujuan.
+3. Aktivitas keuangan dan tindakan penting harus memiliki riwayat yang dapat ditelusuri.
+4. Hak akses mengikuti role dan permission individual.
+5. Data yang diarsipkan tetap dapat dicari dan dipulihkan sesuai permission.
+6. Data yang belum tersedia, belum lengkap, gagal dimuat, atau tidak dapat dihitung tidak boleh dianggap sebagai nol.
+7. Proses manual tetap didukung ketika integrasi otomatis belum tersedia.
+8. Otomatisasi hanya dijalankan jika kondisi dan aturan bisnisnya jelas.
+
+## 2. Siklus bisnis utama
+
+Prospect Research → CRM → WhatsApp Outreach → Conversation & Follow-up → Deal Accepted → Invoice Created → Project Workspace → Project Active → Project Completed → Warranty & Maintenance → Repeat Order / Upsell.
+
+Siklus ini tidak berarti semua proyek harus lunas sebelum mulai dikerjakan. Ketentuan mulai kerja mengikuti syarat deal yang telah disepakati.
+
+## 3. Role dan permission
+
+### Owner
+
+Owner memiliki akses penuh terhadap seluruh modul dan data perusahaan, termasuk:
+
+- Semua prospek, client, percakapan, deal, dan proyek.
+- Invoice, pembayaran, piutang, biaya, dan margin.
+- Analytics perusahaan.
+- Pengaturan sistem dan business rules.
+- Approval Queue dan persetujuan tindakan komersial.
+- Pemulihan data serta penghapusan permanen jika benar-benar diperlukan.
+- Persetujuan refund.
+- Pembatalan proyek.
+
+### Sales / Marketing
+
+- Secara default hanya dapat melihat dan mengelola prospek yang ditugaskan kepadanya.
+- Melihat performa dan target pribadi.
+- Dapat membuat dan menerbitkan invoice jika memiliki permission.
+- Bertanggung jawab melengkapi checklist handoff dan menyatakan handoff siap.
+- Dapat diberi permission tambahan secara individual.
+
+### Developer
+
+- Dapat melihat semua proyek.
+- Hanya dapat mengedit proyek yang ditugaskan kepadanya, kecuali mendapat permission tambahan.
+- Akses ke proyek tidak otomatis memberikan akses ke margin, biaya internal, atau seluruh percakapan sales.
+
+### Permission tambahan
+
+Owner dapat memberikan atau mencabut permission individual, termasuk akses view-only atau edit pada proyek dan prospek tertentu.
+
+Akun memiliki status Active/Inactive. Akun inactive tidak dapat login, sesi aktifnya dicabut, dan tidak menerima assignment baru. Riwayat tetap dipertahankan; tugas dan proyek dapat dialihkan, dan akun dapat diaktifkan kembali.
+
+Login menggunakan email dan password. MFA/2FA tidak termasuk scope yang disepakati saat ini. Beberapa perangkat dapat login secara bersamaan tanpa otomatis mengeluarkan sesi lain.
+
+## 4. CRM dan prospect management
+
+Prospek adalah peluang bisnis yang ditemukan melalui riset, bukan sekadar nomor telepon.
+
+### Data prospek
+
+- Perusahaan/bisnis dan kontak.
+- Nomor WhatsApp, email, website/domain.
+- Industri, lokasi jika relevan, dan sumber informasi.
+- Catatan riset dan alasan peluang.
+- Masalah yang mungkin dihadapi bisnis.
+- Layanan yang berpotensi ditawarkan.
+- Sales penanggung jawab.
+- Stage, next action, jadwal follow-up, dan riwayat aktivitas.
+
+### Pipeline
+
+New → Contacted → Responded → Engaged / In Conversation → Qualified → Negotiation → Pending → Closed Won / Failed.
+
+- **Qualified:** prospek tertarik dan meeting telah dijadwalkan.
+- **Pending:** prospek meminta dihubungi kembali pada waktu mendatang.
+- **Failed:** peluang tidak berlanjut; prospek tetap disimpan dan dapat diaktifkan kembali.
+- Pipeline stage dan next action adalah dua konsep terpisah.
+
+Alasan Failed dapat meliputi No Response, Rejected, Budget, Not a Fit, Competitor, Already Have Provider, Timeline, dan Other.
+
+### Duplikasi dan assignment
+
+Nomor WhatsApp yang dinormalisasi menjadi indikator kuat duplikasi. Email, domain, dan nama perusahaan menjadi indikator tambahan. Sistem tidak boleh otomatis menggabungkan perusahaan atau kontak hanya berdasarkan kemiripan.
+
+Assignment prospek dikonfigurasi Owner secara manual, misalnya membagi sepuluh prospek kepada dua Sales dengan masing-masing lima prospek. Pembagian otomatis berdasarkan beban kerja tidak termasuk scope saat ini.
+
+## 5. WhatsApp Web dan workflow sales
+
+MVP menggunakan WhatsApp Web secara manual untuk menghindari ketergantungan biaya WABA.
+
+WhatsApp Web dapat dibuka melalui Fynux OS maupun secara mandiri.
+
+### Jalur A — Dari CRM
+
+1. Sales membuka prospek.
+2. Klik Reach Now.
+3. Fynux OS membuka WhatsApp Web menuju nomor prospek dan menyiapkan pesan.
+4. Sales mengirim pesan sendiri.
+5. Sales kembali ke Fynux OS dan memilih Mark as Sent.
+6. Sistem mencatat aktivitas dan menjadwalkan follow-up berdasarkan konfirmasi pengiriman.
+
+Membuka chat tidak berarti pesan telah terkirim. Fynux OS tidak boleh mengklaim pesan terkirim tanpa konfirmasi dari sales.
+
+### Jalur B — WhatsApp Web langsung
+
+Sales dapat membuka WhatsApp Web tanpa melalui CRM. Jika percakapan berkaitan dengan prospek di CRM, Sales memperbarui CRM secara manual.
+
+### Batasan integrasi
+
+- Tidak ada sinkronisasi pesan masuk otomatis yang dijamin.
+- Pesan client perlu disalin atau dimasukkan ke Fynux OS agar AI dapat menganalisisnya.
+- AI hanya mengetahui pesan yang tersedia di Fynux OS.
+- AI membuat draft pesan; manusia yang mengirimkannya.
+- Tidak ada klaim bahwa pesan otomatis terkirim atau client sudah membalas jika belum dikonfirmasi.
+
+## 6. Follow-up engine
+
+Jadwal default menggunakan hari kalender; akhir pekan dan hari libur tetap dihitung.
+
+- Hari 0: Initial Reach.
+- Setelah 1 hari: Follow-up #1.
+- Setelah 3 hari: Follow-up #2.
+- Setelah 5 hari: Follow-up #3.
+- Setelah 10 hari tambahan tanpa respons: tandai Failed.
+
+Jadwal tersebut adalah tanggal jatuh tempo aktivitas, bukan jadwal pengiriman otomatis.
+
+Jika client membalas, siklus no-response dihentikan dan status diperbarui melalui input manual yang dapat dianalisis AI.
+
+Perubahan aturan follow-up berlaku ke depan dan tidak mengubah riwayat aktivitas sebelumnya.
+
+## 7. AI Sales Agent dan governance
+
+### AI boleh
+
+- Menganalisis pesan yang dimasukkan ke sistem.
+- Mengklasifikasikan respons dan mengusulkan atau memperbarui status operasional.
+- Membuat task dan menjadwalkan follow-up sesuai aturan.
+- Merangkum percakapan.
+- Menyarankan alasan Failed.
+- Membuat draft pesan dan membantu penyusunan penawaran.
+
+### AI tidak boleh
+
+- Mengarang harga, deadline, fitur, atau komitmen kontraktual.
+- Mengirim pesan WhatsApp secara mandiri dalam MVP.
+- Menjanjikan diskon, mengubah syarat pembayaran, atau membuat komitmen komersial tanpa approval.
+- Menyimpulkan sesuatu jika konteks tidak cukup.
+
+Tindakan komersial yang membutuhkan persetujuan masuk ke Approval Queue dan hanya Owner yang menyetujuinya.
+
+Tindakan operasional dapat dilakukan AI jika aturan dan kondisi yang diizinkan sudah jelas. Jika ragu, AI harus meminta klarifikasi atau eskalasi kepada manusia.
+
+## 8. Deal dan katalog layanan
+
+Deal Accepted berarti client telah menyetujui penawaran dan syarat yang disepakati.
+
+Katalog produk dan layanan berfungsi sebagai referensi. Harga final deal dapat berbeda dan dimasukkan secara manual.
+
+Owner dapat memasukkan:
+
+- Nilai deal.
+- Harga jual yang disepakati.
+- Estimasi atau biaya produksi.
+- Target profit.
+- Syarat pembayaran.
+- Lingkup pekerjaan dan pengecualian.
+
+Tidak ada margin default yang dipaksakan. Jika data biaya belum lengkap, profit harus ditandai belum lengkap, bukan dianggap nol.
+
+## 9. Invoice dan pembayaran
+
+Invoice dikelola langsung di Fynux OS.
+
+### Model pembayaran
+
+- Pelunasan langsung.
+- DP + pelunasan.
+- Pembayaran bertahap/termin.
+
+Satu invoice dapat menerima banyak pembayaran. Satu proyek juga dapat memiliki beberapa invoice jika diperlukan.
+
+### Alur invoice
+
+Deal disetujui → invoice dibuat → invoice diterbitkan → pembayaran dicatat → saldo dan status diperbarui.
+
+Invoice yang dibuat belum berarti uang telah diterima. Pengiriman invoice kepada client dapat dilakukan secara manual.
+
+### Status invoice
+
+- Draft.
+- Issued.
+- Partially Paid.
+- Paid.
+- Overdue.
+- Cancelled.
+
+Status Overdue berlaku jika tanggal jatuh tempo terlewati dan masih ada saldo yang harus dibayar.
+
+### Pencatatan pembayaran
+
+- Mendukung pencatatan manual dan otomatis melalui payment gateway.
+- Bukti pembayaran bersifat opsional.
+- Pembayaran manual dikonfirmasi oleh Owner atau user dengan permission pencatatan pembayaran.
+- Status gateway yang pending tidak mengurangi piutang sampai pembayaran terkonfirmasi.
+- Refund hanya dapat disetujui Owner.
+
+### Koreksi invoice dan pembayaran
+
+- Invoice yang sudah diterbitkan dan perlu dikoreksi: batalkan invoice lama, pertahankan riwayatnya, lalu terbitkan invoice pengganti.
+- Pembayaran yang salah atau terduplikasi: gunakan mekanisme reversal/void dan catatan koreksi; jangan menghapus transaksi diam-diam.
+- Pembayaran berlebih: dicatat sebagai saldo kredit client yang dapat dialokasikan ke invoice lain atau dikembalikan melalui proses refund yang disetujui Owner.
+- Jika proyek dibatalkan setelah pembayaran sebagian, lakukan rekonsiliasi tagihan yang tetap berlaku, saldo kredit, dan/atau refund sebelum penyelesaian invoice.
+
+### Jatuh tempo dan piutang
+
+- Tanggal jatuh tempo ditentukan manual per invoice.
+- Invoice overdue ditampilkan di dashboard.
+- Piutang tetap overdue sampai dibayar atau diselesaikan secara sah.
+- Fynux OS tidak otomatis mengirim pesan penagihan kepada client.
+
+### Otorisasi invoice
+
+- Owner dan Sales dengan permission dapat membuat serta menerbitkan invoice.
+- Owner dan user dengan permission dapat mengonfirmasi pembayaran manual.
+- Refund hanya dapat disetujui Owner.
+
+### Pelaporan keuangan
+
+Sistem membedakan:
+
+- Nilai deal.
+- Total invoice yang berlaku.
+- Pembayaran yang telah diterima dan dikonfirmasi.
+- Piutang/outstanding receivable.
+- Biaya.
+- Estimasi profit dan margin.
+
+Profit bukan uang kas yang tersedia. Data biaya yang belum lengkap harus ditampilkan dengan jelas.
+
+## 10. Handoff deal ke proyek
+
+Project Workspace dibuat setelah deal disetujui dan invoice dibuat.
+
+### Field handoff
+
+- Identitas client dan kontak.
+- Scope pekerjaan, deliverables, pengecualian, serta kesepakatan final.
+- Harga dan syarat pembayaran.
+- Target deadline dan milestone jika ada.
+- Kebutuhan teknis serta kriteria hasil yang dianggap selesai.
+- Sales PIC, tim atau developer yang akan ditugaskan.
+- Risiko, blocker, pertanyaan terbuka, dan data yang masih ditunggu.
+- Referensi dokumen atau aset eksternal.
+
+Aset seperti logo, konten final, atau akses hosting hanya wajib jika dibutuhkan untuk tahap pengerjaan terkait. Kredensial sensitif tidak boleh disimpan sebagai teks biasa.
+
+### Aturan handoff
+
+- Data wajib harus lengkap sebelum handoff dinyatakan siap.
+- Data nonwajib dapat menyusul.
+- Sales penanggung jawab memeriksa checklist dan menyatakan handoff siap.
+- Owner menentukan tim dan tugas secara manual.
+- Jika prasyarat wajib belum terpenuhi, workspace dapat dibuat tetapi pengerjaan diblokir dan blocker harus terlihat.
+- Developer mulai bekerja mengikuti syarat deal yang disepakati; tidak selalu harus menunggu pelunasan.
+
+## 11. Project lifecycle
+
+Status utama:
+
+- Draft.
+- Active.
+- On Hold.
+- Completed.
+- Cancelled.
+- Archived.
+
+Progress pengerjaan dan project health/risk adalah indikator berbeda. Proyek dengan progres tinggi tetap dapat memiliki blocker kritis.
+
+### On Hold
+
+Wajib mencatat:
+
+- Alasan penundaan.
+- Pihak penyebab jika diketahui.
+- Tanggal mulai hold.
+- Rencana tindak lanjut atau tanggal evaluasi.
+
+Proyek dapat dilanjutkan kembali. Sistem tidak otomatis membatalkan proyek hanya karena terlambat atau invoice overdue.
+
+### Cancelled
+
+- Pembatalan proyek hanya dilakukan Owner.
+- Alasan pembatalan wajib dicatat.
+- Riwayat tugas, komunikasi, invoice, dan pembayaran tetap tersimpan.
+- Jika ada pembayaran, rekonsiliasi keuangan harus dilakukan sesuai aturan invoice.
+
+### Archived
+
+Proyek dikeluarkan dari workspace aktif tetapi tetap dapat dicari dan dipulihkan sesuai permission. Archive bukan permanent delete.
+
+## 12. Change Request dan perubahan scope
+
+Perubahan scope mengikuti proses Change Request:
+
+1. Permintaan client dicatat.
+2. Dampak biaya, harga, deadline, dan pekerjaan dinilai.
+3. Owner menyetujui penawaran perubahan.
+4. Client menyetujui perubahan.
+5. Pekerjaan tambahan baru boleh dikerjakan setelah persetujuan tersebut.
+
+Semua perubahan scope dan harga membutuhkan persetujuan Owner.
+
+Perubahan teknis yang tetap berada di dalam scope yang telah disepakati dapat ditangani tim sesuai permission.
+
+## 13. Project completion dan garansi
+
+Proyek dinyatakan Completed ketika:
+
+- Deliverables selesai.
+- Pemeriksaan internal selesai.
+- Serah terima kepada client dikonfirmasi.
+
+Masa garansi dimulai ketika serah terima atau penerimaan client dikonfirmasi, dengan tanggal mulai yang dicatat.
+
+Data garansi mencakup:
+
+- Periode.
+- Tanggal mulai dan berakhir.
+- Cakupan.
+- Status.
+
+Garansi dicatat di profil client dan proyek. Dukungan client tetap direkam melalui percakapan, tanpa modul tiket terpisah.
+
+Proyek Completed dapat dibuka kembali dengan alasan dan riwayat jika diperlukan untuk koreksi penyelesaian. Scope tambahan atau repeat order perlu dipisahkan dari pekerjaan lama agar pelaporan tetap akurat.
+
+## 14. Maintenance, renewal, dan repeat order
+
+### Maintenance
+
+Maintenance merupakan layanan/kontrak terpisah yang terhubung dengan client dan proyek asal.
+
+Data mencakup:
+
+- Periode layanan.
+- Harga.
+- Biaya.
+- Status.
+- Hubungan ke client dan proyek sebelumnya.
+
+Jenis layanan dapat berupa one-off, bulanan, atau tahunan.
+
+### Renewal
+
+Fynux OS membuat task pengingat internal sebelum masa maintenance berakhir. Renewal tidak otomatis memperpanjang kontrak atau membuat invoice.
+
+### Repeat order / upsell
+
+Peluang repeat order dicatat sebagai peluang baru di CRM yang terhubung ke profil client dan proyek sebelumnya.
+
+Jika deal disetujui, proses kembali mengikuti pembuatan invoice dan Project Workspace baru.
+
+## 15. Task, To-Do, dan Team Board
+
+### Task
+
+- Setiap task memiliki satu PIC dan dapat memiliki beberapa collaborator.
+- PIC tetap bertanggung jawab atas task.
+- Perubahan assignment mempertahankan riwayat aktivitas.
+- Tidak ada dependency antartask pada scope saat ini.
+- Task terlambat hanya ditandai sistem; tidak ada eskalasi otomatis kepada Owner.
+
+### Universal To-Do
+
+Setiap anggota melihat task miliknya. Owner dapat melihat seluruh task perusahaan.
+
+### Project Chat
+
+Komunikasi internal khusus proyek.
+
+### Team Board
+
+Untuk pengumuman, SOP, target, ide, blocker, dan koordinasi lintas tim.
+
+Tidak ada modul direct message internal pada scope saat ini.
+
+## 16. Settings dan business rules
+
+- Target ditentukan manual oleh Owner.
+- SOP dan aturan bisnis ditulis manual melalui Settings.
+- Teks SOP saja tidak otomatis menjadi aturan AI; kondisi dan tindakan harus didefinisikan secara eksplisit.
+- Perubahan target dan aturan berlaku ke depan.
+- Pengaturan menyimpan konfigurasi terbaru, tanpa sistem versioning konfigurasi yang kompleks.
+- Riwayat aktivitas tetap dipertahankan ketika pengaturan berubah.
+
+## 17. Command Center dan analytics
+
+Layout dashboard ditentukan berdasarkan role.
+
+### Owner
+
+Hybrid layout: metrik bisnis di bagian atas, priority actions berikutnya, lalu operational overview.
+
+Menampilkan pipeline sales, revenue dan piutang, kondisi proyek, risiko, performa tim, approval AI, dan aktivitas penting.
+
+### Sales
+
+Prospek yang ditugaskan, percakapan, respons, follow-up, pipeline, target, dan performa pribadi.
+
+### Developer
+
+Proyek terkait, task, deadline, milestone, progress, risiko, dan Project Chat.
+
+### Analytics
+
+- Sales & CRM.
+- Finance.
+- Project Delivery.
+- Team Performance.
+- Client Lifecycle.
+- AI Performance.
+
+Owner melihat analitik perusahaan. Anggota melihat performa dan target pribadi.
+
+Periode default adalah bulan kalender berjalan, dengan pilihan periode lain.
+
+Data kosong, nol, tidak lengkap, tidak dapat dihitung, dan gagal dimuat harus dibedakan.
+
+## 18. Data, keamanan, dan aktivitas
+
+- Notifikasi hanya di dalam dashboard.
+- Activity Log mencatat aktivitas penting: aktor, jenis aktivitas, waktu, dan objek.
+- Tidak semua perubahan perlu dicatat sebagai snapshot before/after.
+- Tidak ada permanent delete secara default; archive/deactivate lebih diutamakan.
+- Owner dapat melakukan permanent delete jika diperlukan, dengan memperhatikan integritas transaksi dan riwayat.
+- Undo hanya tersedia untuk tindakan yang aman. Pesan WhatsApp yang sudah dikirim dan pembayaran nyata tidak dapat di-undo; diperlukan mekanisme koreksi.
+- Global Search menghormati permission.
+- File tidak di-host di Fynux OS; sistem menyimpan tautan eksternal, misalnya Google Drive.
+- Backup otomatis harian dan Point-in-Time Recovery (PITR) menjadi target desain jika didukung infrastruktur. Retensi dan kemampuan pemulihan perlu ditentukan.
+- Penghapusan atau pemulihan data dibatasi sesuai permission Owner.
+
+## 19. Hal yang masih belum diputuskan
+
+### A. Invoice dan keuangan
+
+1. Payment gateway yang akan digunakan.
+
+DUITKU PAYMENT GATEWAY
+
+1. Metode pembayaran yang tersedia dan aturan konfirmasi webhook.
+
+TRANSFER BANK MANUAL BCA
+
+untuk payment gateway
+Qris/VA Account\
+
+
+1. Detail nomor invoice, format, prefix, dan aturan penomoran.
+FYN-(NUMBER)-(DATE)
+2. Format invoice, identitas legal, pajak, mata uang, serta informasi rekening.
+FORMATNYA SEPERTI /INVOICE-WEBDEV1.pdf
+3. Apakah invoice dikirim sebagai PDF, tautan, atau keduanya.
+   keduanya
+4. Apakah invoice pengganti selalu merujuk nomor invoice lama.
+   tidak
+5. Alur teknis reversal/void, refund, saldo kredit, dan rekonsiliasi payment gateway.
+6. Apakah piutang write-off diperlukan dan siapa yang dapat menyetujuinya.
+YA, OWNER/ADMIN PALING ATAS 
+7. Perlakuan invoice ketika ada perubahan nilai deal setelah invoice terbit.
+nanti di terbitkan invoice baru
+8. Perhitungan profit final dan pencatatan biaya aktual.
+nanti kita perlu memasukkan biaya variable seperti modal pembuatannya dan lain lain. lalu markupnya. sebagai contoh untuk website, modal awal 400rb, harga jual 1.5jt. jadi untungnya 1.1jt. lalu ada biaya lain seperti hosting, domain, dll.
+
+### B. WhatsApp dan AI
+
+1. Cara memasukkan pesan masuk ke Fynux OS: paste teks saja atau juga menyimpan lampiran/metadata.
+   menyimpan lampiran metadata
+2. Format pencatatan pesan dan riwayat percakapan.
+jika ai tidak bisa langsung membaca dari wa web mungkin nanti kita membuat engine untuk ai memahami dengan mengambil seluruh percakapan dan formatnya json dan engine mengompilasi percakapan dari awal sampai akhir jadi ai bisa membaca seluruh percakapan seperti ai bisa membuka wa web secara langsung. bagaimana menurutmu apakah ini efisien?
+3. Cara mengaitkan percakapan manual dengan prospek yang tepat.t
+4. Cara menangani pesan masuk yang tidak jelas atau prospek duplikat.
+untuk mengantisipasi duplikat nanti cocokan nomornya jika ada nomor yang sama maka itu duplikat.
+5. Batas penggunaan AI, model, dan biaya operasional.
+model ai sementara aku mau menggubakan gemini free tier
+6. Kriteria approval untuk berbagai tindakan AI.
+jadi ai membuatkan pesan ready to send dengan persona yang di kustomisasi nanti. apakah bisa?
+7. Apakah kelak akan ada integrasi API resmi jika anggaran memungkinkan.
+sementara karena ini masih startup maka gunakan yang free.
+
+### C. CRM dan sales
+
+1. Field wajib dan aturan validasi setiap stage.
+
+2. Format template pesan, proposal, dan penawaran.
+nanti akan di buat manual/ada campur tangan ai jadi bisa menyesuaikan dengan data prospek, karena setiap prospek ada data notesnya seperti niche, masalah yang di miliki, solusi. dari variable data notes tersebut ai bisa menyesuaikan pesan.
+3. Aturan penetapan jadwal meeting.
+ini manual nanti membutuhkan persetujuan owner/sales/admin.
+4. Detail penanganan reaktivasi prospek Failed.
+ini manual dan bisa di atur oleh admin/owner.
+5. Definisi metrik sales dan rumus target.
+metrik yang di butuhkan:
+- Target personal, untuk sales dan admin.
+- Target per bulan dan tahun. 
+- Revenue 
+6. Aturan jika Sales berganti PIC atau dinonaktifkan.
+ini manual nanti bisa di atur oleh admin/owner
+
+### D. Handoff dan proyek
+
+1. Checklist wajib yang berbeda untuk setiap jenis layanan.
+2. Kriteria teknis untuk memblokir pengerjaan.
+3. Definisi milestone dan rumus progress proyek.
+4. Siapa yang melakukan pemeriksaan internal selain developer.
+5. Mekanisme konfirmasi serah terima client.
+6. Format dan status Change Request.
+7. Apakah proyek On Hold memerlukan penyesuaian deadline secara eksplisit.
+8. Kapan proyek Completed boleh diarsipkan.
+
+### E. Warranty, maintenance, dan client lifecycle
+
+1. Template periode dan cakupan garansi per layanan.
+disini ada 3 plan untuk web developmentnya. basic, business dan enterprise.
+Basic = DATA INTI/Cover Terms & Services – Fynux Basic Website.pdf
+Business = (menyusul)
+Enterprise = (menyusul)
+2. Waktu default pengingat renewal.
+3. Detail data kontrak maintenance.
+4. Alur penawaran maintenance dan pengelolaan kontrak.
+5. Kriteria peluang repeat order dan metrik retensi client.
+kriterianya adalah jika prospek yang sudah deal dan invoice mereka mau deal lagi dengan invoice baru. maka sistem akan mengenali bahwa itu client lama jadi bisa di kategorikan sebagai repeat order.
+
+### F. Teknis dan operasional
+
+1. Stack teknologi dan arsitektur.
+2. Struktur database dan relasi tabel.
+3. Strategi backup, retensi, dan uji pemulihan.
+4. Kebijakan sesi login, reset password, dan audit keamanan.
+5. Retensi data, kebijakan privasi, dan pengelolaan data sensitif.
+6. Detail Activity Log dan kebijakan permanent delete.
+7. Batas penyimpanan file/link eksternal.
+8. Kriteria acceptance test untuk setiap modul.
+sitektur yang aku pilih
+Web Application
+
+Next.js · React · TypeScript
+
+Application / Business Logic Layer
+
+CRM · Sales · Finance · Projects · AI · Permissions
+
+PostgreSQL
+
+Data transaksional
+
+
+Private Storage
+
+Lampiran dan dokumen
+
+
+
+
+Integrasi eksternal: Duitku · WhatsApp Web manual · AI provider · Email jika diperlukan
+
+Keputusan arsitektur penting:
+- Pisahkan modul berdasarkan domain bisnis, meskipun semuanya berada dalam satu aplikasi.
+- Semua perubahan invoice dan pembayaran diproses melalui backend yang tervalidasi, bukan langsung dari browser.
+- Buat database migration yang tercatat di Git.
+- Gunakan background job hanya ketika memang diperlukan untuk follow-up, renewal, pemrosesan webhook, dan pekerjaan terjadwal.
+- Integrasi AI dan payment gateway ditempatkan di lapisan adapter terpisah agar provider bisa diganti tanpa membongkar seluruh aplikasi.
+Aku belum menyarankan Kubernetes, microservices, atau event streaming kompleks. Itu menambah beban deployment dan maintenance tanpa manfaat sebanding untuk kebutuhan Fynux saat ini.
+2. Struktur database dan relasi tabel
+Database harus mengikuti alur bisnis, bukan hanya mengikuti bentuk halaman dashboard.
+Identity & Access
+
+users · roles · permissions · user_roles · user_permissions · sessions
+
+CRM & Sales
+
+companies · contacts · prospects · assignments · activities · conversations · messages · follow_ups
+
+Commercial & Finance
+
+deals · deal_items · invoices · invoice_items · payments · payment_events · refunds · credit_allocations · costs
+
+Project Operations
+
+projects · project_members · milestones · tasks · task_assignees · change_requests · warranties · maintenance_contracts
+
+System & Governance
+
+audit_logs · approvals · notifications · attachments · external_links · AI_runs · settings
+
+
+Relasi yang wajib benar
+- Satu company dapat memiliki banyak contacts dan opportunities.
+- Satu deal dapat memiliki beberapa item scope, invoice, dan proyek jika model bisnis mengizinkannya.
+- Satu invoice dapat memiliki banyak payment records.
+- Satu payment dapat dialokasikan ke invoice sesuai aturan rekonsiliasi; alokasi harus dicatat terpisah dari transaksi payment itu sendiri.
+- Satu project dapat memiliki banyak milestones, tasks, anggota, change requests, dan riwayat.
+- Satu client dapat memiliki banyak proyek, warranty, maintenance contract, dan peluang repeat order.
+- Setiap aktivitas penting terhubung ke aktor, waktu, dan objek yang terpengaruh.
+Standar database yang aku tetapkan
+1. Gunakan UUID untuk primary key internal.
+2. Gunakan foreign key dan constraint untuk menjaga relasi.
+3. Uang disimpan sebagai NUMERIC dengan presisi yang sesuai, bukan floating-point.
+4. Nomor invoice memiliki unique constraint dan tidak boleh bentrok.
+5. Simpan waktu secara konsisten dalam UTC; tampilkan ke zona waktu Asia/Jakarta.
+6. Gunakan transaksi database untuk operasi yang harus berhasil atau gagal bersama.
+7. Jangan menghapus invoice atau pembayaran yang sudah menjadi bagian dari riwayat transaksi.
+8. Terapkan Row-Level Security (RLS) bila tabel diakses melalui API yang dapat dijangkau client. Semua akses sensitif tetap harus divalidasi di server. 
+   
+   Supabase Docs
+Catatan: skema final belum perlu dibuat sekarang. Kita harus mendefinisikan field, constraint, dan relasi detail setelah blueprint fungsional selesai.
+3. Strategi backup, retensi, dan uji pemulihan
+Backup bukan sekadar menyimpan salinan database. Kita perlu memastikan bahwa data dapat dipulihkan ketika database rusak, ada kesalahan manusia, atau akun infrastruktur bermasalah.
+Backup harian
+Wajib
+Backup database otomatis setiap hari. Target awal retensi 30 hari untuk salinan independen yang dikelola sesuai kemampuan dan biaya infrastruktur.
+
+
+
+Point-in-Time Recovery (PITR)
+
+Target: dapat mengembalikan database ke titik waktu sebelum kesalahan terjadi. Pilih periode pemulihan sesuai risiko dan anggaran. Jangan mengasumsikan PITR tersedia pada semua paket.
+
+
+
+Backup lampiran
+
+File dan lampiran memerlukan strategi tersendiri, termasuk versioning atau backup terpisah jika didukung. Backup database saja tidak menjamin file ikut pulih. 
+
+Supabase Docs
+
+
+
+
+
+
+Restore drill bulanan
+
+Pulihkan backup ke lingkungan terpisah, lalu verifikasi relasi database, invoice, pembayaran, permissions, dan lampiran. Jangan pernah melakukan pengujian pemulihan dengan menimpa database production.
+
+
+
+Target pemulihan awal
+Parameter	Rekomendasi awal
+RPO — toleransi kehilangan data	Maksimal 15 menit untuk data kritis, jika PITR dan infrastrukturnya mendukung
+RTO — target waktu pulih	Maksimal 4 jam untuk insiden besar sebagai target awal
+Backup harian	Wajib
+Salinan independen di luar sistem utama	Wajib
+Uji restore	Bulanan dan setelah perubahan infrastruktur besar
+Enkripsi backup	Wajib
+Akses backup	Dibatasi, terpisah dari akses pengguna aplikasi
+
+RPO 15 menit dan RTO 4 jam adalah target desain, bukan jaminan bahwa layanan managed database otomatis memenuhinya. Kita harus memverifikasinya melalui pilihan paket dan simulasi pemulihan.
+
+4. Kebijakan sesi login, reset password, dan audit keamanan
+Meskipun sebelumnya MFA belum masuk scope, menurutku kita sebaiknya mempertimbangkannya kembali karena Owner memegang akses ke margin, invoice, data client, dan pengaturan sistem.
+Rekomendasi kebijakan
+Area	Kebijakan
+Authentication	Gunakan layanan auth terkelola; jangan membuat sistem hashing password sendiri
+Password reset	Token sekali pakai, memiliki masa berlaku, respons permintaan tidak membocorkan apakah email terdaftar
+Session	Cookie HttpOnly, Secure, dan SameSite yang sesuai; masa berlaku dikendalikan server
+Idle timeout	30 menit untuk sesi dashboard sensitif sebagai titik awal
+Absolute timeout	7 hari sebagai titik awal, dengan re-authentication untuk aksi sensitif
+Perangkat bersamaan	Tetap diperbolehkan sesuai keputusan bisnis, tetapi sesi aktif dapat dilihat dan dicabut
+Akun dinonaktifkan	Cabut seluruh sesi aktif dan blokir login baru
+Perubahan password	Minta verifikasi yang sesuai dan cabut sesi lain jika ada indikasi kompromi
+Owner dan aksi berisiko tinggi	Sangat disarankan memakai MFA; dapat diterapkan melalui kebijakan autentikasi yang didukung provider
+
+OWASP menyarankan pengelolaan sesi di sisi server, timeout idle dan absolut, serta perlindungan terhadap kebocoran token sesi. 
+
+OWASP Cheat Sheet Series
++1
+
+
+
+
+Saran khususku: jangan menjadikan akses Owner sebagai sekadar role admin biasa. Untuk refund, penghapusan permanen, perubahan permission sensitif, dan pengelolaan kredensial gateway, minta autentikasi ulang atau verifikasi tambahan.
+5. Retensi data, privasi, dan data sensitif
+Fynux OS akan menyimpan data pribadi kontak bisnis, riwayat komunikasi, serta data keuangan. Kita perlu membatasi data yang dikumpulkan dan siapa yang dapat melihatnya.
+Klasifikasi data
+
+Internal biasa
+
+Catatan tugas, status proyek, target, dan SOP. Hanya tersedia untuk pengguna sesuai peran dan kebutuhan kerja.
+
+
+
+Data client dan komunikasi
+
+Nomor WhatsApp, email, pesan yang dimasukkan ke CRM, lampiran, dan catatan prospek. Batasi berdasarkan assignment dan permission.
+
+
+
+Data keuangan terbatas
+
+Harga jual, biaya produksi, margin, pembayaran, refund, dan data gateway. Default hanya Owner dan role yang diberi izin eksplisit.
+
+
+
+Rahasia dan kredensial
+
+API key, secret payment gateway, token, password, serta akses server. Simpan di secret manager atau environment yang terlindungi; jangan pernah di log atau menaruhnya sebagai teks biasa dalam catatan proyek.
+
+
+
+Retensi awal yang aku usulkan
+- Prospek gagal dan riwayat CRM: tetap disimpan sampai ada alasan bisnis atau kebijakan retensi untuk menghapus atau menganonimkan.
+- Invoice, pembayaran, refund, dan transaksi: mengikuti kebutuhan pembukuan, kewajiban hukum, dan periode retensi yang berlaku.
+- Percakapan dan lampiran: simpan sesuai kebutuhan operasional; evaluasi berkala dan hapus atau anonimisasi bila sudah tidak diperlukan.
+- Audit log keamanan: usulan awal 12 bulan, dengan masa lebih panjang bila dibutuhkan untuk investigasi atau kewajiban yang berlaku.
+- Backup: mengikuti kebijakan backup yang sudah ditetapkan, dengan prosedur agar data yang telah dihapus tidak bertahan tanpa batas melalui siklus backup.
+Ini bukan penetapan masa retensi hukum. Sebelum production, kebijakan harus diperiksa terhadap kewajiban perlindungan data pribadi dan pembukuan yang berlaku di Indonesia. Privasi juga perlu mencakup tujuan pemrosesan, pembatasan akses, proses permintaan data, dan penanganan insiden.
+6. Activity Log dan permanent delete
+Aku menyarankan kita membedakan tiga jenis riwayat:
+Jenis	Tujuan	Contoh
+Business Activity	Riwayat operasional	Prospek dipindahkan ke Negotiation
+Security Audit	Keamanan dan akses	Login gagal, permission diubah, akses ditolak
+Transaction History	Integritas keuangan	Pembayaran dicatat, dibalik, atau direfund
+
+Setiap event penting setidaknya mencatat:
+- Aktor dan waktu.
+- Jenis tindakan dan hasilnya.
+- Objek yang terdampak.
+- Request/correlation ID jika relevan.
+- Alasan atau referensi persetujuan untuk tindakan sensitif.
+Untuk perubahan penting, seperti harga deal, permission, dan status invoice, simpan ringkasan perubahan sebelum dan sesudahnya jika aman. Jangan mencatat password, token, secret, atau isi lengkap pesan sensitif secara sembarangan. Panduan logging OWASP menekankan pentingnya mencatat event keamanan sambil mengecualikan rahasia dan data sensitif dari log. 
+
+OWASP Cheat Sheet Series
+
+
+
+Kebijakan permanent delete
+Default: archive atau deactivate.
+
+Permanent delete hanya tersedia untuk Owner melalui alur khusus:
+1. Sistem menampilkan data dan dampak yang akan dihapus.
+2. Sistem memeriksa relasi dan dependensi.
+3. Owner diminta memasukkan alasan dan mengonfirmasi kembali.
+4. Sistem menolak penghapusan yang merusak integritas transaksi.
+5. Penghapusan dicatat dalam audit log yang terpisah dari record yang dihapus.
+6. Jika data harus dipertahankan untuk kewajiban pembukuan atau investigasi, data tersebut tidak dihapus begitu saja.
+Untuk invoice atau pembayaran, gunakan pembatalan, reversal, atau koreksi. Untuk penghapusan data personal yang memang diwajibkan, rancang prosedur penghapusan atau anonimisasi yang tetap mempertahankan integritas catatan transaksi.
+7. Batas penyimpanan file dan link eksternal
+Ada satu hal yang perlu kita selaraskan dengan business logic sebelumnya: kamu sudah menetapkan file tidak di-host oleh Fynux OS, tetapi kemudian memilih agar lampiran percakapan disimpan.
+
+Menurutku, solusi terbaik adalah model hybrid.
+- Lampiran yang benar-benar diunggah ke Fynux OS: simpan di private object storage.
+- Dokumen besar atau dokumen kerja bersama: simpan di Google Drive atau layanan eksternal lain, lalu simpan tautan dan metadata di Fynux OS.
+- API key dan password: jangan disimpan sebagai lampiran biasa; gunakan secret manager.
+- Akses file: harus mengikuti permission objek induk, misalnya prospect, project, atau task.
+Batas awal yang disarankan
+Aturan	Rekomendasi
+Ukuran lampiran umum	Maksimal 20 MB per file
+Jenis file	Allowlist tipe file yang diperlukan, bukan semua ekstensi
+File berbahaya	Validasi MIME dan ekstensi; pemindaian malware bila tersedia
+Penyimpanan	Private bucket, bukan public URL permanen
+Link eksternal	Simpan URL, judul, tipe, pemilik, dan objek terkait
+Akses file	Signed URL berumur pendek atau proxy terautentikasi
+Kuota	Kuota total ditetapkan berdasarkan anggaran dan kebutuhan aktual
+
+Angka 20 MB hanyalah batas awal yang dapat kita ubah. Untuk link eksternal, Fynux OS tidak bisa menjamin link tetap aktif atau hak aksesnya benar. Sistem sebaiknya menyediakan status verifikasi manual, bukan menganggap semua link valid.
+
+8. Acceptance test untuk setiap modul
+Ini bagian yang menurutku paling penting. Kita tidak boleh menyatakan Fynux OS selesai hanya karena semua halaman sudah tampil dan tombol bisa diklik. Setiap modul harus memenuhi kriteria yang dapat diuji.
+Modul	Kriteria penerimaan minimum
+Authentication & Permission	User tidak bisa mengakses data di luar permission melalui UI maupun request API langsung.
+CRM	Pencarian duplikat berfungsi; assignment membatasi akses; perubahan stage mengikuti aturan; prospek Failed dapat diaktifkan kembali.
+WhatsApp workflow	Tombol Reach Now membuka chat yang benar; sistem tidak mengklaim pesan terkirim sampai Sales mengonfirmasi.
+AI & Approval Queue	AI tidak mengarang harga atau komitmen; draft dibedakan dari pesan terkirim; aksi yang membutuhkan approval tidak dijalankan sebelum disetujui.
+Follow-up engine	Jadwal sesuai konfigurasi; balasan menghentikan siklus no-response; perubahan aturan tidak mengubah jadwal historis secara tidak sengaja.
+Deal & pricing	Nilai deal, biaya, dan margin dihitung benar; biaya yang belum tersedia tidak dianggap nol.
+Invoice	Nomor invoice unik; status dan saldo sesuai transaksi; invoice pengganti tidak menghilangkan riwayat lama.
+Duitku & pembayaran manual	Pembayaran pending tidak mengurangi piutang; webhook duplikat tidak menggandakan pembayaran; nominal dan status diverifikasi server.
+Project handoff	Proyek tidak dapat dinyatakan siap jika checklist wajib belum lengkap; blocker ditampilkan dengan jelas.
+Project management	PIC, deadline, milestone, status On Hold, dan pembatalan mengikuti permission dan aturan.
+Change Request	Perubahan scope atau harga tidak bisa langsung menjadi pekerjaan aktif tanpa persetujuan yang diwajibkan.
+Warranty & maintenance	Tanggal garansi benar; renewal membuat pengingat internal, bukan kontrak atau invoice otomatis.
+Task & Team Board	Anggota hanya dapat mengubah task sesuai permission; riwayat assignment tetap ada.
+Analytics	Angka sesuai data sumber; nilai kosong, nol, belum lengkap, dan gagal dimuat dibedakan.
+Activity Log	Event penting tercatat; log tidak membocorkan secret; akses log dibatasi.
+Backup & restore	Backup berhasil dipulihkan ke lingkungan terpisah; integritas data dan file diverifikasi.
+File & attachment	Akses file mengikuti permission; file tidak bisa dibaca publik tanpa otorisasi; file tidak sah ditolak.
+Permanent delete	Aksi yang merusak integritas transaksi ditolak; penghapusan yang diizinkan membutuhkan konfirmasi dan alasan.
+
+Jenis pengujian yang wajib ada
+- Unit test: menguji perhitungan dan aturan bisnis secara terisolasi.
+- Integration test: menguji relasi database, transaksi, autentikasi, dan integrasi gateway.
+- End-to-end test: menjalankan alur nyata, misalnya prospek → deal → invoice → pembayaran → proyek.
+- Security test: menguji akses lintas role, manipulasi request, validasi input, dan kebocoran data.
+- Recovery test: membuktikan backup benar-benar dapat dipulihkan.
+- Regression test: memastikan perbaikan baru tidak merusak fitur yang sebelumnya berfungsi.
+Untuk pembayaran dan invoice, aku akan memberi perhatian lebih besar pada pengujian idempotensi, transaksi bersamaan, pembulatan uang, pembayaran ganda, reversal, dan webhook yang datang terlambat.
+
+Rekomendasi final dariku
+
+Arsitektur
+
+Next.js App Router + TypeScript dengan modular monolith.
+
+
+
+Database dan backend services
+
+PostgreSQL melalui Supabase, dengan validasi bisnis di server dan RLS untuk perlindungan data.
+
+
+
+Security
+
+Authentication terkelola, permission server-side, MFA untuk Owner jika didukung, audit log, dan pengelolaan secret yang aman.
+
+
+
+Reliability
+
+Backup database dan file yang terpisah, target pemulihan terukur, serta pengujian restore berkala.
+
+
+
+Quality gate
+
+Acceptance test dan security test menjadi syarat rilis, bukan pekerjaan tambahan setelah sistem berjalan.
+
+## 20. Status dokumen
+
+Business logic inti telah dikonsolidasikan berdasarkan keputusan yang disepakati dalam diskusi.
+
+Dokumen ini belum menjadi spesifikasi teknis final. Item yang belum diputuskan perlu diselesaikan sebelum implementasi modul terkait, terutama integrasi payment gateway, struktur invoice, validasi handoff per jenis layanan, dan kriteria penerimaan proyek.
+
+**Tahap berikutnya:** tinjau dokumen ini, tandai koreksi jika ada, lalu susun Blueprint Fungsional Fynux OS yang memetakan setiap modul, alur pengguna, status, permission, dan acceptance criteria tanpa langsung melompat ke implementasi kode.

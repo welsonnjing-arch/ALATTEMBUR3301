@@ -1,0 +1,983 @@
+# FYNUX OS
+## Functional Blueprint — MVP v1.0
+**Product:** Internal Business Operating System  
+**Company:** Fynux Digital Solutions  
+**Status:** Functional blueprint — business logic and scope  
+**Primary objective:** Mengintegrasikan sales, client management, finance, project delivery, AI, dan operasional tim ke dalam satu sistem internal.
+
+---
+
+# 1. Product Vision
+
+Fynux OS adalah pusat operasional perusahaan yang menghubungkan seluruh aktivitas bisnis Fynux dalam satu sistem.
+
+Sistem harus memastikan bahwa setiap prospek memiliki konteks riset, setiap aktivitas penjualan memiliki histori, setiap deal terhubung ke invoice dan project, setiap project memiliki penanggung jawab, serta setiap client tetap dikelola setelah pekerjaan selesai.
+
+## Tujuan utama
+
+1. Mengelola database prospek berbasis hasil riset bisnis.
+2. Mengorganisasi outreach dan percakapan client melalui WhatsApp.
+3. Membantu sales menjalankan follow-up dan closing.
+4. Menggunakan AI untuk klasifikasi percakapan dan otomasi operasional yang diizinkan.
+5. Mengelola katalog layanan, deal, proposal, invoice, pembayaran, dan profitabilitas.
+6. Mengelola project, task, developer, deadline, dan delivery.
+7. Mengelola warranty, maintenance, renewal, dan repeat order.
+8. Memantau performa bisnis dan tim melalui Command Center.
+9. Menjaga kontrol akses, integritas data, dan keamanan operasional.
+
+## Prinsip produk
+
+- Satu sistem terpadu, bukan aplikasi yang berdiri sendiri-sendiri.
+- Internal-use only; bukan SaaS untuk pelanggan eksternal.
+- Role menentukan fungsi dan layout utama.
+- Custom permission mengatur akses tambahan.
+- Data historis tetap terhubung sepanjang lifecycle client.
+- AI tidak boleh mengarang informasi bisnis.
+- Data yang tidak lengkap tidak boleh dianggap bernilai nol.
+- Otomasi tidak boleh melewati batas persetujuan yang ditentukan.
+
+---
+
+# 2. Business Lifecycle
+
+Alur utama Fynux OS:
+
+**Prospect Research → CRM → WhatsApp Outreach → Conversation & Follow-up → Deal Accepted → Invoice Created → Project Active → Project Completed → Warranty & Maintenance → Client Growth**
+
+Alur tersebut menjadi dasar integrasi semua modul.
+
+## 2.1 Prospect Research
+
+Tim melakukan riset terhadap bisnis yang berpotensi menjadi client Fynux.
+
+Contoh:
+
+> Bisnis memiliki skala besar, tetapi belum mempunyai website. Bisnis tersebut berpotensi membutuhkan website profesional untuk meningkatkan kredibilitas dan memperluas jangkauan pasar.
+
+Setiap prospek harus memiliki informasi yang cukup untuk memahami:
+- Bisnis apa yang sedang ditargetkan.
+- Mengapa bisnis tersebut relevan.
+- Masalah atau peluang apa yang ditemukan.
+- Layanan Fynux apa yang mungkin cocok.
+- Siapa kontak yang dapat dihubungi.
+
+Prospek tidak harus sudah tertarik menggunakan layanan. Justru tahap ini digunakan untuk mengidentifikasi peluang sebelum outreach dilakukan.
+
+## 2.2 Outreach dan penjualan
+
+Sales menghubungi prospek melalui WhatsApp, memahami kebutuhan bisnisnya, menjalankan follow-up, dan mengelola peluang sampai hasil akhirnya jelas.
+
+AI dapat membantu memahami percakapan dan menyiapkan draft pesan. Untuk MVP, manusia tetap bertanggung jawab mengirim pesan.
+
+## 2.3 Deal dan project handoff
+
+Ketika calon client menerima penawaran:
+1. Deal ditandai sebagai accepted.
+2. Nilai deal dan ketentuan yang disepakati dicatat.
+3. Invoice dibuat.
+4. Project dapat diaktifkan dan ditampilkan di workspace developer setelah deal diterima dan invoice dibuat.
+
+Pembayaran tidak harus lunas terlebih dahulu apabila ketentuan deal mengizinkan project dimulai.
+
+## 2.4 Delivery dan after-sales
+
+Project dikerjakan melalui workspace internal. Setelah selesai, data project tetap terhubung ke profil client untuk pengelolaan warranty, maintenance, renewal, dan peluang kerja sama berikutnya.
+
+---
+
+# 3. Application Modules
+
+MVP mencakup modul berikut.
+
+| Modul | Fungsi utama |
+|---|---|
+| Command Center | Ringkasan bisnis dan tindakan prioritas |
+| CRM & Prospects | Riset, database, assignment, pipeline |
+| WhatsApp Inbox | Percakapan bersama dengan client |
+| AI Sales Agent | Klasifikasi, draft, dan otomasi operasional |
+| Approval Queue | Persetujuan tindakan yang dibatasi |
+| Clients | Profil client dan riwayat hubungan |
+| Sales Pipeline | Peluang, negosiasi, dan closing |
+| Product & Service Catalog | Katalog produk/jasa dan komponen harga |
+| Proposals & Deals | Penawaran dan kesepakatan komersial |
+| Finance | Invoice, pembayaran, piutang, biaya, profit |
+| Projects | Delivery dan lifecycle project |
+| Tasks | Pekerjaan individu dan kolaboratif |
+| Universal To-Do | Daftar tugas personal dan perusahaan |
+| Project Chat | Komunikasi internal per project |
+| Team Board | Pengumuman, SOP, ide, dan koordinasi |
+| Client Lifecycle | Warranty, maintenance, renewal, upsell |
+| Analytics | Performa sales, finance, delivery, tim, client, AI |
+| Settings | Konfigurasi operasional dan business rules |
+| Global Search | Pencarian lintas modul sesuai permission |
+| Activity Log | Catatan aktivitas penting |
+| Notification Center | Notifikasi internal di dashboard |
+
+Seluruh modul masuk dalam cakupan MVP. Integrasi eksternal tetap bergantung pada dukungan provider, kredensial, biaya, dan pengujian yang diperlukan.
+
+---
+
+# 4. CRM & Prospect Management
+
+## 4.1 Struktur data prospek
+
+Setiap prospek dapat memiliki informasi berikut:
+
+- Nama bisnis/perusahaan.
+- Nama kontak.
+- Nomor WhatsApp.
+- Email, jika tersedia.
+- Website dan domain, jika tersedia.
+- Industri atau kategori bisnis.
+- Lokasi, jika relevan.
+- Sumber prospek.
+- Catatan hasil riset.
+- Masalah atau peluang yang ditemukan.
+- Layanan yang berpotensi ditawarkan.
+- Sales yang ditugaskan.
+- Pipeline stage.
+- Next action.
+- Tanggal follow-up berikutnya.
+- Riwayat percakapan dan aktivitas.
+
+Catatan riset harus dapat ditulis secara bebas. Sistem tidak boleh mewajibkan seluruh informasi tersedia sebelum sebuah prospek dapat dicatat.
+
+## 4.2 Pipeline stage
+
+Pipeline stage menggambarkan posisi prospek dalam proses penjualan.
+
+Status yang digunakan:
+
+- **New:** prospek baru dimasukkan dan belum dihubungi.
+- **Contacted:** outreach sudah dilakukan.
+- **Responded:** prospek sudah memberikan respons.
+- **Engaged / In Conversation:** percakapan aktif dan peluang sedang dieksplorasi.
+- **Qualified:** prospek menunjukkan ketertarikan dan meeting telah dijadwalkan.
+- **Negotiation:** pembahasan penawaran atau ketentuan komersial.
+- **Pending:** prospek meminta dihubungi kembali pada waktu tertentu.
+- **Closed Won:** deal berhasil diterima.
+- **Failed:** peluang berakhir tanpa closing.
+
+Status harus merepresentasikan kondisi aktual, bukan hanya urutan checklist.
+
+## 4.3 Next action
+
+Next action berbeda dari pipeline stage. Fungsinya menentukan pekerjaan berikutnya.
+
+Contoh:
+- Reach Now.
+- Waiting for Response.
+- Reply to Client.
+- Prepare Proposal.
+- Schedule Meeting.
+- Follow Up on Scheduled Date.
+- No Action Required.
+
+Satu prospek dapat berstatus Engaged dengan next action berupa Prepare Proposal. Dengan begitu, pipeline menunjukkan posisi penjualan sementara next action menunjukkan pekerjaan yang harus dilakukan.
+
+## 4.4 Prospect assignment
+
+Owner mengatur distribusi prospek melalui Settings.
+
+Contoh:
+- 10 prospek baru.
+- Sales A menerima 5.
+- Sales B menerima 5.
+
+Distribusi mengikuti aturan yang ditentukan Owner, bukan algoritma pembagian berdasarkan beban kerja otomatis.
+
+Sales hanya dapat melihat dan mengelola prospek yang ditugaskan kepadanya, kecuali diberikan custom permission tambahan.
+
+## 4.5 Duplicate prevention
+
+Nomor WhatsApp yang telah dinormalisasi menjadi salah satu pengenal utama untuk mendeteksi duplikasi.
+
+Email, domain, dan nama perusahaan dapat digunakan sebagai indikator tambahan.
+
+Satu perusahaan dapat memiliki beberapa kontak dan beberapa peluang penjualan. Karena itu, duplikasi kontak tidak boleh otomatis dianggap sebagai duplikasi perusahaan atau deal.
+
+Jika ditemukan potensi duplikasi, sistem sebaiknya memberi peringatan untuk diperiksa, bukan langsung menggabungkan data tanpa konfirmasi.
+
+## 4.6 Failed prospects
+
+Prospek Failed tetap tersimpan dan tidak otomatis dihapus.
+
+Kategori alasan:
+- No Response.
+- Rejected.
+- Budget.
+- Not a Fit.
+- Competitor.
+- Already Have Provider.
+- Timeline.
+- Other.
+
+AI dapat menyarankan atau mengklasifikasikan alasan berdasarkan percakapan. User dapat mengoreksi klasifikasi tersebut.
+
+Prospek yang sudah Failed dapat diaktifkan kembali jika muncul peluang baru.
+
+---
+
+# 5. WhatsApp Inbox
+
+WhatsApp Inbox merupakan shared company inbox untuk komunikasi dengan prospek dan client.
+
+CRM dan WhatsApp Inbox memiliki menu berbeda, tetapi terhubung melalui kontak, perusahaan, peluang, dan percakapan.
+
+## 5.1 Fitur utama
+
+- Daftar percakapan.
+- Identitas kontak dan perusahaan.
+- Riwayat pesan yang tersedia.
+- Konteks riset prospek.
+- Pipeline stage dan next action.
+- Draft pesan dari AI.
+- Indikator pesan masuk yang membutuhkan respons.
+- Hubungan percakapan dengan client dan project terkait.
+
+## 5.2 Aturan pengiriman pesan
+
+Untuk MVP:
+- AI hanya membuat draft pesan.
+- Manusia meninjau dan mengirim pesan.
+- Draft dan pesan yang benar-benar terkirim harus dibedakan.
+- Sistem tidak boleh menandai pesan sebagai terkirim tanpa konfirmasi pengiriman yang valid.
+
+Fitur Reach Now harus menggunakan mekanisme yang benar-benar sesuai dengan integrasi yang dipilih. Membuka WhatsApp Web saja tidak menjamin pesan terkirim atau event pesan dapat disinkronkan secara otomatis.
+
+Karena itu, shared inbox, pengiriman pesan, dan sinkronisasi percakapan perlu dirancang berdasarkan kemampuan WhatsApp Business Platform atau provider yang digunakan.
+
+---
+
+# 6. Follow-up Engine
+
+Jadwal follow-up disimpan di Settings dan menggunakan kalender hari, bukan hari kerja. Akhir pekan dan hari libur tetap dihitung.
+
+## 6.1 Jadwal default
+
+| Tahap | Interval setelah tahap sebelumnya |
+|---|---:|
+| Initial Reach | Hari 0 |
+| Follow-up #1 | 1 hari |
+| Follow-up #2 | 3 hari |
+| Follow-up #3 | 5 hari |
+| Penetapan Failed | 10 hari setelah Follow-up #3 jika tetap tidak ada respons |
+
+Setiap interval dihitung berdasarkan event outreach yang benar-benar terjadi dan timestamp yang terverifikasi. Definisi event penghitungan final perlu disesuaikan dengan kemampuan integrasi pesan.
+
+## 6.2 Aturan operasional
+
+- Jadwal jatuh tempo menghasilkan task atau action di dashboard.
+- Sistem tidak otomatis mengirim pesan follow-up.
+- AI dapat menyiapkan draft follow-up.
+- Manusia bertanggung jawab mengirimnya.
+- Pesan masuk menghentikan siklus follow-up karena tidak ada respons.
+- Jika prospek meminta dihubungi bulan depan, stage menjadi Pending dan tanggal follow-up ditetapkan sesuai permintaan.
+- Prospek yang merespons tetapi belum tertarik tidak otomatis dinyatakan gagal.
+- Jika tidak ada respons setelah seluruh siklus, prospek dapat ditandai Failed.
+
+Perubahan jadwal melalui Settings berlaku untuk proses berikutnya dan tidak mengubah fakta historis mengenai follow-up yang telah dilakukan.
+
+---
+
+# 7. AI Sales Agent
+
+AI adalah asisten operasional, bukan pengambil keputusan komersial tanpa batas.
+
+## 7.1 Tindakan yang diizinkan
+
+AI dapat:
+- Mengklasifikasikan pesan masuk.
+- Mengidentifikasi indikasi ketertarikan atau penolakan.
+- Memperbarui pipeline stage berdasarkan aturan.
+- Membuat task.
+- Menjadwalkan follow-up.
+- Menghentikan siklus follow-up ketika prospek merespons.
+- Merangkum percakapan.
+- Mengidentifikasi alasan kegagalan.
+- Menyiapkan draft pesan.
+- Mengarahkan kasus yang ambigu kepada manusia.
+
+## 7.2 Tindakan yang memerlukan approval
+
+Tindakan komersial yang tidak tercakup dalam aturan yang sudah disetujui memerlukan persetujuan Owner, termasuk:
+- Penawaran harga khusus.
+- Diskon.
+- Perubahan termin pembayaran.
+- Komitmen kontraktual atau komersial di luar ketentuan.
+- Perubahan syarat yang memengaruhi kesepakatan.
+
+Approval tidak berarti pesan sudah terkirim atau tindakan sudah selesai. Sistem harus mencatat hasil tindakan aktual secara terpisah.
+
+## 7.3 AI tidak boleh
+
+- Mengarang harga, deadline, fitur, atau janji layanan.
+- Menganggap prospek qualified tanpa meeting terjadwal.
+- Menebak ketika konteks percakapan tidak cukup.
+- Mengirim pesan WhatsApp secara mandiri dalam MVP.
+- Mengakses data sensitif yang tidak diizinkan.
+- Menyetujui permintaannya sendiri.
+
+Jika AI tidak yakin, AI harus meminta klarifikasi atau mengirim kasus ke human review.
+
+---
+
+# 8. Clients & Sales Pipeline
+
+Ketika deal berhasil, hubungan bisnis harus berpindah dari pengelolaan prospek menuju pengelolaan client tanpa kehilangan histori sebelumnya.
+
+## 8.1 Client profile
+
+Profil client menjadi pusat informasi untuk:
+- Identitas bisnis dan kontak.
+- Riwayat prospek dan outreach.
+- Percakapan terkait.
+- Deal dan nilai transaksi.
+- Proposal dan invoice.
+- Project yang pernah dikerjakan.
+- Pembayaran dan kewajiban yang masih terbuka.
+- Warranty dan maintenance.
+- Peluang upsell atau repeat order.
+
+Satu client dapat memiliki beberapa project dan beberapa peluang transaksi.
+
+## 8.2 Deal accepted
+
+Deal dapat ditandai Closed Won ketika client telah menyetujui penawaran sesuai mekanisme yang ditentukan Fynux.
+
+Informasi yang dicatat:
+- Client.
+- Layanan yang disepakati.
+- Nilai deal.
+- Ketentuan pembayaran.
+- Ruang lingkup pekerjaan.
+- Catatan kesepakatan.
+- PIC sales.
+- Hubungan dengan proposal dan project terkait.
+
+Nilai transaksi yang disepakati tidak boleh disamakan dengan uang yang telah diterima.
+
+---
+
+# 9. Product & Service Catalog
+
+Katalog mendukung:
+- Paket dengan harga tetap.
+- Layanan custom dengan harga manual.
+- Item tambahan.
+- Kuantitas.
+- Diskon yang diizinkan.
+- Deskripsi dan ruang lingkup layanan.
+- Komponen biaya untuk perhitungan internal.
+
+Harga katalog menjadi referensi, bukan pengganti kesepakatan aktual dengan client.
+
+Owner dapat memasukkan harga deal dan biaya produksi secara manual.
+
+Informasi biaya internal, margin, dan profitabilitas tidak otomatis tersedia bagi Sales atau Developer. Akses tersebut mengikuti permission khusus.
+
+Perubahan harga katalog berlaku untuk penawaran baru dan tidak boleh diam-diam mengubah nilai deal historis.
+
+---
+
+# 10. Proposal, Invoice & Finance
+
+## 10.1 Invoice
+
+Invoice dibuat berdasarkan deal yang telah diterima.
+
+Sistem mendukung:
+1. Pembayaran penuh.
+2. DP dan pelunasan.
+3. Pembayaran berdasarkan milestone atau termin.
+
+Satu project dapat memiliki beberapa invoice jika memang diperlukan oleh kesepakatan.
+
+## 10.2 Payment tracking
+
+Sistem membedakan:
+- Nilai deal.
+- Total invoice.
+- Total pembayaran yang diterima.
+- Sisa piutang.
+- Status pembayaran.
+
+Status invoice perlu mencerminkan kondisi aktual, misalnya Draft, Issued, Partially Paid, Paid, Overdue, atau Cancelled sesuai aturan yang ditetapkan.
+
+Pembayaran yang sudah terjadi tidak boleh dihapus sembarangan. Kesalahan harus ditangani melalui mekanisme koreksi yang menjaga konsistensi data keuangan.
+
+## 10.3 Cost & profitability
+
+Owner memasukkan biaya produksi aktual atau estimasi yang diperlukan untuk setiap project.
+
+Perhitungan dasar:
+
+**Profit estimasi = Nilai deal − Total biaya yang dicatat**
+
+**Margin estimasi = Profit estimasi ÷ Nilai deal × 100%**
+
+Sistem harus membedakan estimasi dengan hasil final dan menunjukkan ketika biaya belum lengkap.
+
+Profitabilitas tidak boleh dianggap sebagai kas yang tersedia. Arus uang, piutang, biaya, dan profit merupakan informasi berbeda.
+
+---
+
+# 11. Project Management
+
+Project merupakan unit kerja utama setelah deal diterima.
+
+Project dibuat setelah deal diterima dan invoice dibuat, sesuai ketentuan bisnis yang telah disepakati.
+
+## 11.1 Project lifecycle
+
+**Draft → Active → On Hold → Completed / Cancelled → Archived**
+
+- Draft: project sudah dibuat tetapi belum aktif.
+- Active: pekerjaan sedang berlangsung.
+- On Hold: pekerjaan dihentikan sementara.
+- Completed: delivery selesai.
+- Cancelled: pekerjaan dibatalkan.
+- Archived: project tidak lagi berada di workspace aktif.
+
+Project On Hold dapat dilanjutkan kembali. Archived bukan penghapusan.
+
+## 11.2 Project workspace
+
+Setiap project memiliki:
+- Nama project dan client.
+- Brief dan ruang lingkup.
+- Deadline.
+- Anggota tim.
+- Daftar task.
+- Milestone.
+- Persentase progress.
+- Risk indicator.
+- Project Chat.
+- Link dokumen eksternal.
+- Status invoice dan pembayaran yang dapat diakses sesuai permission.
+- Riwayat project.
+
+## 11.3 Assignment
+
+Owner mengatur anggota tim dan task secara manual.
+
+Tidak ada auto-assignment berdasarkan jenis layanan.
+
+Developer dapat melihat semua project, tetapi hanya dapat mengedit project yang ditugaskan kepadanya atau yang secara khusus diizinkan melalui custom permission.
+
+Akses project tidak otomatis memberikan akses ke margin, data finance sensitif, atau seluruh percakapan sales.
+
+---
+
+# 12. Task Management & Universal To-Do
+
+## 12.1 Task structure
+
+Setiap task memiliki:
+- Judul dan deskripsi.
+- Project terkait jika ada.
+- Satu PIC utama.
+- Nol atau lebih collaborator.
+- Deadline.
+- Status.
+- Prioritas jika diperlukan.
+- Link dokumen.
+- Riwayat aktivitas yang relevan.
+
+PIC utama bertanggung jawab atas penyelesaian task. Collaborator membantu pengerjaan.
+
+Assignment dapat diubah tanpa menghilangkan konteks tanggung jawab sebelumnya.
+
+## 12.2 Task workflow
+
+Task berdiri sendiri. Tidak ada dependency antar-task di MVP.
+
+Urutan pengerjaan diatur manual oleh Owner dan tim.
+
+Sistem mendukung status yang sesuai, seperti To Do, In Progress, Blocked, dan Done. Status Blocked digunakan untuk menunjukkan hambatan, bukan sebagai mekanisme dependency.
+
+Task terlambat ditandai oleh sistem, tetapi tidak otomatis memicu eskalasi ke Owner.
+
+## 12.3 Universal To-Do
+
+- Setiap anggota melihat task yang menjadi tanggung jawabnya.
+- Owner dapat melihat seluruh task perusahaan.
+- Task yang memerlukan tindakan muncul di dashboard.
+- Task terlambat ditandai dengan jelas.
+- Task dan project tetap terhubung jika task berasal dari project.
+
+---
+
+# 13. Client Lifecycle, Warranty & Maintenance
+
+Hubungan dengan client berlanjut setelah project selesai.
+
+## 13.1 Warranty
+
+Warranty ditentukan secara manual per project.
+
+Data warranty dapat mencakup:
+- Tanggal mulai dan berakhir.
+- Ketentuan garansi.
+- Ruang lingkup perbaikan yang ditanggung.
+- Catatan komunikasi.
+- Status masa garansi.
+
+Warranty tidak otomatis berarti seluruh permintaan baru menjadi pekerjaan gratis.
+
+## 13.2 Maintenance
+
+Maintenance dapat berupa:
+- Layanan satu kali.
+- Kontrak bulanan.
+- Kontrak tahunan.
+
+Ketentuan, harga, periode, dan status kontrak dicatat sesuai kesepakatan.
+
+## 13.3 Repeat order & upsell
+
+Peluang layanan tambahan dicatat sebagai opportunity. Sistem tidak boleh menganggap client sudah menyetujui layanan tambahan sebelum ada kesepakatan.
+
+Follow-up dapat dijadwalkan untuk:
+- Renewal maintenance.
+- Masa warranty yang akan berakhir.
+- Kebutuhan website atau aplikasi baru.
+- Pengembangan fitur tambahan.
+- Peluang kerja sama berikutnya.
+
+Dukungan client tetap dicatat melalui percakapan, tanpa membuat modul ticketing khusus.
+
+---
+
+# 14. Team Board & Project Chat
+
+## 14.1 Team Board
+
+Digunakan untuk:
+- Pengumuman.
+- SOP dan aturan operasional.
+- Target perusahaan.
+- Ide dan diskusi.
+- Hambatan lintas tim.
+- Koordinasi umum.
+
+SOP dan business rules dikelola manual melalui Settings. Team Board menyediakan ruang koordinasi dan informasi bersama.
+
+## 14.2 Project Chat
+
+Digunakan untuk diskusi yang berkaitan langsung dengan project.
+
+Tidak ada chat pribadi antaranggota dalam Fynux OS.
+
+Komunikasi internal terbatas pada Project Chat dan Team Board. Untuk percakapan pribadi, tim menggunakan aplikasi eksternal.
+
+---
+
+# 15. Settings & Business Rules
+
+Settings merupakan pusat konfigurasi operasional.
+
+Owner dapat mengelola:
+- Distribusi prospek.
+- Target sales dan target perusahaan.
+- Jadwal follow-up.
+- SOP dan aturan operasional.
+- Aturan kewenangan AI.
+- Permission tambahan.
+- Konfigurasi operasional lainnya.
+
+Target diatur manual. Sistem membandingkan pencapaian aktual dengan target yang ditetapkan dan tidak otomatis menurunkan target berdasarkan performa aktual.
+
+Konfigurasi cukup menyimpan nilai terbaru. Sistem tidak membutuhkan versioning konfigurasi yang kompleks.
+
+Namun, perubahan konfigurasi tidak boleh mengubah kejadian historis. Audit aktivitas utama tetap tersedia.
+
+SOP dalam bentuk teks bebas tidak otomatis dapat ditegakkan oleh AI. Aturan yang hendak dijalankan otomatis harus memiliki kondisi dan tindakan yang jelas. Jika tidak jelas, sistem harus meminta klarifikasi atau human review.
+
+---
+
+# 16. Roles & Permissions
+
+## 16.1 Owner
+
+Memiliki kontrol penuh atas:
+- Seluruh modul dan data.
+- CRM dan pipeline.
+- Finance, biaya, dan margin.
+- Project dan task.
+- Settings.
+- Approval Queue.
+- Permission pengguna.
+- Analytics perusahaan.
+- Pemulihan data.
+- Permanent delete jika benar-benar diperlukan.
+
+## 16.2 Sales / Marketing
+
+Secara default:
+- Hanya melihat dan mengelola prospek yang ditugaskan kepadanya.
+- Mengakses percakapan terkait sesuai izin.
+- Menjalankan aktivitas penjualan.
+- Melihat target dan performa pribadi.
+
+Tidak otomatis memiliki akses ke margin, biaya internal, atau data sensitif milik sales lain.
+
+## 16.3 Developer
+
+Secara default:
+- Dapat melihat seluruh project.
+- Hanya mengedit project yang ditugaskan kepadanya.
+- Mengelola task sesuai assignment dan permission.
+- Berkomunikasi melalui Project Chat.
+- Melihat informasi delivery yang diperlukan.
+
+Akses project tidak otomatis membuka seluruh data finance dan sales.
+
+## 16.4 Custom permission
+
+Owner dapat menambahkan atau mencabut permission spesifik per user tanpa mengganti role utama.
+
+Contoh:
+- Akses view-only.
+- Akses edit project tertentu.
+- Akses tambahan terhadap prospek tertentu.
+- Akses ke fungsi tertentu yang biasanya tidak tersedia untuk role tersebut.
+
+Permission harus tetap mengikuti batas akses data sensitif.
+
+## 16.5 User lifecycle
+
+Status akun:
+- Active.
+- Inactive.
+
+Saat akun menjadi Inactive:
+- User tidak dapat login.
+- Sesi aktifnya dicabut.
+- Assignment baru tidak dapat diberikan.
+- Histori aktivitas tetap tersimpan.
+- Task dan project yang masih menjadi tanggung jawabnya dapat dipindahkan oleh Owner.
+
+Akun dapat diaktifkan kembali tanpa menghilangkan histori.
+
+---
+
+# 17. Data Lifecycle, Undo & Activity Log
+
+## 17.1 Archive dan permanent delete
+
+Tidak ada permanent delete untuk operasional biasa.
+
+User mengarsipkan atau menonaktifkan data sesuai permission. Data yang diarsipkan tetap dapat dicari dan dipulihkan sesuai aturan.
+
+Owner dapat melakukan permanent delete jika benar-benar diperlukan, dengan konfirmasi khusus.
+
+Penghapusan harus mempertimbangkan keterkaitan data. Misalnya, invoice atau pembayaran yang sudah menjadi bagian dari histori transaksi tidak boleh dihapus sembarangan.
+
+## 17.2 Undo
+
+Sistem menyediakan Undo terbatas untuk tindakan tertentu ketika pembatalan masih aman.
+
+Contoh:
+- Membatalkan perubahan status.
+- Mengembalikan assignment task.
+- Membatalkan tindakan sederhana yang belum menimbulkan efek lanjutan.
+
+Undo tidak menjamin pembatalan efek eksternal. Pesan WhatsApp yang telah terkirim atau transaksi yang sudah terjadi harus ditangani melalui mekanisme yang sesuai.
+
+## 17.3 Activity Log
+
+Activity Log hanya mencatat aktivitas utama, tanpa mewajibkan penyimpanan nilai sebelum dan sesudah perubahan.
+
+Catatan dapat mencakup:
+- Pelaku.
+- Jenis aktivitas.
+- Waktu.
+- Objek terkait.
+
+Aktivitas penting meliputi perubahan status CRM, assignment, aktivitas AI, approval, pembuatan invoice, pencatatan pembayaran, perubahan status project, penyelesaian task, serta perubahan permission.
+
+Activity Log bukan pengganti histori transaksi dan percakapan yang diperlukan untuk operasional.
+
+---
+
+# 18. Notification Center
+
+Seluruh notifikasi Fynux OS muncul di dalam dashboard.
+
+Tidak ada notifikasi operasional dari sistem melalui WhatsApp atau email.
+
+Kategori notifikasi:
+- Action Required.
+- Reminder.
+- Information.
+- Completed.
+
+Contoh:
+- Balasan prospek.
+- Follow-up jatuh tempo.
+- Task baru.
+- Deadline project.
+- Approval AI.
+- Informasi penting terkait invoice atau project.
+
+Notifikasi harus mengikuti permission user. Data sensitif tidak boleh ditampilkan kepada user yang tidak berwenang.
+
+---
+
+# 19. Global Search
+
+Satu kolom pencarian untuk menemukan data dari modul yang boleh diakses.
+
+Pencarian dapat mencakup:
+- Prospek dan perusahaan.
+- Kontak dan percakapan.
+- Client.
+- Deal dan proposal.
+- Invoice dan pembayaran.
+- Project dan task.
+- Team Board.
+
+Hasil pencarian mengikuti permission yang berlaku. Menemukan nama project tidak otomatis memberi akses ke data finance atau percakapan yang tidak diizinkan.
+
+---
+
+# 20. Command Center & Analytics
+
+## 20.1 Role-based dashboard
+
+Layout ditetapkan sistem berdasarkan role dan tidak dapat dikustomisasi secara individual.
+
+**Owner — Company Command Center**
+- Ringkasan angka bisnis.
+- Pipeline dan closing.
+- Revenue, pembayaran, dan piutang.
+- Project aktif dan berisiko.
+- Performa tim.
+- Approval Queue.
+- Priority Actions.
+- Aktivitas operasional.
+
+**Sales / Marketing — Sales Workspace**
+- Prospek yang ditugaskan.
+- Percakapan dan respons.
+- Follow-up.
+- Pipeline dan peluang closing.
+- Target dan performa pribadi.
+
+**Developer — Delivery Workspace**
+- Project yang relevan.
+- Task dan deadline.
+- Milestone dan progress.
+- Risiko keterlambatan.
+- Project Chat.
+
+Custom permission dapat menambah akses data, tetapi tidak otomatis mengubah layout dasar.
+
+## 20.2 Owner dashboard layout
+
+Pola yang digunakan adalah Hybrid:
+
+1. Business Overview.
+2. Priority Actions.
+3. Operational Overview.
+
+Periode default adalah bulan kalender berjalan. User dapat memilih periode laporan lain.
+
+## 20.3 Analytics modules
+
+- Sales & CRM.
+- Finance.
+- Project Delivery.
+- Team Performance.
+- Client Lifecycle.
+- AI Performance.
+
+Target diatur manual melalui Settings. Setiap anggota hanya melihat performa dan target pribadinya, kecuali Owner yang dapat melihat seluruh perusahaan.
+
+## 20.4 Data integrity
+
+Sistem membedakan:
+- Nilai nol.
+- Belum ada data.
+- Data belum lengkap.
+- Belum dapat dihitung.
+- Gagal memuat data.
+
+Jika biaya project belum dicatat, profit tidak boleh ditampilkan sebagai nol. Jika data gagal dimuat, sistem tidak boleh menganggap tidak ada aktivitas.
+
+---
+
+# 21. Login, Security & Recovery
+
+## 21.1 Authentication
+
+- Login menggunakan email dan password.
+- Setiap anggota memiliki akun individual.
+- Tidak ada kewajiban MFA/2FA dalam scope saat ini.
+- Akun boleh login dari beberapa perangkat tanpa batas khusus.
+- Login baru tidak otomatis mengeluarkan sesi lain.
+
+Pembatasan percobaan login, penyimpanan password yang aman, dan pemulihan akun tetap harus diterapkan sebagai perlindungan dasar.
+
+## 21.2 Backup & recovery
+
+Kebutuhan:
+- Backup otomatis harian.
+- Point-in-Time Recovery jika didukung oleh layanan yang dipilih.
+- Cakupan data bisnis penting.
+- Pemulihan hanya dilakukan oleh Owner.
+- Hasil pemulihan diverifikasi sebelum dinyatakan berhasil.
+
+Retensi backup dan kemampuan PITR harus dikonfirmasi saat pemilihan infrastruktur.
+
+## 21.3 External file links
+
+Fynux OS tidak meng-host file project.
+
+Sistem menyimpan link eksternal, misalnya Google Drive, beserta nama dan keterangan file.
+
+Akses file tetap mengikuti permission layanan asal. Link yang tersimpan tidak otomatis memberikan hak akses ke file tersebut.
+
+---
+
+# 22. Data Relationships
+
+Secara konseptual, data Fynux OS saling terhubung sebagai berikut:
+
+- **Company** dapat memiliki beberapa Contact.
+- **Contact** dapat memiliki percakapan dan terhubung ke peluang penjualan.
+- **Prospect** memiliki catatan riset, assignment, stage, dan next action.
+- **Conversation** terhubung ke Contact dan dapat dikaitkan dengan Prospect, Client, atau Project.
+- **Deal** terhubung ke Client, layanan, dan kesepakatan komersial.
+- **Invoice** terhubung ke Deal atau Project sesuai kebutuhan transaksi.
+- **Payment** terhubung ke Invoice.
+- **Project** terhubung ke Client dan Deal.
+- **Task** dapat terhubung ke Project serta memiliki PIC dan Collaborator.
+- **Warranty** dan **Maintenance** terhubung ke Client dan Project terkait.
+- **Opportunity** mencatat potensi repeat order atau upsell.
+- **Activity Log** menghubungkan aktivitas dengan pelaku dan objek terkait.
+- **Notification** mengarah ke objek atau tindakan yang relevan.
+
+Relasi ini mencegah sistem menjadi kumpulan modul terpisah dan menjaga kesinambungan data dari prospek hingga client.
+
+---
+
+# 23. MVP Acceptance Criteria
+
+MVP dinyatakan siap untuk digunakan secara operasional ketika kriteria berikut terpenuhi.
+
+## CRM & Sales
+- Prospek dapat dicatat beserta catatan risetnya.
+- Prospek dapat di-assign sesuai aturan Owner.
+- Stage dan next action terpisah.
+- Follow-up berjalan berdasarkan kalender hari.
+- Balasan prospek menghentikan siklus no-response.
+- Failed prospect dapat dicari dan diaktifkan kembali.
+- Data duplikat dapat diidentifikasi.
+
+## WhatsApp & AI
+- Percakapan terhubung ke kontak yang benar.
+- Status pengiriman pesan dapat dibedakan dari draft.
+- AI membuat draft tanpa mengirim pesan sendiri.
+- AI menjalankan tindakan operasional hanya dalam batas izin.
+- Tindakan yang membutuhkan approval masuk ke Approval Queue.
+- Integrasi dapat mengonfirmasi event pesan sesuai kemampuan provider.
+
+## Deal & Finance
+- Deal yang diterima dapat menghasilkan invoice.
+- Project dapat diaktifkan setelah deal diterima dan invoice dibuat.
+- Pembayaran penuh, DP, dan termin dapat dicatat.
+- Sisa piutang dihitung dengan benar.
+- Biaya yang belum lengkap tidak menghasilkan profit palsu.
+
+## Project & Team
+- Project memiliki lifecycle yang disepakati.
+- Task memiliki satu PIC dan dapat memiliki collaborator.
+- Tidak ada dependency antar-task.
+- Deadline, milestone, progress, dan risk indicator dapat dilihat.
+- Developer hanya dapat mengedit project sesuai assignment dan permission.
+- Project Chat dan Team Board berfungsi sesuai perannya.
+
+## Client lifecycle
+- Histori client tetap terhubung dengan prospek dan deal sebelumnya.
+- Warranty dapat ditentukan per project.
+- Maintenance dapat berupa one-off, bulanan, atau tahunan.
+- Peluang upsell dan repeat order dapat dicatat.
+- Tidak diperlukan modul ticketing khusus.
+
+## Security & operations
+- Role dan custom permission diterapkan konsisten.
+- Akun Inactive tidak dapat mengakses sistem.
+- Archive tidak menghapus data.
+- Undo hanya tersedia untuk tindakan yang aman.
+- Global Search mengikuti permission.
+- Notifikasi hanya muncul di dashboard.
+- Backup dan recovery diuji sesuai kemampuan infrastruktur.
+
+## Dashboard & analytics
+- Layout mengikuti role.
+- Periode default adalah bulan ini.
+- Owner dapat melihat seluruh analitik.
+- Anggota melihat data performa sesuai aksesnya.
+- Data kosong, nol, tidak lengkap, dan gagal dimuat dibedakan.
+
+---
+
+# 24. Keputusan Bisnis yang Sudah Dikunci
+
+Blueprint ini mempertahankan keputusan berikut:
+
+1. Fynux OS merupakan sistem internal Fynux.
+2. Seluruh modul yang dibahas masuk scope MVP.
+3. Shared company WhatsApp inbox digunakan untuk komunikasi client.
+4. AI membuat draft pesan; manusia mengirimkannya.
+5. Jadwal follow-up menggunakan kalender hari.
+6. Prospek dan client memiliki lifecycle berbeda tetapi tetap terhubung.
+7. Project dapat aktif setelah deal diterima dan invoice dibuat.
+8. Tim dan task ditugaskan secara manual.
+9. Setiap task memiliki satu PIC utama dan dapat memiliki collaborator.
+10. Task tidak memiliki dependency.
+11. File disimpan di layanan eksternal dan Fynux OS hanya menyimpan link.
+12. Komunikasi internal menggunakan Project Chat dan Team Board.
+13. Notifikasi hanya tersedia di dashboard.
+14. Activity Log mencatat aktivitas utama, tanpa wajib menyimpan nilai sebelum/sesudah.
+15. Data di-archive secara default; permanent delete hanya oleh Owner bila diperlukan.
+16. Role dapat diperluas melalui custom permission.
+17. Akun nonaktif mempertahankan histori.
+18. Backup harian dan PITR menjadi kebutuhan.
+19. Login menggunakan email dan password, tanpa kewajiban MFA/2FA.
+20. Login multi-perangkat tidak dibatasi secara khusus.
+21. Undo tersedia secara terbatas.
+22. Global Search mencakup seluruh data yang boleh diakses.
+23. Command Center menggunakan layout tetap berdasarkan role.
+24. Dashboard Owner menggunakan pola Hybrid dengan periode default bulan ini.
+25. Target dan SOP diatur manual.
+26. Data yang tidak lengkap tidak boleh dianggap nol.
+
+---
+
+# 25. Hal yang Harus Divalidasi Sebelum Implementasi
+
+Blueprint ini mengunci logika bisnis utama. Beberapa detail implementasi masih perlu diputuskan sebelum development:
+
+1. **WhatsApp provider:** pilihan integrasi yang mendukung shared inbox, pengiriman pesan, dan sinkronisasi event.
+2. **Invoice dan pembayaran:** apakah invoice hanya dikelola dan dicatat di Fynux OS atau juga diterbitkan melalui layanan eksternal.
+3. **Aturan data historis:** retensi percakapan, invoice, pembayaran, dan data yang terhubung ketika permintaan permanent delete dilakukan.
+4. **Backup:** retensi, frekuensi verifikasi, serta kemampuan PITR provider.
+5. **Approval Queue:** kondisi kedaluwarsa dan penanganan permintaan approval yang ditolak.
+6. **Project completion:** kriteria serah terima yang digunakan sebelum warranty dimulai.
+7. **Maintenance:** bagaimana renewal dan masa kontrak dihitung serta diingatkan.
+8. **Undo:** jenis tindakan yang didukung dan batas waktu Undo.
+9. **Integrasi eksternal:** email, kalender, domain, hosting, dan layanan lain jika dibutuhkan.
+10. **UI/UX dan arsitektur teknis:** ditentukan setelah blueprint fungsional disetujui.
+
+Hal-hal tersebut tidak mengubah alur bisnis inti yang telah disepakati; semuanya merupakan detail yang perlu diperjelas agar implementasi konsisten.
+
+---
+
+## Penutup
+
+Fynux OS dirancang untuk menjadi pusat kendali operasional Fynux Digital Solutions. Keberhasilannya bukan diukur dari banyaknya modul, melainkan dari kemampuan sistem menjaga alur bisnis tetap terhubung, meminimalkan pekerjaan manual yang berulang, mempertahankan kontrol Owner, dan membantu tim bekerja dengan konteks yang jelas.
+
+**Tahap berikutnya:** review blueprint fungsional ini, kemudian turunkan menjadi arsitektur informasi dan UI/UX, dilanjutkan rancangan database, integrasi, security rules, dan implementation plan.
