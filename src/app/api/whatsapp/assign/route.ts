@@ -1,10 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { assignConversationToSales } from "@/modules/inbox/inbox.service";
+import { getSessionCookie } from "@/modules/auth/session";
+import { logSecurityEvent } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getSessionCookie();
+
+    // Validasi otorisasi: Hanya role OWNER yang berhak menugaskan atau memindahkan penugasan kontak
+    if (session && session.role !== "OWNER") {
+      logSecurityEvent("UNAUTHORIZED_ASSIGNMENT_ATTEMPT", session.id, {
+        role: session.role,
+        email: session.email,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Akses ditolak: Hanya Owner yang memiliki wewenang untuk menugaskan kontak ini ke Sales.",
+        },
+        { status: 403 }
+      );
+    }
+
     const { conversationId, salesId, salesName } = await req.json();
 
     if (!conversationId || !salesId || !salesName) {

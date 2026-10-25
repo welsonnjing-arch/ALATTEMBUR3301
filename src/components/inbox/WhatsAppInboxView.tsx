@@ -159,14 +159,20 @@ export function WhatsAppInboxView({
     return true;
   });
 
+  const isOwner = currentUser?.role === "OWNER";
+
   // Hitung jumlah chat untuk badge tab
   const myChatsCount = conversations.filter(
     (c) => c.assignedSalesId === currentUser?.id
   ).length;
   const unassignedCount = conversations.filter((c) => !c.assignedSalesId).length;
 
-  // Menugaskan percakapan ke sales tertentu
+  // Menugaskan percakapan ke sales tertentu (Hanya berhak dilakukan oleh Owner)
   const handleAssignSales = async (salesId: string, salesName: string) => {
+    if (!isOwner) {
+      alert("Hanya Owner yang memiliki hak untuk menugaskan kontak ini ke Sales.");
+      return;
+    }
     if (!activeConv || isAssigning) return;
     setIsAssigning(true);
     setIsAssignDropdownOpen(false);
@@ -496,24 +502,26 @@ export function WhatsAppInboxView({
             </button>
           </div>
 
-          {/* Supervisor / Owner Dropdown: Filter Khusus per Sales */}
-          <div className="mt-2 px-1 flex items-center justify-between text-[11px] text-slate-500 bg-slate-50 p-1.5 rounded-lg border border-slate-200/70">
-            <span className="flex items-center gap-1 text-slate-600 font-medium">
-              <Users className="w-3.5 h-3.5 text-indigo-600" /> Filter Agen:
-            </span>
-            <select
-              value={selectedSalesAgent}
-              onChange={(e) => setSelectedSalesAgent(e.target.value)}
-              className="bg-white border border-slate-200 rounded px-2 py-0.5 text-[11px] font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            >
-              <option value="ALL">Semua Anggota Sales</option>
-              {SALES_TEAM.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({conversations.filter((c) => c.assignedSalesId === s.id).length})
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Supervisor / Owner Dropdown: Filter Khusus per Sales (Hanya Akses Owner) */}
+          {isOwner && (
+            <div className="mt-2 px-1 flex items-center justify-between text-[11px] text-slate-500 bg-slate-50 p-1.5 rounded-lg border border-slate-200/70">
+              <span className="flex items-center gap-1 text-slate-600 font-medium">
+                <Users className="w-3.5 h-3.5 text-indigo-600" /> Filter Agen (Owner):
+              </span>
+              <select
+                value={selectedSalesAgent}
+                onChange={(e) => setSelectedSalesAgent(e.target.value)}
+                className="bg-white border border-slate-200 rounded px-2 py-0.5 text-[11px] font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              >
+                <option value="ALL">Semua Anggota Sales</option>
+                {SALES_TEAM.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({conversations.filter((c) => c.assignedSalesId === s.id).length})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Daftar Chat List (WhatsApp Web Item List) */}
@@ -669,52 +677,67 @@ export function WhatsAppInboxView({
 
               {/* Action Buttons di Header Chat */}
               <div className="flex items-center gap-2">
-                {/* Multi-Agent Assignment Dropdown Button */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsAssignDropdownOpen((prev) => !prev)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors shadow-sm ${
-                      activeConv.assignedSalesName
-                        ? "bg-white hover:bg-slate-50 text-slate-700 border-slate-300"
-                        : "bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 animate-pulse"
-                    }`}
+                {/* Multi-Agent Assignment: Hanya Owner yang Berhak Mengatur/Memindahkan */}
+                {isOwner ? (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsAssignDropdownOpen((prev) => !prev)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors shadow-sm ${
+                        activeConv.assignedSalesName
+                          ? "bg-white hover:bg-slate-50 text-slate-700 border-slate-300"
+                          : "bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 animate-pulse"
+                      }`}
+                    >
+                      <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>
+                        {activeConv.assignedSalesName
+                          ? activeConv.assignedSalesName
+                          : "Tugaskan ke Sales"}
+                      </span>
+                      <ChevronDown className="w-3 h-3 text-slate-400" />
+                    </button>
+
+                    {/* Dropdown Menu untuk Transfer / Assignment (Khusus Owner) */}
+                    {isAssignDropdownOpen && (
+                      <div className="absolute right-0 mt-1.5 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30 divide-y divide-slate-100">
+                        <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Tugaskan Kontak Ini Ke (Owner):
+                        </div>
+                        {SALES_TEAM.map((sales) => (
+                          <button
+                            key={sales.id}
+                            type="button"
+                            onClick={() => handleAssignSales(sales.id, sales.name)}
+                            className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 transition-colors ${
+                              activeConv.assignedSalesId === sales.id
+                                ? "font-bold text-[#00a884] bg-[#e7fce3]/40"
+                                : "text-slate-700"
+                            }`}
+                          >
+                            <span>{sales.name}</span>
+                            {activeConv.assignedSalesId === sales.id && (
+                              <Check className="w-3.5 h-3.5 text-[#00a884]" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Tampilan Read-Only untuk Sales / Non-Owner */
+                  <div
+                    title="Hanya Owner yang berhak mengatur atau mengubah penugasan kontak"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border bg-white text-slate-700 border-slate-200 select-none shadow-xs"
                   >
                     <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
                     <span>
                       {activeConv.assignedSalesName
-                        ? activeConv.assignedSalesName
-                        : "Tugaskan ke Sales"}
+                        ? `Ditugaskan: ${activeConv.assignedSalesName.replace(/\s*\(.*\)/, "")}`
+                        : "Menunggu Penugasan Owner"}
                     </span>
-                    <ChevronDown className="w-3 h-3 text-slate-400" />
-                  </button>
-
-                  {/* Dropdown Menu untuk Transfer / Assignment */}
-                  {isAssignDropdownOpen && (
-                    <div className="absolute right-0 mt-1.5 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30 divide-y divide-slate-100">
-                      <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        Tugaskan Kontak Ini Ke:
-                      </div>
-                      {SALES_TEAM.map((sales) => (
-                        <button
-                          key={sales.id}
-                          type="button"
-                          onClick={() => handleAssignSales(sales.id, sales.name)}
-                          className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 transition-colors ${
-                            activeConv.assignedSalesId === sales.id
-                              ? "font-bold text-[#00a884] bg-[#e7fce3]/40"
-                              : "text-slate-700"
-                          }`}
-                        >
-                          <span>{sales.name}</span>
-                          {activeConv.assignedSalesId === sales.id && (
-                            <Check className="w-3.5 h-3.5 text-[#00a884]" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Tombol Simulasi Balasan Klien */}
                 <button
@@ -751,20 +774,9 @@ export function WhatsAppInboxView({
                   <span>
                     Perhatian: Percakapan ini ditugaskan kepada{" "}
                     <strong>{activeConv.assignedSalesName || "Sales Lain"}</strong>.
-                    Anda sedang melihat dalam mode kolaborasi tim.
+                    Anda sedang melihat dalam mode kolaborasi tim (hanya Owner yang berhak memindahkan penugasan kontak).
                   </span>
                 </div>
-                {currentUser && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleAssignSales(currentUser.id, currentUser.fullName)
-                    }
-                    className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[11px] font-semibold transition-colors shadow-xs"
-                  >
-                    Ambil Alih Chat
-                  </button>
-                )}
               </div>
             )}
 
