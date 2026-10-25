@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 import {
   Bell,
   BookOpen,
@@ -15,19 +15,23 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
-  Move,
   Upload,
-  Download,
   Trash2,
   Paperclip,
   Image as ImageIcon,
   ChevronDown,
   Layers,
+  Edit3,
+  Bold,
+  Italic,
+  Strikethrough,
+  Type,
 } from "lucide-react";
-import { BoardAttachment, TeamBoardItem } from "@/modules/projects/types";
+import { BoardAttachment, TeamBoardItem, TextStyleConfig } from "@/modules/projects/types";
 import {
   createTeamBoardItemAction,
   deleteTeamBoardItemAction,
+  updateTeamBoardItemAction,
   updateTeamBoardItemPositionAction,
 } from "@/modules/projects/projects.actions";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
@@ -35,6 +39,121 @@ import { DocumentPreviewModal } from "./DocumentPreviewModal";
 interface TeamBoardCanvasViewProps {
   initialItems: TeamBoardItem[];
   currentUserRole?: string;
+}
+
+// Helper to determine whether an attachment is an image
+function isImageAttachment(att: BoardAttachment): boolean {
+  return (
+    att.type.startsWith("image/") ||
+    att.url.startsWith("data:image/") ||
+    /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(att.name)
+  );
+}
+
+// Helper to compile CSS classes for typography
+function getStyleClasses(
+  style?: TextStyleConfig,
+  defaultSize: string = "text-xs",
+  defaultWeight: string = "font-normal"
+): string {
+  let sizeClass: string = defaultSize;
+  if (style?.size === "xs") sizeClass = "text-xs";
+  else if (style?.size === "sm") sizeClass = "text-sm";
+  else if (style?.size === "base") sizeClass = "text-base";
+  else if (style?.size === "lg") sizeClass = "text-lg";
+  else if (style?.size === "xl") sizeClass = "text-xl";
+
+  const weightClass = style?.bold ? "font-bold" : defaultWeight;
+  const italicClass = style?.italic ? "italic" : "";
+  const strikeClass = style?.strikethrough ? "line-through text-slate-400 opacity-80" : "";
+
+  return `${sizeClass} ${weightClass} ${italicClass} ${strikeClass}`.trim();
+}
+
+// Mini text styling toolbar component
+interface TextFormatToolbarProps {
+  label: string;
+  style: TextStyleConfig;
+  onChange: (updated: TextStyleConfig) => void;
+  sizeOptions?: Array<{ label: string; value: TextStyleConfig["size"] }>;
+}
+
+function TextFormatToolbar({
+  label,
+  style,
+  onChange,
+  sizeOptions = [
+    { label: "Normal", value: "sm" },
+    { label: "Besar", value: "base" },
+    { label: "XL", value: "lg" },
+  ],
+}: TextFormatToolbarProps) {
+  return (
+    <div className="flex items-center justify-between text-xs py-1 border-b border-slate-800/80 mb-1">
+      <span className="text-[11px] font-semibold text-slate-400">{label}</span>
+      <div className="flex items-center gap-1.5">
+        {/* Size dropdown / pills */}
+        <div className="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+          {sizeOptions.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange({ ...style, size: opt.value })}
+              className={`px-1.5 py-0.5 text-[10px] rounded font-medium transition-colors ${
+                (style.size || sizeOptions[0].value) === opt.value
+                  ? "bg-brand-orange text-white font-bold"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Bold Toggle */}
+        <button
+          type="button"
+          onClick={() => onChange({ ...style, bold: !style.bold })}
+          title="Tebal (Bold)"
+          className={`p-1 rounded border transition-colors ${
+            style.bold
+              ? "bg-brand-orange/20 border-brand-orange text-brand-orange font-bold"
+              : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
+          }`}
+        >
+          <Bold className="w-3 h-3" />
+        </button>
+
+        {/* Italic Toggle */}
+        <button
+          type="button"
+          onClick={() => onChange({ ...style, italic: !style.italic })}
+          title="Miring (Italic)"
+          className={`p-1 rounded border transition-colors ${
+            style.italic
+              ? "bg-brand-orange/20 border-brand-orange text-brand-orange"
+              : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
+          }`}
+        >
+          <Italic className="w-3 h-3" />
+        </button>
+
+        {/* Strikethrough Toggle */}
+        <button
+          type="button"
+          onClick={() => onChange({ ...style, strikethrough: !style.strikethrough })}
+          title="Coret (Strikethrough)"
+          className={`p-1 rounded border transition-colors ${
+            style.strikethrough
+              ? "bg-brand-orange/20 border-brand-orange text-brand-orange"
+              : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
+          }`}
+        >
+          <Strikethrough className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function TeamBoardCanvasView({
@@ -62,14 +181,18 @@ export function TeamBoardCanvasView({
   const resizeStartRef = useRef({ mouseX: 0, mouseY: 0, width: 380, height: 260 });
 
   // Modals state
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [previewAttachment, setPreviewAttachment] = useState<BoardAttachment | null>(null);
 
-  // New Node Form State
+  // Form State (for both Create & Edit)
   const [category, setCategory] = useState<TeamBoardItem["category"]>("ANNOUNCEMENT");
   const [title, setTitle] = useState("");
+  const [titleStyle, setTitleStyle] = useState<TextStyleConfig>({ size: "base", bold: true });
   const [subtitle, setSubtitle] = useState("");
+  const [subtitleStyle, setSubtitleStyle] = useState<TextStyleConfig>({ size: "sm", bold: false });
   const [content, setContent] = useState("");
+  const [contentStyle, setContentStyle] = useState<TextStyleConfig>({ size: "xs", bold: false });
   const [colorTheme, setColorTheme] = useState<TeamBoardItem["colorTheme"]>("indigo");
   const [attachments, setAttachments] = useState<BoardAttachment[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -128,7 +251,7 @@ export function TeamBoardCanvasView({
       const deltaX = (e.clientX - resizeStartRef.current.mouseX) / zoom;
       const deltaY = (e.clientY - resizeStartRef.current.mouseY) / zoom;
       const newWidth = Math.max(280, resizeStartRef.current.width + deltaX);
-      const newHeight = Math.max(180, resizeStartRef.current.height + deltaY);
+      const newHeight = Math.max(200, resizeStartRef.current.height + deltaY);
 
       setItems((prev) =>
         prev.map((item) =>
@@ -198,6 +321,39 @@ export function TeamBoardCanvasView({
     setResizingId(item.id);
   };
 
+  // Open Edit Modal
+  const handleOpenEdit = (item: TeamBoardItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingNodeId(item.id);
+    setCategory(item.category);
+    setTitle(item.title);
+    setTitleStyle(item.titleStyle || { size: "base", bold: true });
+    setSubtitle(item.subtitle || "");
+    setSubtitleStyle(item.subtitleStyle || { size: "sm", bold: false });
+    setContent(item.content);
+    setContentStyle(item.contentStyle || { size: "xs", bold: false });
+    setColorTheme(item.colorTheme || "indigo");
+    setAttachments(item.attachments || []);
+    setErrorMessage("");
+    setIsModalOpen(true);
+  };
+
+  // Open Create Modal
+  const handleOpenCreate = () => {
+    setEditingNodeId(null);
+    setCategory("ANNOUNCEMENT");
+    setTitle("");
+    setTitleStyle({ size: "base", bold: true });
+    setSubtitle("");
+    setSubtitleStyle({ size: "sm", bold: false });
+    setContent("");
+    setContentStyle({ size: "xs", bold: false });
+    setColorTheme("indigo");
+    setAttachments([]);
+    setErrorMessage("");
+    setIsModalOpen(true);
+  };
+
   // Delete Node
   const handleDeleteNode = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -216,11 +372,12 @@ export function TeamBoardCanvasView({
       const reader = new FileReader();
       reader.onload = () => {
         const url = reader.result as string;
+        const isImg = file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(file.name);
         const newAttachment: BoardAttachment = {
           id: `att-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
           name: file.name,
           size: `${(file.size / 1024).toFixed(1)} KB`,
-          type: file.type || "document",
+          type: isImg ? "image" : file.type || "document",
           url,
         };
         setAttachments((prev) => [...prev, newAttachment]);
@@ -233,8 +390,8 @@ export function TeamBoardCanvasView({
     setAttachments((prev) => prev.filter((a) => a.id !== attId));
   };
 
-  // Submit Create New Kanban Box
-  const handleCreateNode = async (e: React.FormEvent) => {
+  // Save Node (Create or Update)
+  const handleSaveNode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) {
       setErrorMessage("Judul dan deskripsi wajib diisi.");
@@ -245,29 +402,55 @@ export function TeamBoardCanvasView({
     setErrorMessage("");
 
     try {
-      // Place new node in the visible canvas center
-      const spawnX = Math.round((400 - pan.x) / zoom);
-      const spawnY = Math.round((200 - pan.y) / zoom);
+      if (editingNodeId) {
+        // Update existing node
+        const updates: Partial<TeamBoardItem> = {
+          category,
+          title: title.trim(),
+          titleStyle,
+          subtitle: subtitle.trim() || undefined,
+          subtitleStyle,
+          content: content.trim(),
+          contentStyle,
+          colorTheme,
+          attachments,
+        };
 
-      const res = await createTeamBoardItemAction(category, title, content, {
-        subtitle,
-        colorTheme,
-        attachments,
-        x: spawnX,
-        y: spawnY,
-        width: 400,
-        height: 280,
-      });
-
-      if (res.success && res.item) {
-        setItems([res.item, ...items]);
-        setIsCreateModalOpen(false);
-        setTitle("");
-        setSubtitle("");
-        setContent("");
-        setAttachments([]);
+        const res = await updateTeamBoardItemAction(editingNodeId, updates);
+        if (res.success) {
+          setItems((prev) =>
+            prev.map((item) =>
+              item.id === editingNodeId ? { ...item, ...updates } : item
+            )
+          );
+          setIsModalOpen(false);
+        } else {
+          setErrorMessage(res.error || "Gagal memperbarui kotak kanban.");
+        }
       } else {
-        setErrorMessage(res.error || "Gagal menyimpan kotak kanban.");
+        // Create new node in the visible canvas area
+        const spawnX = Math.round((400 - pan.x) / zoom);
+        const spawnY = Math.round((200 - pan.y) / zoom);
+
+        const res = await createTeamBoardItemAction(category, title, content, {
+          subtitle,
+          titleStyle,
+          subtitleStyle,
+          contentStyle,
+          colorTheme,
+          attachments,
+          x: spawnX,
+          y: spawnY,
+          width: 400,
+          height: 320,
+        });
+
+        if (res.success && res.item) {
+          setItems([res.item, ...items]);
+          setIsModalOpen(false);
+        } else {
+          setErrorMessage(res.error || "Gagal menyimpan kotak kanban.");
+        }
       }
     } catch {
       setErrorMessage("Terjadi kesalahan saat memproses data.");
@@ -388,7 +571,7 @@ export function TeamBoardCanvasView({
         {/* Right: Add Box Button */}
         <div className="pointer-events-auto">
           <button
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={handleOpenCreate}
             className="flex items-center gap-2 px-4 py-2.5 bg-brand-orange hover:bg-orange-600 text-white font-bold text-xs rounded-xl shadow-lg transition-transform active:scale-95"
           >
             <Plus className="w-4 h-4" />
@@ -464,7 +647,10 @@ export function TeamBoardCanvasView({
             const posX = item.x ?? 100;
             const posY = item.y ?? 100;
             const nodeWidth = item.width ?? 380;
-            const nodeHeight = item.height ?? 260;
+            const nodeHeight = item.height ?? 280;
+
+            const imageAttachments = item.attachments?.filter(isImageAttachment) || [];
+            const docAttachments = item.attachments?.filter((att) => !isImageAttachment(att)) || [];
 
             return (
               <div
@@ -477,7 +663,7 @@ export function TeamBoardCanvasView({
                   height: `${nodeHeight}px`,
                 }}
               >
-                {/* Header (Draggable Handle) */}
+                {/* Header (Draggable Handle + Actions) */}
                 <div
                   onMouseDown={(e) => handleNodeHeaderMouseDown(e, item)}
                   className="px-4 py-3 border-b border-slate-800/80 flex items-center justify-between cursor-move bg-slate-950/40 rounded-t-2xl"
@@ -492,50 +678,124 @@ export function TeamBoardCanvasView({
                   </div>
 
                   <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
-                    <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                    <span className="text-[10px] text-slate-500 flex items-center gap-1 mr-1">
                       <Calendar className="w-3 h-3" />
                       {new Date(item.createdAt).toLocaleDateString("id-ID", {
                         day: "numeric",
                         month: "short",
                       })}
                     </span>
+
+                    {/* Edit button */}
+                    <button
+                      onClick={(e) => handleOpenEdit(item, e)}
+                      title="Ubah teks & style kotak ini"
+                      className="text-slate-400 hover:text-brand-orange p-1 rounded transition-colors"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Delete button */}
                     <button
                       onClick={(e) => handleDeleteNode(item.id, e)}
                       title="Hapus kotak ini"
-                      className="text-slate-500 hover:text-rose-400 p-1 rounded transition-colors"
+                      className="text-slate-400 hover:text-rose-400 p-1 rounded transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
 
-                {/* Content Body: Judul, Subjudul, Deskripsi, Dokumen */}
+                {/* Content Body: Judul, Subjudul, Deskripsi, Preview Gambar, Dokumen */}
                 <div className="p-4 flex-1 overflow-y-auto space-y-2.5">
-                  {/* Judul */}
-                  <h3 className="text-sm font-extrabold text-white leading-tight">
+                  {/* Judul dengan Custom Style */}
+                  <h3
+                    className={`text-white leading-tight ${getStyleClasses(
+                      item.titleStyle,
+                      "text-base",
+                      "font-extrabold"
+                    )}`}
+                  >
                     {item.title}
                   </h3>
 
-                  {/* Subjudul */}
+                  {/* Subjudul dengan Custom Style */}
                   {item.subtitle && (
-                    <h4 className="text-xs font-semibold text-brand-orange leading-snug">
+                    <h4
+                      className={`text-brand-orange leading-snug ${getStyleClasses(
+                        item.subtitleStyle,
+                        "text-xs",
+                        "font-semibold"
+                      )}`}
+                    >
                       {item.subtitle}
                     </h4>
                   )}
 
-                  {/* Deskripsi */}
-                  <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">
+                  {/* Deskripsi dengan Custom Style */}
+                  <p
+                    className={`text-slate-300 leading-relaxed whitespace-pre-line ${getStyleClasses(
+                      item.contentStyle,
+                      "text-xs",
+                      "font-normal"
+                    )}`}
+                  >
                     {item.content}
                   </p>
 
-                  {/* Dokumen Terlampir & Preview */}
-                  {item.attachments && item.attachments.length > 0 && (
+                  {/* 1. PREVIEW GAMBAR LANGSUNG DI KANVAS */}
+                  {imageAttachments.length > 0 && (
+                    <div className="pt-2">
+                      <div className="text-[10px] font-bold text-slate-400 mb-1 flex items-center gap-1 uppercase tracking-wider">
+                        <ImageIcon className="w-3 h-3 text-brand-orange" />
+                        Lampiran Gambar ({imageAttachments.length})
+                      </div>
+
+                      {imageAttachments.length === 1 ? (
+                        <div
+                          onClick={() => setPreviewAttachment(imageAttachments[0])}
+                          className="relative rounded-xl overflow-hidden border border-slate-700/80 bg-slate-950/60 max-h-48 cursor-pointer group/img hover:border-brand-orange transition-all shadow-md"
+                        >
+                          <img
+                            src={imageAttachments[0].url}
+                            alt={imageAttachments[0].name}
+                            className="w-full h-40 object-cover group-hover/img:scale-105 transition-transform duration-200"
+                          />
+                          <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-xs font-bold text-white backdrop-blur-xs">
+                            Klik untuk Memperbesar Gambar
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                          {imageAttachments.map((img) => (
+                            <div
+                              key={img.id}
+                              onClick={() => setPreviewAttachment(img)}
+                              className="relative rounded-lg overflow-hidden border border-slate-700/80 bg-slate-950/60 h-24 cursor-pointer group/img hover:border-brand-orange transition-all shadow-sm"
+                            >
+                              <img
+                                src={img.url}
+                                alt={img.name}
+                                className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200"
+                              />
+                              <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-[10px] font-bold text-white text-center p-1">
+                                Perbesar
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 2. DOKUMEN NON-GAMBAR (PDF, DOCS) */}
+                  {docAttachments.length > 0 && (
                     <div className="pt-2 border-t border-slate-800/60 space-y-1.5">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                        <Paperclip className="w-3 h-3" /> Dokumen Terlampir ({item.attachments.length})
+                        <Paperclip className="w-3 h-3" /> Berkas Dokumen ({docAttachments.length})
                       </span>
                       <div className="flex flex-wrap gap-2">
-                        {item.attachments.map((att) => (
+                        {docAttachments.map((att) => (
                           <button
                             key={att.id}
                             type="button"
@@ -566,7 +826,7 @@ export function TeamBoardCanvasView({
                 {/* Custom Resize Corner Handle (Bottom-Right) */}
                 <div
                   onMouseDown={(e) => handleResizeMouseDown(e, item)}
-                  title="Tarik untuk mengubah ukuran kotak"
+                  title="Tarik sudut untuk mengubah ukuran kotak"
                   className="absolute bottom-1 right-1 w-4 h-4 cursor-se-resize flex items-center justify-center text-slate-600 hover:text-white transition-colors"
                 >
                   <svg className="w-3 h-3 opacity-60" viewBox="0 0 6 6" fill="currentColor">
@@ -581,23 +841,32 @@ export function TeamBoardCanvasView({
         </div>
       </div>
 
-      {/* Modal Tambah Kotak Kanvas Baru */}
-      {isCreateModalOpen && (
+      {/* Modal Buat / Edit Kotak Kanvas */}
+      {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button
-              onClick={() => setIsCreateModalOpen(false)}
+              onClick={() => setIsModalOpen(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-white"
             >
               <X className="w-5 h-5" />
             </button>
 
             <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
-              <Plus className="w-5 h-5 text-brand-orange" />
-              Buat Kotak Kanban Baru di Kanvas
+              {editingNodeId ? (
+                <>
+                  <Edit3 className="w-5 h-5 text-brand-orange" />
+                  Ubah Kotak Kanban di Kanvas
+                </>
+              ) : (
+                <>
+                  <Plus className="w-5 h-5 text-brand-orange" />
+                  Buat Kotak Kanban Baru di Kanvas
+                </>
+              )}
             </h2>
             <p className="text-xs text-slate-400 mb-4">
-              Tambahkan catatan judul, subjudul, deskripsi lengkap, serta lampiran dokumen ke kanvas tim.
+              Atur 3 teks (Judul, Subjudul, Deskripsi) dengan gaya tipografi kustom serta lampirkan gambar/dokumen.
             </p>
 
             {errorMessage && (
@@ -606,7 +875,7 @@ export function TeamBoardCanvasView({
               </div>
             )}
 
-            <form onSubmit={handleCreateNode} className="space-y-4">
+            <form onSubmit={handleSaveNode} className="space-y-4">
               {/* Kategori */}
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
@@ -710,59 +979,92 @@ export function TeamBoardCanvasView({
                 </div>
               </div>
 
-              {/* Judul */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Judul Kotak <span className="text-rose-500">*</span>
-                </label>
+              {/* 1. FIELD JUDUL + FORMATTING TOOLBAR */}
+              <div className="bg-slate-950/40 p-3 rounded-xl border border-slate-800">
+                <TextFormatToolbar
+                  label="1. Judul Kotak"
+                  style={titleStyle}
+                  onChange={setTitleStyle}
+                  sizeOptions={[
+                    { label: "Normal", value: "base" },
+                    { label: "Besar", value: "lg" },
+                    { label: "XL", value: "xl" },
+                  ]}
+                />
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: SOP Standar Deliverables Proyek Website"
+                  placeholder="Ketik judul utama..."
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-orange"
+                  className={`w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-orange mt-1.5 ${getStyleClasses(
+                    titleStyle,
+                    "text-base",
+                    "font-bold"
+                  )}`}
                 />
               </div>
 
-              {/* Subjudul */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Subjudul (Opsional)
-                </label>
+              {/* 2. FIELD SUBJUDUL + FORMATTING TOOLBAR */}
+              <div className="bg-slate-950/40 p-3 rounded-xl border border-slate-800">
+                <TextFormatToolbar
+                  label="2. Subjudul Kotak"
+                  style={subtitleStyle}
+                  onChange={setSubtitleStyle}
+                  sizeOptions={[
+                    { label: "Kecil", value: "xs" },
+                    { label: "Normal", value: "sm" },
+                    { label: "Besar", value: "base" },
+                  ]}
+                />
                 <input
                   type="text"
-                  placeholder="Contoh: Checklist Serah Terima & Dokumentasi Aset Klien"
+                  placeholder="Ketik subjudul atau ringkasan topik..."
                   value={subtitle}
                   onChange={(e) => setSubtitle(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-orange"
+                  className={`w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-orange mt-1.5 ${getStyleClasses(
+                    subtitleStyle,
+                    "text-xs",
+                    "font-semibold"
+                  )}`}
                 />
               </div>
 
-              {/* Deskripsi */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Deskripsi Isi Dokumen <span className="text-rose-500">*</span>
-                </label>
+              {/* 3. FIELD DESKRIPSI + FORMATTING TOOLBAR */}
+              <div className="bg-slate-950/40 p-3 rounded-xl border border-slate-800">
+                <TextFormatToolbar
+                  label="3. Deskripsi Isi"
+                  style={contentStyle}
+                  onChange={setContentStyle}
+                  sizeOptions={[
+                    { label: "Kecil", value: "xs" },
+                    { label: "Normal", value: "sm" },
+                    { label: "Besar", value: "base" },
+                  ]}
+                />
                 <textarea
                   required
                   rows={4}
-                  placeholder="Tuliskan rincian langkah kerja, instruksi kerja, target terukur, atau deskripsi..."
+                  placeholder="Tuliskan rincian instruksi, SOP, target langkah kerja..."
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-orange leading-relaxed"
+                  className={`w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-orange mt-1.5 leading-relaxed ${getStyleClasses(
+                    contentStyle,
+                    "text-xs",
+                    "font-normal"
+                  )}`}
                 />
               </div>
 
-              {/* Upload Dokumen & Preview List */}
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold text-slate-300">
-                  Upload Dokumen / Gambar Terlampir
-                </label>
-                <div className="flex items-center gap-2">
-                  <label className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 cursor-pointer transition-colors">
-                    <Upload className="w-4 h-4 text-brand-orange" />
-                    Pilih Berkas Dokumen (PDF, Gambar, Teks)
+              {/* UPLOAD BERKAS + LIVE THUMBNAIL PREVIEW */}
+              <div className="bg-slate-950/40 p-3 rounded-xl border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-300">
+                    Upload Gambar / Dokumen
+                  </span>
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-orange hover:bg-orange-600 text-white text-xs font-semibold cursor-pointer transition-colors shadow-sm">
+                    <Upload className="w-3.5 h-3.5" />
+                    Pilih Gambar/Berkas
                     <input
                       type="file"
                       multiple
@@ -773,36 +1075,59 @@ export function TeamBoardCanvasView({
                   </label>
                 </div>
 
+                {/* Live Preview List in Modal */}
                 {attachments.length > 0 && (
-                  <div className="space-y-1.5 pt-1">
-                    {attachments.map((att) => (
-                      <div
-                        key={att.id}
-                        className="flex items-center justify-between p-2 rounded-lg bg-slate-800/80 border border-slate-700 text-xs"
-                      >
-                        <div className="flex items-center gap-2 truncate">
-                          <FileText className="w-3.5 h-3.5 text-brand-orange flex-shrink-0" />
-                          <span className="truncate text-slate-200">{att.name}</span>
-                          <span className="text-[10px] text-slate-500">({att.size})</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveAttachment(att.id)}
-                          className="text-slate-400 hover:text-rose-400 p-1"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                  <div className="space-y-2 pt-2 border-t border-slate-800/80">
+                    <div className="text-[11px] font-bold text-slate-400">
+                      Berkas Terlampir ({attachments.length}):
+                    </div>
+
+                    {/* Image thumbnails preview */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {attachments.map((att) => {
+                        const isImg = isImageAttachment(att);
+                        return (
+                          <div
+                            key={att.id}
+                            className="relative group/thumb rounded-lg overflow-hidden border border-slate-700 bg-slate-800 p-1 flex flex-col justify-between"
+                          >
+                            {isImg ? (
+                              <img
+                                src={att.url}
+                                alt={att.name}
+                                className="w-full h-16 object-cover rounded"
+                              />
+                            ) : (
+                              <div className="w-full h-16 flex flex-col items-center justify-center bg-slate-900 rounded text-slate-400">
+                                <FileText className="w-6 h-6 text-brand-orange mb-0.5" />
+                                <span className="text-[9px] uppercase font-bold">PDF/DOC</span>
+                              </div>
+                            )}
+
+                            <div className="pt-1 flex items-center justify-between text-[10px] text-slate-300">
+                              <span className="truncate max-w-[80px]">{att.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveAttachment(att.id)}
+                                title="Hapus berkas ini"
+                                className="text-slate-400 hover:text-rose-400 p-0.5"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Buttons */}
+              {/* Action Buttons */}
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
+                  onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white"
                 >
                   Batal
@@ -812,7 +1137,11 @@ export function TeamBoardCanvasView({
                   disabled={isSubmitting}
                   className="px-4 py-2 bg-brand-orange hover:bg-orange-600 text-white rounded-xl text-xs font-semibold shadow-md transition-colors disabled:opacity-50"
                 >
-                  {isSubmitting ? "Menempatkan..." : "Tempatkan di Kanvas"}
+                  {isSubmitting
+                    ? "Menyimpan..."
+                    : editingNodeId
+                    ? "Simpan Perubahan Kotak"
+                    : "Tempatkan di Kanvas"}
                 </button>
               </div>
             </form>

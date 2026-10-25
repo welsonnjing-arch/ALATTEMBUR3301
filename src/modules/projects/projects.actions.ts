@@ -16,6 +16,7 @@ import {
   updateProjectProgress,
   updateProjectStatus,
   updateTaskStatus,
+  updateTeamBoardItem,
   updateTeamBoardItemPosition,
 } from "./projects.service";
 import { CreateProjectInput, CreateTaskInput, ExternalLink, TeamBoardItem } from "./types";
@@ -156,6 +157,9 @@ export async function createTeamBoardItemAction(
   content: string,
   extra?: {
     subtitle?: string;
+    titleStyle?: TeamBoardItem["titleStyle"];
+    subtitleStyle?: TeamBoardItem["subtitleStyle"];
+    contentStyle?: TeamBoardItem["contentStyle"];
     colorTheme?: TeamBoardItem["colorTheme"];
     attachments?: TeamBoardItem["attachments"];
     x?: number;
@@ -178,6 +182,20 @@ export async function createTeamBoardItemAction(
 
   revalidatePath("/team-board");
   return { success: true, item: newItem };
+}
+
+export async function updateTeamBoardItemAction(
+  id: string,
+  updates: Partial<TeamBoardItem>
+) {
+  const session = await getSessionCookie();
+  if (!session) return { success: false, error: "Sesi telah berakhir." };
+
+  const res = await updateTeamBoardItem(id, updates);
+  if (res.success) {
+    revalidatePath("/team-board");
+  }
+  return res;
 }
 
 export async function updateTeamBoardItemPositionAction(

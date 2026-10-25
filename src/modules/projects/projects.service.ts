@@ -483,6 +483,9 @@ export async function createTeamBoardItem(
   authorName: string,
   extra?: {
     subtitle?: string;
+    titleStyle?: TeamBoardItem["titleStyle"];
+    subtitleStyle?: TeamBoardItem["subtitleStyle"];
+    contentStyle?: TeamBoardItem["contentStyle"];
     colorTheme?: TeamBoardItem["colorTheme"];
     attachments?: TeamBoardItem["attachments"];
     x?: number;
@@ -495,8 +498,11 @@ export async function createTeamBoardItem(
     id: `tb-${Date.now()}`,
     category,
     title: title.trim(),
+    titleStyle: extra?.titleStyle,
     subtitle: extra?.subtitle?.trim(),
+    subtitleStyle: extra?.subtitleStyle,
     content: content.trim(),
+    contentStyle: extra?.contentStyle,
     authorId,
     authorName,
     x: extra?.x ?? Math.floor(Math.random() * 300) + 100,
@@ -522,15 +528,30 @@ export async function createTeamBoardItem(
   return newItem;
 }
 
+export async function updateTeamBoardItem(
+  id: string,
+  updates: Partial<TeamBoardItem>
+): Promise<{ success: boolean; item?: TeamBoardItem; error?: string }> {
+  const idx = teamBoardData.findIndex((item) => item.id === id);
+  if (idx === -1) return { success: false, error: "Item tidak ditemukan." };
+
+  teamBoardData[idx] = {
+    ...teamBoardData[idx],
+    ...updates,
+  };
+
+  return { success: true, item: { ...teamBoardData[idx] } };
+}
+
 export async function updateTeamBoardItemPosition(
   id: string,
   x: number,
   y: number,
   width?: number,
   height?: number
-): Promise<{ success: boolean }> {
+): Promise<{ success: boolean; error?: string }> {
   const idx = teamBoardData.findIndex((item) => item.id === id);
-  if (idx === -1) return { success: false };
+  if (idx === -1) return { success: false, error: "Item tidak ditemukan." };
   teamBoardData[idx].x = x;
   teamBoardData[idx].y = y;
   if (width !== undefined) teamBoardData[idx].width = width;
@@ -538,9 +559,9 @@ export async function updateTeamBoardItemPosition(
   return { success: true };
 }
 
-export async function deleteTeamBoardItem(id: string): Promise<{ success: boolean }> {
+export async function deleteTeamBoardItem(id: string): Promise<{ success: boolean; error?: string }> {
   const idx = teamBoardData.findIndex((item) => item.id === id);
-  if (idx === -1) return { success: false };
+  if (idx === -1) return { success: false, error: "Item tidak ditemukan." };
   teamBoardData.splice(idx, 1);
   return { success: true };
 }

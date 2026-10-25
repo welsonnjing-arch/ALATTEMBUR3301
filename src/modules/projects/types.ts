@@ -65,12 +65,22 @@ export interface BoardAttachment {
   url: string; // Data URL or external link
 }
 
+export interface TextStyleConfig {
+  size?: "xs" | "sm" | "base" | "lg" | "xl";
+  bold?: boolean;
+  italic?: boolean;
+  strikethrough?: boolean;
+}
+
 export interface TeamBoardItem {
   id: string;
   category: "ANNOUNCEMENT" | "SOP" | "TARGET" | "IDEA";
   title: string;
+  titleStyle?: TextStyleConfig;
   subtitle?: string;
+  subtitleStyle?: TextStyleConfig;
   content: string;
+  contentStyle?: TextStyleConfig;
   authorId: string;
   authorName: string;
   x?: number; // Posisi horizontal di canvas
