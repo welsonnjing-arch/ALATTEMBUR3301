@@ -366,6 +366,8 @@ export async function sendWhatsAppMessage(
         contactName: `Pengguna +${waFormatted}`,
         whatsappNumber: waFormatted,
         researchNotes: "Kontak langsung dari WhatsApp Web Inbox",
+        assignedSalesId: input.actorUserId,
+        assignedSalesName: input.actorUserName,
       });
     }
   }
@@ -374,7 +376,9 @@ export async function sendWhatsAppMessage(
   const appendRes = await appendOutgoingMessage(
     matchedThread.id,
     input.text.trim(),
-    "SALES"
+    "SALES",
+    input.actorUserId,
+    input.actorUserName
   );
 
   // 3. Jika socket Baileys aktif terhubung ke WhatsApp asli, kirim secara nyata!
@@ -483,8 +487,14 @@ export async function handleIncomingWhatsAppMessage(
         researchNotes: "Kontak baru menghubungi via WhatsApp Web",
       });
     }
-  } else if (rawJid && !matchedThread.remoteJid) {
-    matchedThread.remoteJid = rawJid;
+  } else {
+    if (rawJid && !matchedThread.remoteJid) {
+      matchedThread.remoteJid = rawJid;
+    }
+    if (matchedProspect && !matchedThread.assignedSalesId) {
+      matchedThread.assignedSalesId = matchedProspect.assignedSalesId;
+      matchedThread.assignedSalesName = matchedProspect.assignedSalesName;
+    }
   }
 
   // 2. Tambahkan pesan masuk ke thread

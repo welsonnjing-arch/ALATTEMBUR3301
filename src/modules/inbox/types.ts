@@ -5,6 +5,8 @@ export interface ChatMessage {
   text: string;
   isDraft: boolean;
   timestamp: string;
+  sentByUserId?: string;
+  sentByUserName?: string;
   attachment?: {
     fileName: string;
     fileSize: string;
@@ -19,6 +21,8 @@ export interface ConversationThread {
   contactName: string;
   whatsappNumber: string;
   remoteJid?: string;
+  assignedSalesId?: string;
+  assignedSalesName?: string;
   unreadCount: number;
   lastMessageSnippet: string;
   lastMessageAt: string;

@@ -2,12 +2,14 @@ import { getAllConversations } from "@/modules/inbox/inbox.service";
 import { getWhatsAppSession } from "@/modules/whatsapp/whatsapp.service";
 import { getAllProspects } from "@/modules/crm/crm.service";
 import { WhatsAppInboxView } from "@/components/inbox/WhatsAppInboxView";
+import { getSessionCookie } from "@/modules/auth/session";
 
 export default async function WhatsAppInboxPage() {
-  const [conversations, session, prospects] = await Promise.all([
+  const [conversations, session, prospects, currentUser] = await Promise.all([
     getAllConversations(),
     getWhatsAppSession(),
     getAllProspects(),
+    getSessionCookie(),
   ]);
 
   return (
@@ -16,6 +18,7 @@ export default async function WhatsAppInboxPage() {
         initialConversations={conversations}
         initialSession={session}
         prospects={prospects}
+        currentUser={currentUser}
       />
     </div>
   );

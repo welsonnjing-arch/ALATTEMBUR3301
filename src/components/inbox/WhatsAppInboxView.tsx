@@ -21,10 +21,13 @@ import {
   ArrowLeft,
   ChevronDown,
   UserCheck,
+  Users,
+  ShieldAlert,
 } from "lucide-react";
 import { ConversationThread, ChatMessage } from "@/modules/inbox/types";
 import { WhatsAppSessionInfo } from "@/modules/whatsapp/types";
 import { Prospect } from "@/modules/crm/types";
+import { UserSessionData } from "@/modules/auth/types";
 import {
   sendWhatsAppMessageAction,
   simulateIncomingWhatsAppMessageAction,
@@ -32,16 +35,26 @@ import {
 import { WhatsAppPairingModal } from "@/components/whatsapp/WhatsAppPairingModal";
 import { formatDateTimeWIB } from "@/lib/date";
 
+export const SALES_TEAM = [
+  { id: "22222222-2222-2222-2222-222222222222", name: "Budi Santoso (Sales 1)" },
+  { id: "44444444-4444-4444-4444-444444444444", name: "Siti Rahma (Sales 2)" },
+  { id: "55555555-5555-5555-5555-555555555555", name: "Dimas Anggara (Sales 3)" },
+  { id: "66666666-6666-6666-6666-666666666666", name: "Anisa Putri (Sales 4)" },
+  { id: "77777777-7777-7777-7777-777777777777", name: "Rian Hidayat (Sales 5)" },
+];
+
 interface WhatsAppInboxViewProps {
   initialConversations: ConversationThread[];
   initialSession: WhatsAppSessionInfo;
   prospects: Prospect[];
+  currentUser?: UserSessionData | null;
 }
 
 export function WhatsAppInboxView({
   initialConversations,
   initialSession,
   prospects,
+  currentUser,
 }: WhatsAppInboxViewProps) {
   const [conversations, setConversations] = useState<ConversationThread[]>(initialConversations);
   const [activeConvId, setActiveConvId] = useState<string>(
@@ -49,7 +62,14 @@ export function WhatsAppInboxView({
   );
   const [session, setSession] = useState<WhatsAppSessionInfo>(initialSession);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterTab, setFilterTab] = useState<"ALL" | "UNREAD" | "CRM">("ALL");
+
+  // Default: Jika login sebagai SALES, langsung buka 'MY_CHATS' agar chat miliknya tidak tercampur
+  const [filterTab, setFilterTab] = useState<"MY_CHATS" | "ALL" | "UNASSIGNED" | "CRM">(
+    currentUser?.role === "SALES" ? "MY_CHATS" : "ALL"
+  );
+  const [selectedSalesAgent, setSelectedSalesAgent] = useState<string>("ALL");
+  const [isAssignDropdownOpen, setIsAssignDropdownOpen] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
 
   // State Pesan Aktif
   const [inputText, setInputText] = useState("");
@@ -94,7 +114,8 @@ export function WhatsAppInboxView({
                   !prevItem ||
                   prevItem.messages.length !== c.messages.length ||
                   prevItem.lastMessageSnippet !== c.lastMessageSnippet ||
-                  prevItem.unreadCount !== c.unreadCount
+                  prevItem.unreadCount !== c.unreadCount ||
+                  prevItem.assignedSalesId !== c.assignedSalesId
                 );
               });
             return hasChange ? latest : prev;
@@ -108,7 +129,7 @@ export function WhatsAppInboxView({
     return () => clearInterval(syncInterval);
   }, []);
 
-  // Filter daftar percakapan
+  // Filter daftar percakapan (Memastikan chat antar sales tidak tercampur)
   const filteredConversations = conversations.filter((c) => {
     const q = searchQuery.toLowerCase();
     const matchSearch =
@@ -119,10 +140,70 @@ export function WhatsAppInboxView({
 
     if (!matchSearch) return false;
 
-    if (filterTab === "UNREAD") return c.unreadCount > 0;
-    if (filterTab === "CRM") return !!c.prospectId;
+    // Filter Tab Utama
+    if (filterTab === "MY_CHATS") {
+      if (currentUser?.id) {
+        if (c.assignedSalesId !== currentUser.id) return false;
+      }
+    } else if (filterTab === "UNASSIGNED") {
+      if (c.assignedSalesId) return false;
+    } else if (filterTab === "CRM") {
+      if (!c.prospectId) return false;
+    }
+
+    // Filter Sekunder: Dropdown Sales Agent tertentu (untuk Owner/Supervisor)
+    if (selectedSalesAgent !== "ALL") {
+      if (c.assignedSalesId !== selectedSalesAgent) return false;
+    }
+
     return true;
   });
+
+  // Hitung jumlah chat untuk badge tab
+  const myChatsCount = conversations.filter(
+    (c) => c.assignedSalesId === currentUser?.id
+  ).length;
+  const unassignedCount = conversations.filter((c) => !c.assignedSalesId).length;
+
+  // Menugaskan percakapan ke sales tertentu
+  const handleAssignSales = async (salesId: string, salesName: string) => {
+    if (!activeConv || isAssigning) return;
+    setIsAssigning(true);
+    setIsAssignDropdownOpen(false);
+
+    // Optimistic UI update
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === activeConv.id
+          ? { ...c, assignedSalesId: salesId, assignedSalesName: salesName }
+          : c
+      )
+    );
+
+    try {
+      const res = await fetch("/api/whatsapp/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId: activeConv.id,
+          salesId,
+          salesName,
+        }),
+      });
+
+      if (res.ok) {
+        const convRes = await fetch("/api/whatsapp/conversations", { cache: "no-store" });
+        if (convRes.ok) {
+          const latest = await convRes.json();
+          setConversations(latest);
+        }
+      }
+    } catch (err) {
+      console.error("Gagal menugaskan percakapan:", err);
+    } finally {
+      setIsAssigning(false);
+    }
+  };
 
   // Kirim Pesan
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -133,11 +214,16 @@ export function WhatsAppInboxView({
     setInputText("");
     setIsSending(true);
 
+    const senderName = currentUser?.fullName || "Sales Operator";
+    const senderId = currentUser?.id || "sales-operator";
+
     // Optimistic UI update
     const optimisticMsg: ChatMessage = {
       id: `temp-${Date.now()}`,
       conversationId: activeConv.id,
       sender: "SALES",
+      sentByUserId: senderId,
+      sentByUserName: senderName,
       text: textToSend,
       isDraft: false,
       timestamp: new Date().toISOString(),
@@ -166,11 +252,12 @@ export function WhatsAppInboxView({
           whatsappNumber: activeConv.whatsappNumber,
           text: textToSend,
           prospectId: activeConv.prospectId,
+          actorUserId: senderId,
+          actorUserName: senderName,
         }),
       });
 
       if (res.ok) {
-        // Segera perbarui daftar percakapan dari server
         const convRes = await fetch("/api/whatsapp/conversations", {
           cache: "no-store",
         });
@@ -248,30 +335,38 @@ export function WhatsAppInboxView({
         return "bg-indigo-50 text-indigo-700 border-indigo-300 font-bold";
       case "QUALIFIED":
         return "bg-purple-50 text-purple-700 border-purple-300 font-bold";
-      case "NEGOTIATION":
+      case "PROPOSAL_MADE":
         return "bg-amber-50 text-amber-700 border-amber-300 font-bold";
-      case "PENDING":
-        return "bg-orange-50 text-orange-700 border-orange-300";
+      case "NEGOTIATION":
+        return "bg-orange-50 text-orange-700 border-orange-300 font-bold";
       case "CLOSED_WON":
-        return "bg-emerald-600 text-white font-bold border-emerald-600";
+        return "bg-emerald-600 text-white border-emerald-600 font-bold";
+      case "CLOSED_LOST":
+        return "bg-rose-50 text-rose-700 border-rose-300 line-through";
       default:
         return "bg-slate-100 text-slate-600 border-slate-200";
     }
   };
 
+  // Cek apakah ada potensi collision (Sales sedang membuka chat yang ditugaskan ke sales lain)
+  const isAssignedToOther =
+    currentUser?.role === "SALES" &&
+    activeConv?.assignedSalesId &&
+    currentUser?.id &&
+    activeConv.assignedSalesId !== currentUser.id;
+
   return (
-    <div className="flex h-full w-full bg-[#f0f2f5] overflow-hidden border border-[#d1d7db] shadow-xl rounded-xl">
+    <div className="flex h-full w-full bg-[#f0f2f5] overflow-hidden rounded-xl border border-slate-300/80 shadow-md">
       {/* ======================================================== */}
-      {/* 1. SIDEBAR KIRI: DAFTAR CHAT (1:1 WHATSAPP WEB STYLE)   */}
+      {/* 1. SIDEBAR DAFTAR CHAT (1:1 WHATSAPP WEB LEFT PANEL)     */}
       {/* ======================================================== */}
-      <div className="w-full md:w-[380px] lg:w-[420px] bg-white flex flex-col border-r border-[#e9edef] flex-shrink-0">
-        {/* Header Sidebar Khas WhatsApp Web */}
-        <div className="h-16 bg-[#f0f2f5] px-4 py-2.5 flex items-center justify-between border-b border-[#e9edef]">
-          {/* Avatar & Identitas */}
-          <div className="flex items-center gap-3">
+      <div className="w-80 md:w-96 flex flex-col h-full bg-white border-r border-[#d1d7db] flex-shrink-0">
+        {/* Header Profil WhatsApp Web & Status Sesi */}
+        <div className="h-16 bg-[#f0f2f5] px-4 py-2.5 flex items-center justify-between border-b border-[#d1d7db]">
+          <div className="flex items-center gap-2.5">
             <div className="relative">
-              <div className="w-10 h-10 rounded-full bg-[#00a884] text-white font-bold flex items-center justify-center text-sm shadow-sm">
-                FN
+              <div className="w-10 h-10 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
+                F
               </div>
               <span
                 className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
@@ -283,12 +378,12 @@ export function WhatsAppInboxView({
             </div>
             <div>
               <div className="text-xs font-bold text-[#111b21] leading-tight">
-                Fynux WhatsApp
+                Fynux Shared WhatsApp
               </div>
               <div className="text-[11px] text-[#667781] leading-tight">
                 {session.status === "CONNECTED"
-                  ? `+${session.phoneNumber}`
-                  : "Perangkat Belum Tertaut"}
+                  ? `+${session.phoneNumber} · 1 Nomor (5 Sales)`
+                  : "Sesi Belum Tertaut"}
               </div>
             </div>
           </div>
@@ -343,41 +438,81 @@ export function WhatsAppInboxView({
             )}
           </div>
 
-          {/* Filter Chips */}
-          <div className="flex items-center gap-1.5 mt-2 px-1">
+          {/* Multi-Agent Filter Chips */}
+          <div className="flex items-center gap-1.5 mt-2 px-1 overflow-x-auto pb-1 scrollbar-none">
+            <button
+              type="button"
+              onClick={() => setFilterTab("MY_CHATS")}
+              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors flex items-center gap-1 whitespace-nowrap ${
+                filterTab === "MY_CHATS"
+                  ? "bg-[#e7fce3] text-[#008069] font-bold shadow-xs"
+                  : "bg-[#f0f2f5] text-[#54656f] hover:bg-slate-200/60"
+              }`}
+            >
+              <span>Chat Saya</span>
+              <span className="text-[10px] opacity-80">({myChatsCount})</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setFilterTab("ALL")}
-              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors ${
+              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors flex items-center gap-1 whitespace-nowrap ${
                 filterTab === "ALL"
-                  ? "bg-[#e7fce3] text-[#008069] font-bold"
+                  ? "bg-[#e7fce3] text-[#008069] font-bold shadow-xs"
                   : "bg-[#f0f2f5] text-[#54656f] hover:bg-slate-200/60"
               }`}
             >
-              Semua
+              <span>Semua Tim</span>
+              <span className="text-[10px] opacity-80">({conversations.length})</span>
             </button>
+
             <button
               type="button"
-              onClick={() => setFilterTab("UNREAD")}
-              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors ${
-                filterTab === "UNREAD"
-                  ? "bg-[#e7fce3] text-[#008069] font-bold"
+              onClick={() => setFilterTab("UNASSIGNED")}
+              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors flex items-center gap-1 whitespace-nowrap ${
+                filterTab === "UNASSIGNED"
+                  ? "bg-amber-100 text-amber-900 font-bold shadow-xs"
                   : "bg-[#f0f2f5] text-[#54656f] hover:bg-slate-200/60"
               }`}
             >
-              Belum Dibaca
+              <span>Belum Ditugaskan</span>
+              {unassignedCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[9px] font-bold">
+                  {unassignedCount}
+                </span>
+              )}
             </button>
+
             <button
               type="button"
               onClick={() => setFilterTab("CRM")}
-              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors ${
+              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors whitespace-nowrap ${
                 filterTab === "CRM"
-                  ? "bg-[#e7fce3] text-[#008069] font-bold"
+                  ? "bg-[#e7fce3] text-[#008069] font-bold shadow-xs"
                   : "bg-[#f0f2f5] text-[#54656f] hover:bg-slate-200/60"
               }`}
             >
               Prospek CRM
             </button>
+          </div>
+
+          {/* Supervisor / Owner Dropdown: Filter Khusus per Sales */}
+          <div className="mt-2 px-1 flex items-center justify-between text-[11px] text-slate-500 bg-slate-50 p-1.5 rounded-lg border border-slate-200/70">
+            <span className="flex items-center gap-1 text-slate-600 font-medium">
+              <Users className="w-3.5 h-3.5 text-indigo-600" /> Filter Agen:
+            </span>
+            <select
+              value={selectedSalesAgent}
+              onChange={(e) => setSelectedSalesAgent(e.target.value)}
+              className="bg-white border border-slate-200 rounded px-2 py-0.5 text-[11px] font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            >
+              <option value="ALL">Semua Anggota Sales</option>
+              {SALES_TEAM.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({conversations.filter((c) => c.assignedSalesId === s.id).length})
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -392,12 +527,13 @@ export function WhatsAppInboxView({
                   c.whatsappNumber.replace(/\D/g, "")
               );
 
+              const isMine = c.assignedSalesId === currentUser?.id;
+
               return (
                 <div
                   key={c.id}
                   onClick={() => {
                     setActiveConvId(c.id);
-                    // Mark as read
                     if (c.unreadCount > 0) {
                       setConversations((prev) =>
                         prev.map((item) =>
@@ -413,7 +549,7 @@ export function WhatsAppInboxView({
                   }`}
                 >
                   {/* Round Avatar */}
-                  <div className="w-12 h-12 rounded-full bg-slate-200 text-slate-600 font-bold flex items-center justify-center text-sm flex-shrink-0 shadow-inner">
+                  <div className="w-12 h-12 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-sm flex-shrink-0 shadow-inner">
                     {c.companyName.substring(0, 2).toUpperCase()}
                   </div>
 
@@ -434,9 +570,32 @@ export function WhatsAppInboxView({
                     </div>
 
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] text-indigo-700 font-medium truncate max-w-[150px]">
+                      <span className="text-[10px] text-indigo-700 font-medium truncate max-w-[130px]">
                         {c.companyName}
                       </span>
+
+                      {/* Tag Kepemilikan Sales */}
+                      {c.assignedSalesName ? (
+                        <span
+                          className={`text-[9px] px-1.5 py-0.2 rounded font-medium flex items-center gap-0.5 ${
+                            isMine
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold"
+                              : "bg-slate-100 text-slate-600 border border-slate-200"
+                          }`}
+                        >
+                          <UserCheck className="w-2.5 h-2.5" />
+                          <span>
+                            {isMine
+                              ? "Chat Saya"
+                              : c.assignedSalesName.replace(/\s*\(.*\)/, "")}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 font-semibold">
+                          ⚠️ Belum Ada Sales
+                        </span>
+                      )}
+
                       {prospect && (
                         <span
                           className={`text-[9px] px-1.5 py-0.2 rounded border font-semibold ${getStageBadge(
@@ -467,7 +626,7 @@ export function WhatsAppInboxView({
             })
           ) : (
             <div className="p-8 text-center text-xs text-[#667781]">
-              Tidak ada percakapan ditemukan.
+              Tidak ada percakapan ditemukan pada filter ini.
             </div>
           )}
         </div>
@@ -510,6 +669,53 @@ export function WhatsAppInboxView({
 
               {/* Action Buttons di Header Chat */}
               <div className="flex items-center gap-2">
+                {/* Multi-Agent Assignment Dropdown Button */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsAssignDropdownOpen((prev) => !prev)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors shadow-sm ${
+                      activeConv.assignedSalesName
+                        ? "bg-white hover:bg-slate-50 text-slate-700 border-slate-300"
+                        : "bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 animate-pulse"
+                    }`}
+                  >
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>
+                      {activeConv.assignedSalesName
+                        ? activeConv.assignedSalesName
+                        : "Tugaskan ke Sales"}
+                    </span>
+                    <ChevronDown className="w-3 h-3 text-slate-400" />
+                  </button>
+
+                  {/* Dropdown Menu untuk Transfer / Assignment */}
+                  {isAssignDropdownOpen && (
+                    <div className="absolute right-0 mt-1.5 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30 divide-y divide-slate-100">
+                      <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Tugaskan Kontak Ini Ke:
+                      </div>
+                      {SALES_TEAM.map((sales) => (
+                        <button
+                          key={sales.id}
+                          type="button"
+                          onClick={() => handleAssignSales(sales.id, sales.name)}
+                          className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 transition-colors ${
+                            activeConv.assignedSalesId === sales.id
+                              ? "font-bold text-[#00a884] bg-[#e7fce3]/40"
+                              : "text-slate-700"
+                          }`}
+                        >
+                          <span>{sales.name}</span>
+                          {activeConv.assignedSalesId === sales.id && (
+                            <Check className="w-3.5 h-3.5 text-[#00a884]" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {/* Tombol Simulasi Balasan Klien */}
                 <button
                   type="button"
@@ -519,7 +725,7 @@ export function WhatsAppInboxView({
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 shadow-sm transition-colors"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                  <span>{isSimulating ? "Menerima..." : "Simulasi Klien Balas"}</span>
+                  <span>{isSimulating ? "Menerima..." : "Simulasi Balas"}</span>
                 </button>
 
                 <button
@@ -537,6 +743,31 @@ export function WhatsAppInboxView({
               </div>
             </div>
 
+            {/* Agent Collision Warning Banner (Jika Sales membuka chat rekannya) */}
+            {isAssignedToOther && (
+              <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between text-xs text-amber-900 z-10">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <span>
+                    Perhatian: Percakapan ini ditugaskan kepada{" "}
+                    <strong>{activeConv.assignedSalesName || "Sales Lain"}</strong>.
+                    Anda sedang melihat dalam mode kolaborasi tim.
+                  </span>
+                </div>
+                {currentUser && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleAssignSales(currentUser.id, currentUser.fullName)
+                    }
+                    className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[11px] font-semibold transition-colors shadow-xs"
+                  >
+                    Ambil Alih Chat
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Bubble Messages Area (Wallpaper WhatsApp) */}
             <div
               className="flex-1 overflow-y-auto p-4 md:px-8 space-y-2.5"
@@ -548,7 +779,7 @@ export function WhatsAppInboxView({
               {/* Tanggal Separator WhatsApp */}
               <div className="flex justify-center my-3">
                 <span className="bg-white/90 text-[#54656f] text-[10px] font-bold px-3 py-1 rounded-lg shadow-sm border border-slate-200/60 uppercase tracking-wider">
-                  Hari Ini
+                  Riwayat Tersimpan Permanen
                 </span>
               </div>
 
@@ -568,6 +799,13 @@ export function WhatsAppInboxView({
                           : "bg-white text-[#111b21] rounded-tl-none border border-slate-200/40"
                       }`}
                     >
+                      {/* Atribusi Pengirim Pesan Tim */}
+                      {isSales && m.sentByUserName && (
+                        <div className="text-[10px] font-semibold text-emerald-800 mb-0.5 flex items-center gap-1 opacity-90 select-none">
+                          <span>💬 {m.sentByUserName}</span>
+                        </div>
+                      )}
+
                       {/* Teks Pesan */}
                       <p className="whitespace-pre-wrap leading-relaxed pr-14 text-xs">
                         {m.text}
@@ -607,27 +845,33 @@ export function WhatsAppInboxView({
                 <Paperclip className="w-5 h-5" />
               </button>
 
-              {/* Input Form Pill */}
-              <form onSubmit={handleSendMessage} className="flex-1 flex items-center">
+              {/* Form Input Teks */}
+              <form
+                onSubmit={handleSendMessage}
+                className="flex-1 flex items-center"
+              >
                 <input
                   type="text"
-                  placeholder="Ketik pesan WhatsApp..."
+                  placeholder={
+                    isAssignedToOther
+                      ? `Ketik balasan atas nama ${currentUser?.fullName || "Tim Sales"}...`
+                      : "Ketik pesan..."
+                  }
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   disabled={isSending}
-                  className="w-full bg-white px-4 py-2 text-xs text-[#111b21] rounded-lg border border-transparent focus:outline-none focus:ring-1 focus:ring-[#00a884] placeholder-[#667781] shadow-sm"
+                  className="w-full bg-white rounded-lg px-4 py-2 text-xs text-[#111b21] placeholder-[#667781] focus:outline-none focus:ring-1 focus:ring-[#00a884] shadow-xs"
                 />
               </form>
 
-              {/* Tombol Kirim / Mic */}
               {inputText.trim() ? (
                 <button
                   type="button"
                   onClick={() => handleSendMessage()}
                   disabled={isSending}
-                  className="w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#008f6f] text-white flex items-center justify-center transition-transform active:scale-95 shadow-md"
+                  className="p-2 bg-[#00a884] hover:bg-[#008f6f] text-white rounded-full transition-colors shadow-sm"
                 >
-                  <Send className="w-4 h-4 ml-0.5" />
+                  <Send className="w-4 h-4" />
                 </button>
               ) : (
                 <button
@@ -646,10 +890,10 @@ export function WhatsAppInboxView({
               <MessageSquare className="w-10 h-10" />
             </div>
             <h3 className="text-base font-bold text-[#111b21]">
-              WhatsApp Web untuk Fynux OS
+              WhatsApp Web Multi-Device untuk Fynux OS
             </h3>
             <p className="text-xs text-[#667781] max-w-sm mt-1 leading-relaxed">
-              Kirim dan terima pesan WhatsApp langsung dari dashboard. Setiap pesan terkirim atau dibalas otomatis memperbarui panggung prospek di CRM.
+              1 Nomor WhatsApp kantor dipakai bersama oleh 5 tim sales. Setiap sales fokus pada daftar 100 prospek miliknya tanpa tertukar, dan riwayat pesan tetap tersimpan permanen di server meskipun koneksi terputus.
             </p>
           </div>
         )}
@@ -704,6 +948,8 @@ export function WhatsAppInboxView({
                         companyName: p.companyName,
                         contactName: p.contactName,
                         whatsappNumber: p.whatsappNumber,
+                        assignedSalesId: p.assignedSalesId || currentUser?.id,
+                        assignedSalesName: p.assignedSalesName || currentUser?.fullName,
                         unreadCount: 0,
                         lastMessageSnippet: "Ruang obrolan baru dimulai",
                         lastMessageAt: new Date().toISOString(),

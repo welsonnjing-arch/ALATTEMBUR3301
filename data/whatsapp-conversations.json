@@ -1,0 +1,144 @@
+[
+  {
+    "id": "conv-1792939805354-zztf",
+    "prospectId": "p-1792939805354-xht5",
+    "companyName": "PT Bintang Abadi Konstruksi",
+    "contactName": "Bapak Hendra",
+    "whatsappNumber": "6281299900011",
+    "assignedSalesId": "sales-1",
+    "assignedSalesName": "Budi Santoso (Sales)",
+    "unreadCount": 1,
+    "lastMessageSnippet": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran har",
+    "lastMessageAt": "2026-10-25T14:50:05.355Z",
+    "researchNotes": "Kontraktor baru belum punya company profile",
+    "messages": [
+      {
+        "id": "msg-1792939805354-pwt8",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
+        "isDraft": false,
+        "timestamp": "2026-10-25T14:50:05.354Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso"
+      },
+      {
+        "id": "msg-1792939805355-cafq",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
+        "isDraft": false,
+        "timestamp": "2026-10-25T14:50:05.355Z"
+      }
+    ]
+  },
+  {
+    "id": "conv-002",
+    "prospectId": "p-002",
+    "companyName": "PT Padma Widya Setiajaya",
+    "contactName": "Ibu Rina Wulandari (Direktur)",
+    "whatsappNumber": "6281298765432",
+    "assignedSalesId": "44444444-4444-4444-4444-444444444444",
+    "assignedSalesName": "Siti Rahma (Sales 2)",
+    "unreadCount": 1,
+    "lastMessageSnippet": "Apakah bisa dapat potongan harga jika kami ambil kontrak maintenance tahunan sekalian?",
+    "lastMessageAt": "2026-10-25T13:50:03.041Z",
+    "researchNotes": "Perusahaan kontraktor regional. Membutuhkan company profile profesional untuk portofolio tender B2B pemerintah & swasta.",
+    "messages": [
+      {
+        "id": "msg-001",
+        "conversationId": "conv-002",
+        "sender": "SALES",
+        "sentByUserId": "44444444-4444-4444-4444-444444444444",
+        "sentByUserName": "Siti Rahma (Sales 2)",
+        "text": "Selamat siang Ibu Rina, perkenalkan saya Siti dari Fynux Digital Solutions. Kami melihat PT Padma Widya Setiajaya memiliki rekam jejak konstruksi yang luar biasa, namun website resmi perusahaan sepertinya belum aktif. Apakah saat ini ada rencana publikasi portofolio online untuk tender?",
+        "isDraft": false,
+        "timestamp": "2026-10-22T14:50:03.041Z"
+      },
+      {
+        "id": "msg-002",
+        "conversationId": "conv-002",
+        "sender": "PROSPECT",
+        "text": "Siang Mbak Siti. Iya betul sekali, kami memang sedang disyaratkan melampirkan link website company profile untuk tender LPSE bulan depan. Paket apa saja yang tersedia di Fynux?",
+        "isDraft": false,
+        "timestamp": "2026-10-23T14:50:03.041Z"
+      },
+      {
+        "id": "msg-003",
+        "conversationId": "conv-002",
+        "sender": "SALES",
+        "sentByUserId": "44444444-4444-4444-4444-444444444444",
+        "sentByUserName": "Siti Rahma (Sales 2)",
+        "text": "Untuk kebutuhan tender, kami merekomendasikan Business Website seharga Rp 3.500.000 dengan CMS kustom agar tim Ibu bisa memperbarui galeri proyek kapan saja, lengkap dengan domain, hosting, dan SSL.",
+        "isDraft": false,
+        "timestamp": "2026-10-24T14:50:03.041Z"
+      },
+      {
+        "id": "msg-004",
+        "conversationId": "conv-002",
+        "sender": "PROSPECT",
+        "text": "Apakah bisa dapat potongan harga menjadi sekitar 3.15 juta jika kami langsung ambil kontrak maintenance tahunan sekalian?",
+        "isDraft": false,
+        "timestamp": "2026-10-25T13:50:03.041Z"
+      }
+    ]
+  },
+  {
+    "id": "conv-003",
+    "prospectId": "p-003",
+    "companyName": "Kopi Nusantara Roastery",
+    "contactName": "Aditya Pratama (Founder)",
+    "whatsappNumber": "6285712345678",
+    "assignedSalesId": "55555555-5555-5555-5555-555555555555",
+    "assignedSalesName": "Dimas Anggara (Sales 3)",
+    "unreadCount": 0,
+    "lastMessageSnippet": "Reach now via WhatsApp Web terkirim.",
+    "lastMessageAt": "2026-10-25T02:50:03.041Z",
+    "researchNotes": "Roastery kopi berkembang pesat di IG. Admin kewalahan membalas chat pesanan biji kopi kiloan. Butuh website katalog beans + direct WA order.",
+    "messages": [
+      {
+        "id": "msg-010",
+        "conversationId": "conv-003",
+        "sender": "SALES",
+        "sentByUserId": "55555555-5555-5555-5555-555555555555",
+        "sentByUserName": "Dimas Anggara (Sales 3)",
+        "text": "Halo Mas Aditya, salam kenal dari Fynux Digital Solutions. Kami sempat memantau roastery Kopi Nusantara yang ramai sekali pemesanannya di Instagram. Apakah Mas Adit tertarik membuat website katalog beans otomatis agar pelanggan grosir bisa langsung order rapi?",
+        "isDraft": false,
+        "timestamp": "2026-10-25T02:50:03.041Z"
+      }
+    ]
+  },
+  {
+    "id": "conv-001",
+    "prospectId": "p-001",
+    "companyName": "SMAN 2 Ngaglik",
+    "contactName": "Bambang Sudarsono (Wakasek Kurikulum)",
+    "whatsappNumber": "62895324069850",
+    "assignedSalesId": "77777777-7777-7777-7777-777777777777",
+    "assignedSalesName": "Rian Hidayat (Sales 5)",
+    "unreadCount": 0,
+    "lastMessageSnippet": "Invoice pelunasan presensi digital telah terbit.",
+    "lastMessageAt": "2026-02-12T10:00:00Z",
+    "researchNotes": "Sekolah negeri 900+ siswa. Membutuhkan sistem web presensi digital multi-device.",
+    "messages": [
+      {
+        "id": "msg-020",
+        "conversationId": "conv-001",
+        "sender": "SALES",
+        "sentByUserId": "22222222-2222-2222-2222-222222222222",
+        "sentByUserName": "Budi Santoso (Sales 1)",
+        "text": "Selamat pagi Pak Bambang, berikut kami lampirkan nota pelunasan dan invoice proyek SIM-Presensi berbasis web v1.0.",
+        "isDraft": false,
+        "timestamp": "2026-02-12T09:30:00Z"
+      },
+      {
+        "id": "msg-021",
+        "conversationId": "conv-001",
+        "sender": "PROSPECT",
+        "text": "Terima kasih banyak Mas Faiz dan tim Fynux, sistem presensi sudah kami uji dan berjalan lancar di kiosk lobi sekolah.",
+        "isDraft": false,
+        "timestamp": "2026-02-12T10:00:00Z"
+      }
+    ]
+  }
+]
