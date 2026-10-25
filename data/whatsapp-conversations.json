@@ -5,11 +5,11 @@
     "companyName": "PT Bintang Abadi Konstruksi",
     "contactName": "Bapak Hendra",
     "whatsappNumber": "6281299900011",
-    "assignedSalesId": "sales-1",
-    "assignedSalesName": "Budi Santoso (Sales)",
-    "unreadCount": 1,
+    "assignedSalesId": "22222222-2222-2222-2222-222222222222",
+    "assignedSalesName": "Budi Santoso (Sales 1)",
+    "unreadCount": 3,
     "lastMessageSnippet": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran har",
-    "lastMessageAt": "2026-10-25T14:50:05.355Z",
+    "lastMessageAt": "2026-10-25T14:51:51.037Z",
     "researchNotes": "Kontraktor baru belum punya company profile",
     "messages": [
       {
@@ -29,6 +29,42 @@
         "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
         "isDraft": false,
         "timestamp": "2026-10-25T14:50:05.355Z"
+      },
+      {
+        "id": "msg-1792939889728-dh9o",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
+        "isDraft": false,
+        "timestamp": "2026-10-25T14:51:29.728Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso"
+      },
+      {
+        "id": "msg-1792939889729-k1jk",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
+        "isDraft": false,
+        "timestamp": "2026-10-25T14:51:29.729Z"
+      },
+      {
+        "id": "msg-1792939911036-d22b",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
+        "isDraft": false,
+        "timestamp": "2026-10-25T14:51:51.036Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso"
+      },
+      {
+        "id": "msg-1792939911037-aijx",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
+        "isDraft": false,
+        "timestamp": "2026-10-25T14:51:51.037Z"
       }
     ]
   },

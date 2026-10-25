@@ -125,11 +125,17 @@ describe("Native WhatsApp Web Engine & CRM Synchronization", () => {
     const sales2Id = "44444444-4444-4444-4444-444444444444";
 
     const allConvs = await getAllConversations();
+    if (allConvs.length >= 2) {
+      await assignConversationToSales(allConvs[0].id, sales1Id, "Budi Santoso (Sales 1)");
+      await assignConversationToSales(allConvs[1].id, sales2Id, "Siti Rahma (Sales 2)");
+    }
+
+    const updatedConvs = await getAllConversations();
 
     // Filter Chat Saya untuk Sales 1
-    const sales1Chats = allConvs.filter((c) => c.assignedSalesId === sales1Id);
+    const sales1Chats = updatedConvs.filter((c) => c.assignedSalesId === sales1Id);
     // Filter Chat Saya untuk Sales 2
-    const sales2Chats = allConvs.filter((c) => c.assignedSalesId === sales2Id);
+    const sales2Chats = updatedConvs.filter((c) => c.assignedSalesId === sales2Id);
 
     assert.ok(sales1Chats.length > 0);
     assert.ok(sales2Chats.length > 0);
