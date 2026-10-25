@@ -87,7 +87,7 @@ export interface TeamBoardItem {
   y?: number; // Posisi vertikal di canvas
   width?: number; // Lebar kustom kotak (px)
   height?: number; // Tinggi kustom kotak (px)
-  colorTheme?: "slate" | "indigo" | "emerald" | "amber" | "rose" | "purple";
+  colorTheme?: "slate" | "indigo" | "emerald" | "amber" | "rose" | "purple" | "sky";
   attachments?: BoardAttachment[];
   createdAt: string;
 }
