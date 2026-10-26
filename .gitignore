@@ -34,6 +34,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# WhatsApp Multi-Device Auth Session
+# WhatsApp Multi-Device Auth Session & Uploads
 .whatsapp-auth/
+.whatsapp-auth-test/
+data/uploads/
 

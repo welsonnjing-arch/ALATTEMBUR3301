@@ -218,4 +218,56 @@ describe("Native WhatsApp Web Engine & CRM Synchronization", () => {
     assert.equal(clientMsg.attachment?.fileName, "logo-perusahaan.png");
     assert.equal(clientMsg.attachment?.mimeType, "image/png");
   });
+
+  test("allows creating project in /projects and task to-do in /tasks from WhatsApp conversation", async () => {
+    const { createProject, createTask, getAllProjects, getAllTasks } = await import(
+      "../src/modules/projects/projects.service"
+    );
+
+    // 1. Tambah Project dari percakapan WhatsApp
+    const projectRes = await createProject(
+      {
+        name: "Website Demo - PT Demo Klien",
+        clientId: "client-demo-123",
+        clientName: "PT Demo Klien",
+        targetDeadline: "2026-11-05",
+        scopeDescription: "Demo website landing page dari request chat WA.",
+        assignedMemberIds: ["33333333-3333-3333-3333-333333333333"],
+      },
+      "22222222-2222-2222-2222-222222222222",
+      "Budi Santoso (Sales 1)"
+    );
+
+    assert.equal(projectRes.success, true);
+    assert.ok(projectRes.project);
+
+    const allProjects = await getAllProjects();
+    const createdProj = allProjects.find((p) => p.id === projectRes.project?.id);
+    assert.ok(createdProj);
+    assert.equal(createdProj.name, "Website Demo - PT Demo Klien");
+
+    // 2. Tambah Task To Do dari percakapan WhatsApp
+    const taskRes = await createTask(
+      {
+        title: "Buat demo website untuk PT Demo Klien",
+        description: "Permintaan dari prospek via WhatsApp. Segera siapkan wireframe.",
+        projectId: createdProj.id,
+        primaryPicId: "33333333-3333-3333-3333-333333333333",
+        priority: "HIGH",
+        deadline: "2026-10-30",
+      },
+      "22222222-2222-2222-2222-222222222222",
+      "Budi Santoso (Sales 1)"
+    );
+
+    assert.equal(taskRes.success, true);
+    assert.ok(taskRes.task);
+
+    const allTasks = await getAllTasks();
+    const createdTask = allTasks.find((t) => t.id === taskRes.task?.id);
+    assert.ok(createdTask);
+    assert.equal(createdTask.title, "Buat demo website untuk PT Demo Klien");
+    assert.equal(createdTask.projectId, createdProj.id);
+    assert.equal(createdTask.priority, "HIGH");
+  });
 });

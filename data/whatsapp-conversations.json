@@ -1,15 +1,119 @@
 [
   {
+    "id": "conv-1793008504596-v8ea",
+    "prospectId": "p-1793006689891-ma9u",
+    "companyName": "PT DILDO NASIONAL MERDEKA",
+    "contactName": "PT DILDO NASIONAL MERDEKA",
+    "whatsappNumber": "62895324069850",
+    "remoteJid": "51372120633567@lid",
+    "assignedSalesId": "77777777-7777-7777-7777-777777777777",
+    "assignedSalesName": "Rian Hidayat (Sales 5)",
+    "unreadCount": 3,
+    "lastMessageSnippet": "ini untuk anunya",
+    "lastMessageAt": "2026-10-26T09:57:34.917Z",
+    "researchNotes": "Belum ada catatan riset",
+    "messages": [
+      {
+        "id": "msg-1793008536116-jlqq",
+        "conversationId": "conv-1793008504596-v8ea",
+        "sender": "SALES",
+        "text": "halo",
+        "isDraft": false,
+        "timestamp": "2026-10-26T09:55:36.116Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)"
+      },
+      {
+        "id": "msg-1793008552519-lalk",
+        "conversationId": "conv-1793008504596-v8ea",
+        "sender": "SALES",
+        "text": "s",
+        "isDraft": false,
+        "timestamp": "2026-10-26T09:55:52.519Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)"
+      },
+      {
+        "id": "msg-1793008565033-fbu0",
+        "conversationId": "conv-1793008504596-v8ea",
+        "sender": "PROSPECT",
+        "text": "g",
+        "isDraft": false,
+        "timestamp": "2026-10-26T09:56:05.033Z"
+      },
+      {
+        "id": "msg-1793008589394-l9zs",
+        "conversationId": "conv-1793008504596-v8ea",
+        "sender": "SALES",
+        "text": "bokong",
+        "isDraft": false,
+        "timestamp": "2026-10-26T09:56:29.394Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)",
+        "attachment": {
+          "fileName": "FgoZslwUcAEsTLq.jpg",
+          "fileSize": "30.8 KB",
+          "mimeType": "image/jpeg",
+          "url": "/api/whatsapp/media/1793008589392-gxbi.jpg"
+        }
+      },
+      {
+        "id": "msg-1793008608786-3br0",
+        "conversationId": "conv-1793008504596-v8ea",
+        "sender": "PROSPECT",
+        "text": "📷 Foto",
+        "isDraft": false,
+        "timestamp": "2026-10-26T09:56:48.786Z",
+        "attachment": {
+          "fileName": "foto_1793008608187.jpg",
+          "fileSize": "2.8 KB",
+          "mimeType": "image/jpeg",
+          "url": "/api/whatsapp/media/1793008608187-9r56.jpg"
+        }
+      },
+      {
+        "id": "msg-1793008632028-xlbn",
+        "conversationId": "conv-1793008504596-v8ea",
+        "sender": "PROSPECT",
+        "text": "karhutkong",
+        "isDraft": false,
+        "timestamp": "2026-10-26T09:57:12.028Z",
+        "attachment": {
+          "fileName": "foto_1793008631735.jpg",
+          "fileSize": "4.7 KB",
+          "mimeType": "image/jpeg",
+          "url": "/api/whatsapp/media/1793008631735-jjm4.jpg"
+        }
+      },
+      {
+        "id": "msg-1793008654917-fk6m",
+        "conversationId": "conv-1793008504596-v8ea",
+        "sender": "SALES",
+        "text": "ini untuk anunya",
+        "isDraft": false,
+        "timestamp": "2026-10-26T09:57:34.917Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)",
+        "attachment": {
+          "fileName": "Cover Terms & Services – Fynux Basic Website.pdf",
+          "fileSize": "343.4 KB",
+          "mimeType": "application/pdf",
+          "url": "/api/whatsapp/media/1793008654916-n2h0.pdf"
+        }
+      }
+    ]
+  },
+  {
     "id": "conv-1792939805354-zztf",
-    "prospectId": "p-1793008211290-l6va",
+    "prospectId": "p-1793009393948-tuu8",
     "companyName": "PT Bintang Abadi Konstruksi",
     "contactName": "Bapak Hendra",
     "whatsappNumber": "6281299900011",
-    "assignedSalesId": "77777777-7777-7777-7777-777777777777",
-    "assignedSalesName": "Rian Hidayat (Sales 5)",
-    "unreadCount": 13,
+    "assignedSalesId": "44444444-4444-4444-4444-444444444444",
+    "assignedSalesName": "Siti Rahma (Sales 2)",
+    "unreadCount": 17,
     "lastMessageSnippet": "Ini contoh logo perusahaan kami",
-    "lastMessageAt": "2026-10-26T09:50:11.297Z",
+    "lastMessageAt": "2026-10-26T10:09:53.954Z",
     "researchNotes": "Kontraktor baru belum punya company profile",
     "messages": [
       {
@@ -251,6 +355,102 @@
         "text": "Ini contoh logo perusahaan kami",
         "isDraft": false,
         "timestamp": "2026-10-26T09:50:11.297Z",
+        "attachment": {
+          "fileName": "logo-perusahaan.png",
+          "fileSize": "240 KB",
+          "mimeType": "image/png",
+          "url": "/api/whatsapp/media/mock-logo.png"
+        }
+      },
+      {
+        "id": "msg-1793009362722-0znj",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
+        "isDraft": false,
+        "timestamp": "2026-10-26T10:09:22.722Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso"
+      },
+      {
+        "id": "msg-1793009362724-u2ur",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
+        "isDraft": false,
+        "timestamp": "2026-10-26T10:09:22.724Z"
+      },
+      {
+        "id": "msg-1793009362727-9wol",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Berikut kami lampirkan proposal paket Business Website.",
+        "isDraft": false,
+        "timestamp": "2026-10-26T10:09:22.727Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso",
+        "attachment": {
+          "fileName": "Proposal-Business-Website.pdf",
+          "fileSize": "1.2 MB",
+          "mimeType": "application/pdf",
+          "url": "/api/whatsapp/media/1793009362727-pmai.pdf"
+        }
+      },
+      {
+        "id": "msg-1793009362727-w2br",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Ini contoh logo perusahaan kami",
+        "isDraft": false,
+        "timestamp": "2026-10-26T10:09:22.727Z",
+        "attachment": {
+          "fileName": "logo-perusahaan.png",
+          "fileSize": "240 KB",
+          "mimeType": "image/png",
+          "url": "/api/whatsapp/media/mock-logo.png"
+        }
+      },
+      {
+        "id": "msg-1793009393949-gr8f",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
+        "isDraft": false,
+        "timestamp": "2026-10-26T10:09:53.949Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso"
+      },
+      {
+        "id": "msg-1793009393950-mdsp",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
+        "isDraft": false,
+        "timestamp": "2026-10-26T10:09:53.950Z"
+      },
+      {
+        "id": "msg-1793009393954-yt02",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Berikut kami lampirkan proposal paket Business Website.",
+        "isDraft": false,
+        "timestamp": "2026-10-26T10:09:53.954Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso",
+        "attachment": {
+          "fileName": "Proposal-Business-Website.pdf",
+          "fileSize": "1.2 MB",
+          "mimeType": "application/pdf",
+          "url": "/api/whatsapp/media/1793009393954-hm62.pdf"
+        }
+      },
+      {
+        "id": "msg-1793009393954-x2y5",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Ini contoh logo perusahaan kami",
+        "isDraft": false,
+        "timestamp": "2026-10-26T10:09:53.954Z",
         "attachment": {
           "fileName": "logo-perusahaan.png",
           "fileSize": "240 KB",

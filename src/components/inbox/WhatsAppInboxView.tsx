@@ -26,6 +26,8 @@ import {
   Trash2,
   Download,
   FileText,
+  FolderPlus,
+  CheckSquare,
 } from "lucide-react";
 import { ConversationThread, ChatMessage } from "@/modules/inbox/types";
 import { WhatsAppSessionInfo } from "@/modules/whatsapp/types";
@@ -36,6 +38,8 @@ import {
   simulateIncomingWhatsAppMessageAction,
 } from "@/modules/whatsapp/whatsapp.actions";
 import { WhatsAppPairingModal } from "@/components/whatsapp/WhatsAppPairingModal";
+import { WhatsAppCreateProjectModal } from "./WhatsAppCreateProjectModal";
+import { WhatsAppCreateTaskModal } from "./WhatsAppCreateTaskModal";
 import { formatDateTimeWIB } from "@/lib/date";
 
 export const SALES_TEAM = [
@@ -122,9 +126,17 @@ export function WhatsAppInboxView({
   } | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
-  // Modals
+  // Modals & Project/Task Actions
   const [isPairingModalOpen, setIsPairingModalOpen] = useState(false);
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState<{
+    type: "PROJECT" | "TASK";
+    message: string;
+    linkUrl: string;
+    linkLabel: string;
+  } | null>(null);
 
   // Auto scroll ke pesan terbawah
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -911,6 +923,28 @@ export function WhatsAppInboxView({
                   </div>
                 )}
 
+                {/* Tombol Tambahkan Proyek ke /projects */}
+                <button
+                  type="button"
+                  onClick={() => setIsCreateProjectModalOpen(true)}
+                  title="Buat Proyek baru untuk prospek ini (data otomatis masuk ke /projects)"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg border border-blue-200 shadow-xs transition-colors"
+                >
+                  <FolderPlus className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="hidden md:inline">Tambah Proyek</span>
+                </button>
+
+                {/* Tombol Task To Do ke /tasks */}
+                <button
+                  type="button"
+                  onClick={() => setIsCreateTaskModalOpen(true)}
+                  title="Buat Task To Do untuk tim (data otomatis masuk ke /tasks)"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg border border-indigo-200 shadow-xs transition-colors"
+                >
+                  <CheckSquare className="w-3.5 h-3.5 text-indigo-600" />
+                  <span className="hidden md:inline">Task To Do</span>
+                </button>
+
                 {/* Tombol Simulasi Balasan Klien */}
                 <button
                   type="button"
@@ -945,6 +979,29 @@ export function WhatsAppInboxView({
                 </button>
               </div>
             </div>
+
+            {/* Feedback Notifikasi Sukses Pembuatan Proyek / Task */}
+            {actionFeedback && (
+              <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-2 flex items-center justify-between text-xs text-emerald-900 z-10 animate-in fade-in duration-150 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span className="font-medium">{actionFeedback.message}</span>
+                  <a
+                    href={actionFeedback.linkUrl}
+                    className="inline-flex items-center gap-1 font-bold underline text-emerald-700 hover:text-emerald-900 ml-1"
+                  >
+                    {actionFeedback.linkLabel} &rarr;
+                  </a>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActionFeedback(null)}
+                  className="p-1 hover:bg-emerald-100 rounded-full text-emerald-700 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
             {/* Agent Collision Warning Banner (Jika Sales membuka chat rekannya) */}
             {isAssignedToOther && (
@@ -1356,6 +1413,42 @@ export function WhatsAppInboxView({
             </button>
           </div>
         </div>
+      )}
+
+      {/* Modal Tambahkan Proyek ke /projects dari WhatsApp */}
+      {activeConv && (
+        <WhatsAppCreateProjectModal
+          isOpen={isCreateProjectModalOpen}
+          onClose={() => setIsCreateProjectModalOpen(false)}
+          conversation={activeConv}
+          currentUser={currentUser}
+          onSuccess={(project) => {
+            setActionFeedback({
+              type: "PROJECT",
+              message: `Proyek "${project.name}" berhasil dibuat dan terdaftar di /projects!`,
+              linkUrl: "/projects",
+              linkLabel: "Buka /projects",
+            });
+          }}
+        />
+      )}
+
+      {/* Modal Tambah Task To Do ke /tasks dari WhatsApp */}
+      {activeConv && (
+        <WhatsAppCreateTaskModal
+          isOpen={isCreateTaskModalOpen}
+          onClose={() => setIsCreateTaskModalOpen(false)}
+          conversation={activeConv}
+          currentUser={currentUser}
+          onSuccess={(task) => {
+            setActionFeedback({
+              type: "TASK",
+              message: `Task To Do "${task.title}" berhasil ditambahkan ke /tasks!`,
+              linkUrl: "/tasks",
+              linkLabel: "Buka /tasks",
+            });
+          }}
+        />
       )}
     </div>
   );
