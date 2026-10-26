@@ -164,7 +164,7 @@ export function WhatsAppInboxView({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeConv?.messages]);
 
-  // Real-time auto-sync percakapan dari server setiap 2 detik
+  // Real-time auto-sync percakapan dan status koneksi WhatsApp dari server setiap 2-3 detik
   useEffect(() => {
     const syncInterval = setInterval(async () => {
       try {
@@ -187,10 +187,18 @@ export function WhatsAppInboxView({
             return hasChange ? latest : prev;
           });
         }
+
+        const sessionRes = await fetch("/api/whatsapp/session", { cache: "no-store" });
+        if (sessionRes.ok) {
+          const s = await sessionRes.json();
+          setSession((prev) =>
+            prev.status !== s.status || prev.phoneNumber !== s.phoneNumber ? s : prev
+          );
+        }
       } catch (err) {
         // Abaikan error polling background
       }
-    }, 2000);
+    }, 2500);
 
     return () => clearInterval(syncInterval);
   }, []);
@@ -350,6 +358,11 @@ export function WhatsAppInboxView({
       });
 
       if (res.ok) {
+        const sendData = await res.json();
+        if (sendData?.warning) {
+          alert(sendData.warning);
+          setIsPairingModalOpen(true);
+        }
         const convRes = await fetch("/api/whatsapp/conversations", {
           cache: "no-store",
         });
@@ -935,6 +948,23 @@ export function WhatsAppInboxView({
               })}
               <div ref={messagesEndRef} />
             </div>
+
+            {/* Warning Banner jika WhatsApp belum terhubung ke perangkat */}
+            {session.status !== "CONNECTED" && (
+              <div className="bg-amber-50 border-t border-amber-200 px-4 py-2 flex items-center justify-between text-xs text-amber-900 z-10 shadow-xs">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Smartphone className="w-4 h-4 text-amber-600 animate-pulse flex-shrink-0" />
+                  Perangkat WhatsApp belum terhubung. Pesan tidak akan terkirim ke ponsel prospek.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsPairingModalOpen(true)}
+                  className="px-2.5 py-1 bg-[#00a884] hover:bg-[#008f6f] text-white font-bold rounded text-[11px] transition-colors flex items-center gap-1 shadow-xs flex-shrink-0"
+                >
+                  Tautkan WA Sekarang &rarr;
+                </button>
+              </div>
+            )}
 
             {/* Bottom Bar: Kolom Input Pesan 1:1 WhatsApp Web */}
             <div className="bg-[#f0f2f5] px-4 py-2.5 flex items-center gap-2 border-t border-[#d1d7db] z-10">

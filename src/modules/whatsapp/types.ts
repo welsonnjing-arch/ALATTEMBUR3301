@@ -32,4 +32,6 @@ export interface WhatsAppMessageResult {
   timestamp?: string;
   error?: string;
   updatedStage?: PipelineStage;
+  deliveredViaSocket?: boolean;
+  warning?: string;
 }

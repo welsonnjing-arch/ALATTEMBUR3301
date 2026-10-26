@@ -48,7 +48,14 @@ if (!waGlobal.waSession) {
   };
 }
 
-const AUTH_DIR = path.join(process.cwd(), ".whatsapp-auth");
+const isTestEnv =
+  process.env.NODE_ENV === "test" ||
+  process.env.npm_lifecycle_event === "test" ||
+  process.argv.some((a) => a.includes("test"));
+
+const AUTH_DIR = isTestEnv
+  ? path.join(process.cwd(), ".whatsapp-auth-test")
+  : path.join(process.cwd(), ".whatsapp-auth");
 
 function ensureAuthDir() {
   if (!fs.existsSync(AUTH_DIR)) {
@@ -176,8 +183,18 @@ export async function startWhatsAppPairing(
 
         if (connection === "close") {
           const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
+          const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
-          if (statusCode === DisconnectReason.loggedOut) {
+          if (shouldReconnect) {
+            console.log(
+              `[WA_SOCKET] Koneksi terputus sementara (code ${statusCode}). Menyambung ulang dalam 3 detik...`
+            );
+            setTimeout(() => {
+              if (waGlobal.waSession?.status !== "DISCONNECTED") {
+                startWhatsAppPairing(false).catch(console.error);
+              }
+            }, 3000);
+          } else {
             waGlobal.waSession = {
               status: "DISCONNECTED",
               qrCodeDataUrl: null,
@@ -382,6 +399,9 @@ export async function sendWhatsAppMessage(
   );
 
   // 3. Jika socket Baileys aktif terhubung ke WhatsApp asli, kirim secara nyata!
+  let deliveredViaSocket = false;
+  let socketError: string | undefined;
+
   if (
     waGlobal.waSocket &&
     waGlobal.waSession?.status === "CONNECTED" &&
@@ -403,7 +423,9 @@ export async function sendWhatsAppMessage(
       console.log(`[WA_SEND] Mengirim pesan ke JID "${targetJid}": "${input.text.trim().slice(0, 50)}"`);
       await waGlobal.waSocket.sendMessage(targetJid, { text: input.text.trim() });
       console.log(`[WA_SEND] Pesan berhasil meluncur ke "${targetJid}"!`);
+      deliveredViaSocket = true;
     } catch (sendErr) {
+      socketError = sendErr instanceof Error ? sendErr.message : "Gagal mengirim via WhatsApp socket";
       console.error("Gagal mengirim via socket Baileys:", sendErr);
     }
   } else {
@@ -438,11 +460,19 @@ export async function sendWhatsAppMessage(
     waGlobal.waSession.lastActiveAt = new Date().toISOString();
   }
 
+  const warning = !deliveredViaSocket
+    ? waGlobal.waSession?.status !== "CONNECTED"
+      ? "Sesi WhatsApp belum terhubung ke HP. Pesan tersimpan di sistem namun belum terkirim ke WhatsApp ponsel. Silakan klik tombol 'Tautkan WA' dan scan QR code terlebih dahulu."
+      : `Pesan tersimpan di dashboard namun gagal dikirim ke WhatsApp: ${socketError || "Gagal menghubungi socket"}`
+    : undefined;
+
   return {
     success: true,
+    deliveredViaSocket,
     messageId: appendRes.message?.id || `msg-${Date.now()}`,
     timestamp: new Date().toISOString(),
     updatedStage,
+    warning,
   };
 }
 
