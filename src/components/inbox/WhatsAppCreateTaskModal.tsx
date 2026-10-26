@@ -5,6 +5,7 @@ import { X, CheckSquare, Calendar, User, AlertCircle, Layers } from "lucide-reac
 import { ConversationThread } from "@/modules/inbox/types";
 import { UserSessionData } from "@/modules/auth/types";
 import { createTaskAction, fetchProjectsAction } from "@/modules/projects/projects.actions";
+import { addConversationNoteAction } from "@/modules/whatsapp/whatsapp.actions";
 import { CreateTaskInput, Task } from "@/modules/projects/types";
 import { TaskPriority } from "@/types/enums";
 
@@ -13,7 +14,7 @@ interface WhatsAppCreateTaskModalProps {
   onClose: () => void;
   conversation: ConversationThread;
   currentUser?: UserSessionData | null;
-  onSuccess: (task: Task) => void;
+  onSuccess: (task: Task, noteText: string) => void;
 }
 
 const TEAM_MEMBERS = [
@@ -105,8 +106,17 @@ export function WhatsAppCreateTaskModal({
       );
 
       if (res.success && res.task) {
+        const noteText = `📌 [TASK TO DO DIBUAT]\n• Judul: ${res.task.title}\n• PIC Utama: ${res.task.primaryPicName}\n• Prioritas: ${res.task.priority}\n• Deadline: ${res.task.deadline || "-"}\nTask telah terdaftar di menu /tasks.`;
+
+        await addConversationNoteAction(
+          conversation.id,
+          noteText,
+          currentUser?.id,
+          currentUser?.fullName
+        );
+
         setIsSubmitting(false);
-        onSuccess(res.task);
+        onSuccess(res.task, noteText);
         onClose();
       } else {
         setErrorMsg(res.error || "Gagal membuat task to-do.");

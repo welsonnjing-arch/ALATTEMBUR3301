@@ -1422,10 +1422,34 @@ export function WhatsAppInboxView({
           onClose={() => setIsCreateProjectModalOpen(false)}
           conversation={activeConv}
           currentUser={currentUser}
-          onSuccess={(project) => {
+          onSuccess={(project, noteText) => {
+            const newChatMsg: ChatMessage = {
+              id: `msg-sys-${Date.now()}`,
+              conversationId: activeConv.id,
+              sender: "SALES",
+              sentByUserId: currentUser?.id,
+              sentByUserName: currentUser?.fullName || "Sistem Fynux",
+              text: noteText,
+              isDraft: false,
+              timestamp: new Date().toISOString(),
+            };
+
+            setConversations((prev) =>
+              prev.map((c) =>
+                c.id === activeConv.id
+                  ? {
+                      ...c,
+                      lastMessageSnippet: `🚀 Proyek: ${project.name}`,
+                      lastMessageAt: newChatMsg.timestamp,
+                      messages: [...c.messages, newChatMsg],
+                    }
+                  : c
+              )
+            );
+
             setActionFeedback({
               type: "PROJECT",
-              message: `Proyek "${project.name}" berhasil dibuat dan terdaftar di /projects!`,
+              message: `Proyek "${project.name}" berhasil dibuat dan masuk ke chat & /projects!`,
               linkUrl: "/projects",
               linkLabel: "Buka /projects",
             });
@@ -1440,10 +1464,34 @@ export function WhatsAppInboxView({
           onClose={() => setIsCreateTaskModalOpen(false)}
           conversation={activeConv}
           currentUser={currentUser}
-          onSuccess={(task) => {
+          onSuccess={(task, noteText) => {
+            const newChatMsg: ChatMessage = {
+              id: `msg-sys-${Date.now()}`,
+              conversationId: activeConv.id,
+              sender: "SALES",
+              sentByUserId: currentUser?.id,
+              sentByUserName: currentUser?.fullName || "Sistem Fynux",
+              text: noteText,
+              isDraft: false,
+              timestamp: new Date().toISOString(),
+            };
+
+            setConversations((prev) =>
+              prev.map((c) =>
+                c.id === activeConv.id
+                  ? {
+                      ...c,
+                      lastMessageSnippet: `📌 Task: ${task.title}`,
+                      lastMessageAt: newChatMsg.timestamp,
+                      messages: [...c.messages, newChatMsg],
+                    }
+                  : c
+              )
+            );
+
             setActionFeedback({
               type: "TASK",
-              message: `Task To Do "${task.title}" berhasil ditambahkan ke /tasks!`,
+              message: `Task To Do "${task.title}" berhasil ditambahkan ke chat & /tasks!`,
               linkUrl: "/tasks",
               linkLabel: "Buka /tasks",
             });

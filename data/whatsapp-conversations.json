@@ -105,15 +105,15 @@
   },
   {
     "id": "conv-1792939805354-zztf",
-    "prospectId": "p-1793009393948-tuu8",
+    "prospectId": "p-1793010980244-g9ue",
     "companyName": "PT Bintang Abadi Konstruksi",
     "contactName": "Bapak Hendra",
     "whatsappNumber": "6281299900011",
     "assignedSalesId": "44444444-4444-4444-4444-444444444444",
     "assignedSalesName": "Siti Rahma (Sales 2)",
-    "unreadCount": 17,
+    "unreadCount": 19,
     "lastMessageSnippet": "Ini contoh logo perusahaan kami",
-    "lastMessageAt": "2026-10-26T10:09:53.954Z",
+    "lastMessageAt": "2026-10-26T10:36:20.251Z",
     "researchNotes": "Kontraktor baru belum punya company profile",
     "messages": [
       {
@@ -451,6 +451,54 @@
         "text": "Ini contoh logo perusahaan kami",
         "isDraft": false,
         "timestamp": "2026-10-26T10:09:53.954Z",
+        "attachment": {
+          "fileName": "logo-perusahaan.png",
+          "fileSize": "240 KB",
+          "mimeType": "image/png",
+          "url": "/api/whatsapp/media/mock-logo.png"
+        }
+      },
+      {
+        "id": "msg-1793010980244-zrm8",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
+        "isDraft": false,
+        "timestamp": "2026-10-26T10:36:20.244Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso"
+      },
+      {
+        "id": "msg-1793010980246-6x7c",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
+        "isDraft": false,
+        "timestamp": "2026-10-26T10:36:20.246Z"
+      },
+      {
+        "id": "msg-1793010980251-726d",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Berikut kami lampirkan proposal paket Business Website.",
+        "isDraft": false,
+        "timestamp": "2026-10-26T10:36:20.251Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso",
+        "attachment": {
+          "fileName": "Proposal-Business-Website.pdf",
+          "fileSize": "1.2 MB",
+          "mimeType": "application/pdf",
+          "url": "/api/whatsapp/media/1793010980250-oon5.pdf"
+        }
+      },
+      {
+        "id": "msg-1793010980251-vbcn",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Ini contoh logo perusahaan kami",
+        "isDraft": false,
+        "timestamp": "2026-10-26T10:36:20.251Z",
         "attachment": {
           "fileName": "logo-perusahaan.png",
           "fileSize": "240 KB",

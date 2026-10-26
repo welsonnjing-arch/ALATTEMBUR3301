@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import {
   CanvasViewportState,
   CreateProjectInput,
@@ -11,7 +13,7 @@ import {
 import { ProjectStatus, TaskPriority, TaskStatus } from "@/types/enums";
 import { logActivity } from "@/lib/logger";
 
-let projectsData: Project[] = [
+const INITIAL_PROJECTS_DATA: Project[] = [
   {
     id: "proj-002",
     name: "Business Website & Company Profile PT Padma Widya Setiajaya",
@@ -95,7 +97,7 @@ let projectsData: Project[] = [
   },
 ];
 
-let tasksData: Task[] = [
+const INITIAL_TASKS_DATA: Task[] = [
   {
     id: "task-001",
     projectId: "proj-002",
@@ -229,12 +231,110 @@ const INITIAL_CANVAS_VIEWPORT: CanvasViewportState = {
   updatedAt: new Date().toISOString(),
 };
 
+const DATA_DIR = path.join(process.cwd(), "data");
+const PROJECTS_FILE = path.join(DATA_DIR, "projects.json");
+const TASKS_FILE = path.join(DATA_DIR, "tasks.json");
+
+function ensureStorageDir() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+function loadPersistedProjects(): Project[] {
+  ensureStorageDir();
+  try {
+    if (fs.existsSync(PROJECTS_FILE)) {
+      const content = fs.readFileSync(PROJECTS_FILE, "utf-8");
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error("[PROJECTS_PERSISTENCE] Gagal membaca projects.json:", err);
+  }
+
+  try {
+    fs.writeFileSync(
+      PROJECTS_FILE,
+      JSON.stringify(INITIAL_PROJECTS_DATA, null, 2),
+      "utf-8"
+    );
+  } catch (err) {
+    console.error("[PROJECTS_PERSISTENCE] Gagal inisialisasi projects.json:", err);
+  }
+
+  return [...INITIAL_PROJECTS_DATA];
+}
+
+function persistProjects() {
+  ensureStorageDir();
+  try {
+    fs.writeFileSync(
+      PROJECTS_FILE,
+      JSON.stringify(projectsGlobal.projectsData || [], null, 2),
+      "utf-8"
+    );
+  } catch (err) {
+    console.error("[PROJECTS_PERSISTENCE] Gagal menyimpan projects.json:", err);
+  }
+}
+
+function loadPersistedTasks(): Task[] {
+  ensureStorageDir();
+  try {
+    if (fs.existsSync(TASKS_FILE)) {
+      const content = fs.readFileSync(TASKS_FILE, "utf-8");
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error("[TASKS_PERSISTENCE] Gagal membaca tasks.json:", err);
+  }
+
+  try {
+    fs.writeFileSync(
+      TASKS_FILE,
+      JSON.stringify(INITIAL_TASKS_DATA, null, 2),
+      "utf-8"
+    );
+  } catch (err) {
+    console.error("[TASKS_PERSISTENCE] Gagal inisialisasi tasks.json:", err);
+  }
+
+  return [...INITIAL_TASKS_DATA];
+}
+
+function persistTasks() {
+  ensureStorageDir();
+  try {
+    fs.writeFileSync(
+      TASKS_FILE,
+      JSON.stringify(projectsGlobal.tasksData || [], null, 2),
+      "utf-8"
+    );
+  } catch (err) {
+    console.error("[TASKS_PERSISTENCE] Gagal menyimpan tasks.json:", err);
+  }
+}
+
 interface ProjectsGlobalStore {
+  projectsData?: Project[];
+  tasksData?: Task[];
   teamBoardData?: TeamBoardItem[];
   sharedCanvasViewportData?: CanvasViewportState;
 }
 
 const projectsGlobal = globalThis as unknown as ProjectsGlobalStore;
+if (!projectsGlobal.projectsData || projectsGlobal.projectsData.length === 0) {
+  projectsGlobal.projectsData = loadPersistedProjects();
+}
+if (!projectsGlobal.tasksData || projectsGlobal.tasksData.length === 0) {
+  projectsGlobal.tasksData = loadPersistedTasks();
+}
 if (!projectsGlobal.teamBoardData || projectsGlobal.teamBoardData.length === 0) {
   projectsGlobal.teamBoardData = [...INITIAL_TEAM_BOARD_DATA];
 }
@@ -242,11 +342,15 @@ if (!projectsGlobal.sharedCanvasViewportData) {
   projectsGlobal.sharedCanvasViewportData = { ...INITIAL_CANVAS_VIEWPORT };
 }
 
-// Exported alias for compatibility
+// Exported aliases for compatibility
+export let projectsData = projectsGlobal.projectsData!;
+export let tasksData = projectsGlobal.tasksData!;
 export const teamBoardData = projectsGlobal.teamBoardData;
 
 // Methods
 export async function getAllProjects(filterStatus?: ProjectStatus | "ALL"): Promise<Project[]> {
+  projectsData = loadPersistedProjects();
+  projectsGlobal.projectsData = projectsData;
   if (!filterStatus || filterStatus === "ALL") {
     return [...projectsData];
   }
@@ -289,6 +393,7 @@ export async function createProject(
   };
 
   projectsData.unshift(newProject);
+  persistProjects();
 
   logActivity({
     category: "PROJECT",
@@ -323,6 +428,8 @@ export async function updateProjectStatus(
     projectsData[idx].progressPercent = 100;
   }
 
+  persistProjects();
+
   logActivity({
     category: "PROJECT",
     action: `PROJECT_STATUS_${status}`,
@@ -350,6 +457,8 @@ export async function updateProjectProgress(
     projectsData[idx].status = "COMPLETED";
   }
 
+  persistProjects();
+
   logActivity({
     category: "PROJECT",
     action: "PROJECT_PROGRESS_UPDATED",
@@ -374,6 +483,8 @@ export async function addProjectExternalLink(
     ...link,
   });
 
+  persistProjects();
+
   logActivity({
     category: "PROJECT",
     action: "EXTERNAL_LINK_ADDED",
@@ -390,6 +501,8 @@ export async function getAllTasks(filter?: {
   picId?: string;
   status?: TaskStatus;
 }): Promise<Task[]> {
+  tasksData = loadPersistedTasks();
+  projectsGlobal.tasksData = tasksData;
   let list = [...tasksData];
 
   if (filter?.projectId) {
@@ -435,6 +548,7 @@ export async function createTask(
   };
 
   tasksData.unshift(newTask);
+  persistTasks();
 
   logActivity({
     category: "PROJECT",
@@ -465,6 +579,8 @@ export async function updateTaskStatus(
   } else if (status === "DONE") {
     tasksData[idx].blockedReason = undefined;
   }
+
+  persistTasks();
 
   logActivity({
     category: "PROJECT",
@@ -500,6 +616,7 @@ export async function sendProjectChatMessage(
     projectsData[idx].chatMessages = [];
   }
   projectsData[idx].chatMessages.push(newChat);
+  persistProjects();
 
   return { success: true, chatMessage: newChat };
 }

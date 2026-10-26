@@ -56,3 +56,21 @@ export async function simulateIncomingWhatsAppMessageAction(
   revalidatePath("/sales-workspace");
   return res;
 }
+
+export async function addConversationNoteAction(
+  conversationId: string,
+  text: string,
+  actorUserId?: string,
+  actorUserName?: string
+) {
+  const { appendOutgoingMessage } = await import("@/modules/inbox/inbox.service");
+  const res = await appendOutgoingMessage(
+    conversationId,
+    text,
+    "SALES",
+    actorUserId || "SYSTEM",
+    actorUserName || "Sistem Fynux"
+  );
+  revalidatePath("/inbox");
+  return res;
+}

@@ -5,6 +5,7 @@ import { X, FolderPlus, Calendar, Building2, Link2, AlertCircle, CheckCircle2 } 
 import { ConversationThread } from "@/modules/inbox/types";
 import { UserSessionData } from "@/modules/auth/types";
 import { createProjectAction } from "@/modules/projects/projects.actions";
+import { addConversationNoteAction } from "@/modules/whatsapp/whatsapp.actions";
 import { CreateProjectInput, Project } from "@/modules/projects/types";
 
 interface WhatsAppCreateProjectModalProps {
@@ -12,7 +13,7 @@ interface WhatsAppCreateProjectModalProps {
   onClose: () => void;
   conversation: ConversationThread;
   currentUser?: UserSessionData | null;
-  onSuccess: (project: Project) => void;
+  onSuccess: (project: Project, noteText: string) => void;
 }
 
 export function WhatsAppCreateProjectModal({
@@ -84,8 +85,17 @@ export function WhatsAppCreateProjectModal({
       );
 
       if (res.success && res.project) {
+        const noteText = `🚀 [PROYEK DELIVERY DIBUAT]\n• Nama Proyek: ${res.project.name}\n• Klien: ${res.project.clientName}\n• Target Deadline: ${res.project.deadline || "-"}\n• Lingkup: ${res.project.scopeDescription}\nData telah tersimpan permanen di menu /projects.`;
+
+        await addConversationNoteAction(
+          conversation.id,
+          noteText,
+          currentUser?.id,
+          currentUser?.fullName
+        );
+
         setIsSubmitting(false);
-        onSuccess(res.project);
+        onSuccess(res.project, noteText);
         onClose();
       } else {
         setErrorMsg(res.error || "Gagal membuat proyek.");

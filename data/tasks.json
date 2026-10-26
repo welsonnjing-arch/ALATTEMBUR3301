@@ -1,0 +1,82 @@
+[
+  {
+    "id": "task-1793010980346",
+    "projectId": "proj-1793010980346",
+    "projectName": "Website Demo - PT Demo Klien",
+    "title": "Buat demo website untuk PT Demo Klien",
+    "description": "Permintaan dari prospek via WhatsApp. Segera siapkan wireframe.",
+    "primaryPicId": "33333333-3333-3333-3333-333333333333",
+    "primaryPicName": "Eko Pratama (Developer)",
+    "collaboratorIds": [],
+    "status": "TODO",
+    "priority": "HIGH",
+    "deadline": "2026-10-30",
+    "createdAt": "2026-10-26T10:36:20.346Z",
+    "updatedAt": "2026-10-26T10:36:20.346Z"
+  },
+  {
+    "id": "task-001",
+    "projectId": "proj-002",
+    "projectName": "Business Website PT Padma",
+    "title": "Slicing Landing Page & Galeri Proyek Konstruksi",
+    "description": "Implementasi desain responsif mobile & desktop menggunakan Tailwind CSS.",
+    "primaryPicId": "33333333-3333-3333-3333-333333333333",
+    "primaryPicName": "Eko Pratama (Developer)",
+    "collaboratorIds": [],
+    "status": "IN_PROGRESS",
+    "priority": "HIGH",
+    "deadline": "2026-11-02",
+    "createdAt": "2026-10-25T10:33:54.033Z",
+    "updatedAt": "2026-10-26T10:33:54.033Z"
+  },
+  {
+    "id": "task-002",
+    "projectId": "proj-002",
+    "projectName": "Business Website PT Padma",
+    "title": "Integrasi CMS Kustom Portofolio Tender",
+    "description": "Sistem upload foto proyek, deskripsi tender, dan filter kategori konstruksi.",
+    "primaryPicId": "33333333-3333-3333-3333-333333333333",
+    "primaryPicName": "Eko Pratama (Developer)",
+    "collaboratorIds": [
+      "11111111-1111-1111-1111-111111111111"
+    ],
+    "collaboratorNames": [
+      "Faiz Aditama"
+    ],
+    "status": "TODO",
+    "priority": "HIGH",
+    "deadline": "2026-11-05",
+    "createdAt": "2026-10-25T10:33:54.033Z",
+    "updatedAt": "2026-10-26T10:33:54.033Z"
+  },
+  {
+    "id": "task-003",
+    "projectId": "proj-002",
+    "projectName": "Business Website PT Padma",
+    "title": "Menunggu Konten Sertifikat ISO & Foto High-Res Klien",
+    "description": "Koordinasi dengan Bu Rina terkait kelengkapan scan sertifikat akreditasi.",
+    "primaryPicId": "22222222-2222-2222-2222-222222222222",
+    "primaryPicName": "Budi Santoso (Sales)",
+    "collaboratorIds": [],
+    "status": "BLOCKED",
+    "blockedReason": "Klien belum mengirimkan foto resolusi tinggi sertifikat ISO perusahaan untuk galeri akreditasi tender.",
+    "priority": "MEDIUM",
+    "deadline": "2026-10-30",
+    "createdAt": "2026-10-25T10:33:54.033Z",
+    "updatedAt": "2026-10-26T10:33:54.033Z"
+  },
+  {
+    "id": "task-004",
+    "projectId": "proj-001",
+    "projectName": "SIM-Presensi SMAN 2 Ngaglik",
+    "title": "Setup Server Cloud NVMe & SSL Presensi",
+    "description": "Konfigurasi server Ubuntu, SSL Let's Encrypt, dan firewall anti brute-force.",
+    "primaryPicId": "11111111-1111-1111-1111-111111111111",
+    "primaryPicName": "Faiz Aditama",
+    "collaboratorIds": [],
+    "status": "DONE",
+    "priority": "MEDIUM",
+    "createdAt": "2026-02-05T08:00:00Z",
+    "updatedAt": "2026-02-10T10:00:00Z"
+  }
+]
