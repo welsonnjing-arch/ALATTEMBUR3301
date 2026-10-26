@@ -1,7 +1,13 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { normalizeWhatsAppNumber } from "../src/modules/crm/types";
-import { createProspect, bulkCreateProspects } from "../src/modules/crm/crm.service";
+import {
+  createProspect,
+  bulkCreateProspects,
+  deleteProspect,
+  bulkDeleteProspects,
+  getProspectById,
+} from "../src/modules/crm/crm.service";
 
 describe("CRM Data Validation & Normalization Rules", () => {
   test("normalizes local 08xxx to international standard 628xxx", () => {
@@ -106,5 +112,72 @@ describe("CRM Data Validation & Normalization Rules", () => {
     assert.ok(second);
     assert.equal(second?.contactName, "Toko Sparepart Jaya");
     assert.equal(second?.researchNotes, "Di-import dari Excel/CSV");
+  });
+
+  test("deletes a prospect successfully and removes it from CRM records", async () => {
+    // 1. Buat prospek uji coba
+    const createRes = await createProspect(
+      {
+        companyName: "PT Hapus Data Test",
+        contactName: "Bpk Agus",
+        whatsappNumber: "081877665544",
+        researchNotes: "Kontak untuk pengujian fitur hapus",
+      },
+      "owner-user-id",
+      "OWNER"
+    );
+
+    assert.equal(createRes.success, true);
+    assert.ok(createRes.prospect);
+    const targetId = createRes.prospect.id;
+
+    // 2. Verifikasi ada di CRM
+    const existsBefore = await getProspectById(targetId);
+    assert.ok(existsBefore);
+
+    // 3. Hapus prospek
+    const deleteRes = await deleteProspect(targetId, "owner-user-id", "OWNER");
+    assert.equal(deleteRes.success, true);
+
+    // 4. Verifikasi sudah tidak ada di CRM
+    const existsAfter = await getProspectById(targetId);
+    assert.equal(existsAfter, null);
+  });
+
+  test("bulk deletes multiple selected prospects successfully", async () => {
+    // 1. Buat 2 prospek untuk bulk delete
+    const p1 = await createProspect(
+      {
+        companyName: "PT Bulk Delete 1",
+        whatsappNumber: "081900112233",
+      },
+      "owner-user-id",
+      "OWNER"
+    );
+    const p2 = await createProspect(
+      {
+        companyName: "PT Bulk Delete 2",
+        whatsappNumber: "081900112234",
+      },
+      "owner-user-id",
+      "OWNER"
+    );
+
+    assert.ok(p1.prospect);
+    assert.ok(p2.prospect);
+
+    // 2. Hapus secara massal
+    const bulkRes = await bulkDeleteProspects(
+      [p1.prospect.id, p2.prospect.id],
+      "owner-user-id",
+      "OWNER"
+    );
+
+    assert.equal(bulkRes.success, true);
+    assert.equal(bulkRes.deletedCount, 2);
+
+    // 3. Verifikasi keduanya sudah terhapus
+    assert.equal(await getProspectById(p1.prospect.id), null);
+    assert.equal(await getProspectById(p2.prospect.id), null);
   });
 });

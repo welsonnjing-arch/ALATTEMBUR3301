@@ -16,11 +16,13 @@ import {
   FileEdit,
   Send,
   Layers,
+  Trash2,
 } from "lucide-react";
 import { Prospect } from "@/modules/crm/types";
 import { FailedReason, NextAction, PipelineStage } from "@/types/enums";
 import {
   confirmOutreachSentAction,
+  deleteProspectAction,
   reactivateProspectAction,
   recordClientReplyAction,
   updateProspectStatusAction,
@@ -100,6 +102,21 @@ export function ProspectDetailModal({
     onRefresh();
   };
 
+  const handleDelete = async () => {
+    const confirmMsg = `Apakah Anda yakin ingin menghapus data prospek "${prospect.companyName}"?\n\nData prospek akan dihapus dari sistem CRM.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsProcessing(true);
+    const res = await deleteProspectAction(prospect.id);
+    setIsProcessing(false);
+
+    if (res.success) {
+      onRefresh();
+    } else {
+      alert(res.error || "Gagal menghapus prospek.");
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
@@ -118,13 +135,25 @@ export function ProspectDetailModal({
               {prospect.companyName}
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isProcessing}
+              title="Hapus data prospek ini"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-200 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Hapus</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Tab Switcher */}
@@ -381,7 +410,17 @@ export function ProspectDetailModal({
                       <RotateCcw className="w-3.5 h-3.5" />
                       Reaktivasi Prospek
                     </button>
-                  ) : <div />}
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={isProcessing}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Hapus Prospek
+                    </button>
+                  )}
 
                   <button
                     type="button"

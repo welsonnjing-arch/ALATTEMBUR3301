@@ -4,9 +4,11 @@ import { revalidatePath } from "next/cache";
 import { getSessionCookie } from "../auth/session";
 import {
   bulkCreateProspects,
+  bulkDeleteProspects,
   checkDuplicateWhatsApp,
   confirmOutreachSent,
   createProspect,
+  deleteProspect,
   getAllProspects,
   getProspectById,
   reactivateProspect,
@@ -158,4 +160,34 @@ export async function reactivateProspectAction(
 
 export async function getProspectDetailAction(id: string) {
   return await getProspectById(id);
+}
+
+export async function deleteProspectAction(prospectId: string) {
+  const session = await getSessionCookie();
+  if (!session) {
+    return { success: false, error: "Sesi telah berakhir. Silakan login kembali." };
+  }
+
+  const res = await deleteProspect(prospectId, session.id, session.role);
+  if (res.success) {
+    revalidatePath("/crm");
+    revalidatePath("/sales-workspace");
+    revalidatePath("/inbox");
+  }
+  return res;
+}
+
+export async function bulkDeleteProspectsAction(prospectIds: string[]) {
+  const session = await getSessionCookie();
+  if (!session) {
+    return { success: false, deletedCount: 0, error: "Sesi telah berakhir. Silakan login kembali." };
+  }
+
+  const res = await bulkDeleteProspects(prospectIds, session.id, session.role);
+  if (res.success) {
+    revalidatePath("/crm");
+    revalidatePath("/sales-workspace");
+    revalidatePath("/inbox");
+  }
+  return res;
 }

@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { CreateProspectInput, FollowUpLogItem, normalizeWhatsAppNumber, Prospect } from "./types";
 import { FailedReason, NextAction, PipelineStage } from "@/types/enums";
 import { calculateNextFollowUp } from "../follow-up/follow-up.service";
@@ -130,9 +132,58 @@ interface CRMGlobalStore {
   prospectsData?: Prospect[];
 }
 
+const DATA_DIR = path.join(process.cwd(), "data");
+const PROSPECTS_FILE = path.join(DATA_DIR, "crm-prospects.json");
+
+function ensureStorageDir() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+function loadPersistedProspects(): Prospect[] {
+  ensureStorageDir();
+  try {
+    if (fs.existsSync(PROSPECTS_FILE)) {
+      const content = fs.readFileSync(PROSPECTS_FILE, "utf-8");
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error("[CRM_PERSISTENCE] Gagal membaca crm-prospects.json:", err);
+  }
+
+  try {
+    fs.writeFileSync(
+      PROSPECTS_FILE,
+      JSON.stringify(INITIAL_PROSPECTS_DATA, null, 2),
+      "utf-8"
+    );
+  } catch {}
+
+  return [...INITIAL_PROSPECTS_DATA];
+}
+
+export function persistProspects(): void {
+  ensureStorageDir();
+  try {
+    if (crmGlobal.prospectsData) {
+      fs.writeFileSync(
+        PROSPECTS_FILE,
+        JSON.stringify(crmGlobal.prospectsData, null, 2),
+        "utf-8"
+      );
+    }
+  } catch (err) {
+    console.error("[CRM_PERSISTENCE] Gagal menyimpan data prospek ke disk:", err);
+  }
+}
+
 const crmGlobal = globalThis as unknown as CRMGlobalStore;
 if (!crmGlobal.prospectsData || crmGlobal.prospectsData.length === 0) {
-  crmGlobal.prospectsData = [...INITIAL_PROSPECTS_DATA];
+  crmGlobal.prospectsData = loadPersistedProspects();
 }
 
 export const prospectsData = crmGlobal.prospectsData;
@@ -240,6 +291,7 @@ export async function createProspect(
 
   const store = crmGlobal.prospectsData || prospectsData;
   store.unshift(newProspect);
+  persistProspects();
 
   logActivity({
     category: "CRM",
@@ -358,6 +410,7 @@ export async function bulkCreateProspects(
   }
 
   if (created.length > 0) {
+    persistProspects();
     logActivity({
       category: "CRM",
       action: "PROSPECT_BULK_IMPORTED",
@@ -397,6 +450,8 @@ export async function updateProspectStage(
   if (stage === "FAILED" && failedReason) {
     prospectsData[idx].failedReason = failedReason;
   }
+
+  persistProspects();
 
   logActivity({
     category: "CRM",
@@ -451,6 +506,8 @@ export async function confirmOutreachSent(
   p.nextAction = "WAITING_FOR_RESPONSE";
   p.updatedAt = new Date().toISOString();
 
+  persistProspects();
+
   logActivity({
     category: "CRM",
     action: "OUTREACH_CONFIRMED_SENT",
@@ -479,6 +536,8 @@ export async function recordClientReply(
   p.nextAction = "REPLY_TO_CLIENT";
   p.nextFollowUpDate = undefined; // Hentikan siklus no-response
   p.updatedAt = new Date().toISOString();
+
+  persistProspects();
 
   logActivity({
     category: "CRM",
@@ -510,6 +569,8 @@ export async function reactivateProspect(
   p.nextFollowUpDate = undefined;
   p.updatedAt = new Date().toISOString();
 
+  persistProspects();
+
   logActivity({
     category: "CRM",
     action: "PROSPECT_REACTIVATED",
@@ -519,4 +580,110 @@ export async function reactivateProspect(
   });
 
   return { success: true };
+}
+
+/**
+ * Menghapus prospek dari database CRM
+ * Hak Akses:
+ * - OWNER: Bebas menghapus prospek manapun
+ * - SALES: Hanya dapat menghapus prospek miliknya yang masih baru (stage NEW & belum pernah dikirimi outreach)
+ */
+export async function deleteProspect(
+  prospectId: string,
+  actorUserId: string,
+  actorRole: string
+): Promise<{ success: boolean; error?: string }> {
+  const store = crmGlobal.prospectsData || prospectsData;
+  const idx = store.findIndex((p) => p.id === prospectId);
+  if (idx === -1) {
+    return { success: false, error: "Data prospek tidak ditemukan." };
+  }
+
+  const prospect = store[idx];
+
+  // Validasi Otorisasi
+  if (actorRole !== "OWNER") {
+    if (prospect.assignedSalesId && prospect.assignedSalesId !== actorUserId) {
+      return {
+        success: false,
+        error: "Akses ditolak: Anda hanya dapat menghapus prospek milik Anda sendiri.",
+      };
+    }
+    if (
+      prospect.stage !== "NEW" ||
+      (prospect.followUpLogs && prospect.followUpLogs.length > 0)
+    ) {
+      return {
+        success: false,
+        error: "Akses ditolak: Prospek yang sudah pernah dihubungi (outreach) hanya dapat dihapus oleh Owner.",
+      };
+    }
+  }
+
+  const [deleted] = store.splice(idx, 1);
+  persistProspects();
+
+  logActivity({
+    category: "CRM",
+    action: "PROSPECT_DELETED",
+    actorId: actorUserId,
+    targetId: prospectId,
+    targetType: "PROSPECT",
+    metadata: {
+      companyName: deleted.companyName,
+      whatsapp: deleted.whatsappNumber,
+      stage: deleted.stage,
+      deletedByRole: actorRole,
+    },
+  });
+
+  return { success: true };
+}
+
+/**
+ * Menghapus banyak data prospek sekaligus (Bulk Delete)
+ */
+export async function bulkDeleteProspects(
+  prospectIds: string[],
+  actorUserId: string,
+  actorRole: string
+): Promise<{ success: boolean; deletedCount: number; error?: string }> {
+  const store = crmGlobal.prospectsData || prospectsData;
+  let deletedCount = 0;
+
+  for (const id of prospectIds) {
+    const idx = store.findIndex((p) => p.id === id);
+    if (idx === -1) continue;
+
+    const prospect = store[idx];
+    if (actorRole !== "OWNER") {
+      if (prospect.assignedSalesId && prospect.assignedSalesId !== actorUserId) continue;
+      if (
+        prospect.stage !== "NEW" ||
+        (prospect.followUpLogs && prospect.followUpLogs.length > 0)
+      ) {
+        continue;
+      }
+    }
+
+    store.splice(idx, 1);
+    deletedCount++;
+  }
+
+  persistProspects();
+
+  logActivity({
+    category: "CRM",
+    action: "PROSPECTS_BULK_DELETED",
+    actorId: actorUserId,
+    targetId: `batch-delete-${Date.now()}`,
+    targetType: "PROSPECT_BATCH",
+    metadata: {
+      requestedCount: prospectIds.length,
+      deletedCount,
+      deletedByRole: actorRole,
+    },
+  });
+
+  return { success: true, deletedCount };
 }

@@ -14,12 +14,17 @@ import {
   AlertCircle,
   Building2,
   Users,
+  Trash2,
 } from "lucide-react";
 import { Prospect } from "@/modules/crm/types";
 import { PipelineStage } from "@/types/enums";
 import { CreateProspectModal } from "./CreateProspectModal";
 import { ProspectDetailModal } from "./ProspectDetailModal";
 import { BulkImportModal } from "./BulkImportModal";
+import {
+  deleteProspectAction,
+  bulkDeleteProspectsAction,
+} from "@/modules/crm/crm.actions";
 import { isFollowUpDueTodayOrOverdue, isFollowUpOverdue } from "@/modules/follow-up/follow-up.service";
 import { formatDateWIB } from "@/lib/date";
 
@@ -53,9 +58,12 @@ export function ProspectListTable({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isDeletingBulk, setIsDeletingBulk] = useState(false);
 
   useEffect(() => {
     setProspects(initialProspects);
+    setSelectedIds([]);
   }, [initialProspects]);
 
   // Filter List
@@ -187,11 +195,81 @@ export function ProspectListTable({
 
       {/* Table Container */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Bulk Action Toolbar */}
+        {selectedIds.length > 0 && (
+          <div className="p-3 bg-rose-50 border-b border-rose-200 flex items-center justify-between text-xs animate-in fade-in duration-150">
+            <div className="flex items-center gap-2 text-rose-900 font-semibold">
+              <span className="w-5 h-5 rounded-full bg-rose-200 text-rose-800 text-[11px] font-bold flex items-center justify-center">
+                {selectedIds.length}
+              </span>
+              <span>Prospek dipilih</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedIds([])}
+                className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-medium transition-colors"
+              >
+                Batalkan Pilihan
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingBulk}
+                onClick={async () => {
+                  if (
+                    confirm(
+                      `Apakah Anda yakin ingin menghapus ${selectedIds.length} prospek terpilih sekaligus?\n\nData prospek akan dihapus dari sistem CRM.`
+                    )
+                  ) {
+                    setIsDeletingBulk(true);
+                    const res = await bulkDeleteProspectsAction(selectedIds);
+                    setIsDeletingBulk(false);
+                    if (res.success) {
+                      setProspects((prev) =>
+                        prev.filter((p) => !selectedIds.includes(p.id))
+                      );
+                      setSelectedIds([]);
+                      if (onRefresh) onRefresh();
+                    } else {
+                      alert(res.error || "Gagal menghapus prospek terpilih.");
+                    }
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>
+                  {isDeletingBulk
+                    ? "Menghapus..."
+                    : `Hapus ${selectedIds.length} Terpilih`}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {filteredProspects.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider text-[10px]">
                 <tr>
+                  <th className="py-3 px-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={
+                        filteredProspects.length > 0 &&
+                        selectedIds.length === filteredProspects.length
+                      }
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedIds(filteredProspects.map((p) => p.id));
+                        } else {
+                          setSelectedIds([]);
+                        }
+                      }}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                  </th>
                   <th className="py-3 px-4">Perusahaan & Kontak</th>
                   <th className="py-3 px-4">WhatsApp</th>
                   <th className="py-3 px-4">Pipeline Stage</th>
@@ -205,13 +283,38 @@ export function ProspectListTable({
                 {filteredProspects.map((p) => {
                   const isDue = isFollowUpDueTodayOrOverdue(p.nextFollowUpDate);
                   const isOverdue = isFollowUpOverdue(p.nextFollowUpDate);
+                  const isSelected = selectedIds.includes(p.id);
 
                   return (
                     <tr
                       key={p.id}
-                      className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                      className={`hover:bg-slate-50/80 transition-colors cursor-pointer ${
+                        isSelected ? "bg-indigo-50/40" : ""
+                      }`}
                       onClick={() => setSelectedProspect(p)}
                     >
+                      {/* Checkbox Pilihan */}
+                      <td
+                        className="py-3 px-3 text-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            if (e.target.checked) {
+                              setSelectedIds((prev) => [...prev, p.id]);
+                            } else {
+                              setSelectedIds((prev) =>
+                                prev.filter((id) => id !== p.id)
+                              );
+                            }
+                          }}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                      </td>
+
                       {/* Perusahaan & Kontak */}
                       <td className="py-3 px-4">
                         <div className="font-bold text-slate-900 flex items-center gap-1.5">
@@ -296,17 +399,47 @@ export function ProspectListTable({
                       </td>
 
                       {/* Aksi */}
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedProspect(p);
-                          }}
-                          className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-semibold text-xs px-2.5 py-1 rounded hover:bg-indigo-50 transition-colors"
-                        >
-                          Detail <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
+                      <td
+                        className="py-3 px-4 text-right whitespace-nowrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedProspect(p)}
+                            className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-semibold text-xs px-2.5 py-1 rounded hover:bg-indigo-50 transition-colors"
+                          >
+                            Detail <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (
+                                confirm(
+                                  `Apakah Anda yakin ingin menghapus data prospek "${p.companyName}"?`
+                                )
+                              ) {
+                                const res = await deleteProspectAction(p.id);
+                                if (res.success) {
+                                  setProspects((prev) =>
+                                    prev.filter((item) => item.id !== p.id)
+                                  );
+                                  setSelectedIds((prev) =>
+                                    prev.filter((id) => id !== p.id)
+                                  );
+                                  if (onRefresh) onRefresh();
+                                } else {
+                                  alert(res.error || "Gagal menghapus prospek.");
+                                }
+                              }
+                            }}
+                            title="Hapus Prospek"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
