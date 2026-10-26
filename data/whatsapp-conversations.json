@@ -5,11 +5,11 @@
     "companyName": "PT Bintang Abadi Konstruksi",
     "contactName": "Bapak Hendra",
     "whatsappNumber": "6281299900011",
-    "assignedSalesId": "22222222-2222-2222-2222-222222222222",
-    "assignedSalesName": "Budi Santoso (Sales 1)",
-    "unreadCount": 5,
+    "assignedSalesId": "77777777-7777-7777-7777-777777777777",
+    "assignedSalesName": "Rian Hidayat (Sales 5)",
+    "unreadCount": 9,
     "lastMessageSnippet": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran har",
-    "lastMessageAt": "2026-10-26T07:36:08.264Z",
+    "lastMessageAt": "2026-10-26T07:47:39.457Z",
     "researchNotes": "Kontraktor baru belum punya company profile",
     "messages": [
       {
@@ -101,6 +101,78 @@
         "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
         "isDraft": false,
         "timestamp": "2026-10-26T07:36:08.264Z"
+      },
+      {
+        "id": "msg-1793000733271-u0k9",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
+        "isDraft": false,
+        "timestamp": "2026-10-26T07:45:33.271Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso"
+      },
+      {
+        "id": "msg-1793000733274-32yc",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
+        "isDraft": false,
+        "timestamp": "2026-10-26T07:45:33.274Z"
+      },
+      {
+        "id": "msg-1793000779181-ribd",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
+        "isDraft": false,
+        "timestamp": "2026-10-26T07:46:19.181Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso"
+      },
+      {
+        "id": "msg-1793000779182-2o83",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
+        "isDraft": false,
+        "timestamp": "2026-10-26T07:46:19.182Z"
+      },
+      {
+        "id": "msg-1793000814910-qdln",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
+        "isDraft": false,
+        "timestamp": "2026-10-26T07:46:54.910Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso"
+      },
+      {
+        "id": "msg-1793000814911-ykdb",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
+        "isDraft": false,
+        "timestamp": "2026-10-26T07:46:54.911Z"
+      },
+      {
+        "id": "msg-1793000859456-2pft",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
+        "isDraft": false,
+        "timestamp": "2026-10-26T07:47:39.456Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso"
+      },
+      {
+        "id": "msg-1793000859457-onzr",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
+        "isDraft": false,
+        "timestamp": "2026-10-26T07:47:39.457Z"
       }
     ]
   },

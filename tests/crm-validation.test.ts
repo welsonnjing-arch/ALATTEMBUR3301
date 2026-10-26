@@ -68,11 +68,16 @@ describe("CRM Data Validation & Normalization Rules", () => {
   });
 
   test("bulkCreateProspects processes multiple rows, normalizes numbers, skips duplicates, and assigns defaults", async () => {
+    const uniqueSuffix1 = Math.floor(100000 + Math.random() * 900000).toString();
+    const uniqueSuffix2 = Math.floor(100000 + Math.random() * 900000).toString();
+    const phone1 = `0877${uniqueSuffix1}`;
+    const phone2 = `62877${uniqueSuffix2}`;
+
     const bulkRows = [
       {
         companyName: "Klinik Sehat Prima",
         contactName: "dr. Andi",
-        whatsappNumber: "087711223344",
+        whatsappNumber: phone1,
         industry: "Healthcare",
         website: "https://kliniksehatprima.com",
         potentialServices: "Web Appointment System",
@@ -82,12 +87,12 @@ describe("CRM Data Validation & Normalization Rules", () => {
       {
         companyName: "Toko Sparepart Jaya",
         // contactName omitted -> should fallback to companyName
-        whatsappNumber: "6287755667788",
+        whatsappNumber: phone2,
         // researchNotes omitted -> should fallback to default
       },
       {
         companyName: "PT Nomor Duplikat Batch",
-        whatsappNumber: "087711223344", // Duplicate of 1st row
+        whatsappNumber: phone1, // Duplicate of 1st row
       },
       {
         companyName: "Perusahaan Invalid No",
@@ -104,7 +109,7 @@ describe("CRM Data Validation & Normalization Rules", () => {
 
     const first = result.prospects.find((p) => p.companyName === "Klinik Sehat Prima");
     assert.ok(first);
-    assert.equal(first?.whatsappNumber, "6287711223344");
+    assert.equal(first?.whatsappNumber, `62877${uniqueSuffix1}`);
     assert.equal(first?.stage, "NEW");
     assert.equal(first?.potentialServices, "Web Appointment System");
 
@@ -112,6 +117,13 @@ describe("CRM Data Validation & Normalization Rules", () => {
     assert.ok(second);
     assert.equal(second?.contactName, "Toko Sparepart Jaya");
     assert.equal(second?.researchNotes, "Di-import dari Excel/CSV");
+
+    // Clean up imported test prospects so data store remains clean
+    await bulkDeleteProspects(
+      result.prospects.map((p) => p.id),
+      "tester-user",
+      "OWNER"
+    );
   });
 
   test("deletes a prospect successfully and removes it from CRM records", async () => {

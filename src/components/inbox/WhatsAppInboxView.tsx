@@ -945,7 +945,7 @@ export function WhatsAppInboxView({
               {prospects.map((p) => (
                 <div
                   key={p.id}
-                  onClick={() => {
+                  onClick={async () => {
                     const cleanPhone = p.whatsappNumber.replace(/\D/g, "");
                     const existing = conversations.find(
                       (c) => c.whatsappNumber.replace(/\D/g, "") === cleanPhone
@@ -953,23 +953,37 @@ export function WhatsAppInboxView({
 
                     if (existing) {
                       setActiveConvId(existing.id);
-                    } else {
-                      const newThread: ConversationThread = {
-                        id: `conv-${Date.now()}`,
-                        prospectId: p.id,
-                        companyName: p.companyName,
-                        contactName: p.contactName,
-                        whatsappNumber: p.whatsappNumber,
-                        assignedSalesId: p.assignedSalesId || currentUser?.id,
-                        assignedSalesName: p.assignedSalesName || currentUser?.fullName,
-                        unreadCount: 0,
-                        lastMessageSnippet: "Ruang obrolan baru dimulai",
-                        lastMessageAt: new Date().toISOString(),
-                        researchNotes: p.researchNotes,
-                        messages: [],
-                      };
-                      setConversations((prev) => [newThread, ...prev]);
-                      setActiveConvId(newThread.id);
+                      setIsNewChatModalOpen(false);
+                      return;
+                    }
+
+                    try {
+                      const res = await fetch("/api/whatsapp/conversations", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          prospectId: p.id,
+                          companyName: p.companyName,
+                          contactName: p.contactName,
+                          whatsappNumber: p.whatsappNumber,
+                          researchNotes: p.researchNotes,
+                          assignedSalesId: p.assignedSalesId || currentUser?.id,
+                          assignedSalesName: p.assignedSalesName || currentUser?.fullName,
+                        }),
+                      });
+
+                      if (res.ok) {
+                        const data = await res.json();
+                        if (data.thread) {
+                          setConversations((prev) => [
+                            data.thread,
+                            ...prev.filter((c) => c.id !== data.thread.id),
+                          ]);
+                          setActiveConvId(data.thread.id);
+                        }
+                      }
+                    } catch (err) {
+                      console.error("Gagal membuka ruang obrolan:", err);
                     }
                     setIsNewChatModalOpen(false);
                   }}
