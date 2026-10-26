@@ -24,6 +24,8 @@ import {
   Users,
   ShieldAlert,
   Trash2,
+  Download,
+  FileText,
 } from "lucide-react";
 import { ConversationThread, ChatMessage } from "@/modules/inbox/types";
 import { WhatsAppSessionInfo } from "@/modules/whatsapp/types";
@@ -106,6 +108,19 @@ export function WhatsAppInboxView({
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
+
+  // Attachment & Media State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingAttachment, setPendingAttachment] = useState<{
+    file: File;
+    previewUrl: string;
+    base64Data: string;
+    fileName: string;
+    fileSize: string;
+    mimeType: string;
+    isImage: boolean;
+  } | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   // Modals
   const [isPairingModalOpen, setIsPairingModalOpen] = useState(false);
@@ -305,17 +320,63 @@ export function WhatsAppInboxView({
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 16 * 1024 * 1024) {
+      alert("Ukuran file maksimal adalah 16 MB.");
+      e.target.value = "";
+      return;
+    }
+
+    const isImage = file.type.startsWith("image/");
+    const sizeStr =
+      file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+        : `${(file.size / 1024).toFixed(1)} KB`;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64Data = reader.result as string;
+      const previewUrl = isImage ? URL.createObjectURL(file) : "";
+      setPendingAttachment({
+        file,
+        previewUrl,
+        base64Data,
+        fileName: file.name,
+        fileSize: sizeStr,
+        mimeType: file.type || (isImage ? "image/jpeg" : "application/octet-stream"),
+        isImage,
+      });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
   // Kirim Pesan
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!inputText.trim() || !activeConv || isSending) return;
+    if ((!inputText.trim() && !pendingAttachment) || !activeConv || isSending) return;
 
     const textToSend = inputText.trim();
+    const attachmentToSend = pendingAttachment;
+
     setInputText("");
+    setPendingAttachment(null);
     setIsSending(true);
 
     const senderName = currentUser?.fullName || "Sales Operator";
     const senderId = currentUser?.id || "sales-operator";
+
+    const attachmentPayload = attachmentToSend
+      ? {
+          fileName: attachmentToSend.fileName,
+          fileSize: attachmentToSend.fileSize,
+          mimeType: attachmentToSend.mimeType,
+          base64Data: attachmentToSend.base64Data,
+        }
+      : undefined;
 
     // Optimistic UI update
     const optimisticMsg: ChatMessage = {
@@ -327,14 +388,25 @@ export function WhatsAppInboxView({
       text: textToSend,
       isDraft: false,
       timestamp: new Date().toISOString(),
+      attachment: attachmentToSend
+        ? {
+            fileName: attachmentToSend.fileName,
+            fileSize: attachmentToSend.fileSize,
+            mimeType: attachmentToSend.mimeType,
+            url: attachmentToSend.previewUrl || "",
+          }
+        : undefined,
     };
 
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id === activeConv.id) {
+          const snippet =
+            textToSend.slice(0, 80) ||
+            (attachmentToSend ? `📎 ${attachmentToSend.fileName}` : "Pesan terkirim");
           return {
             ...c,
-            lastMessageSnippet: textToSend.slice(0, 80),
+            lastMessageSnippet: snippet,
             lastMessageAt: optimisticMsg.timestamp,
             messages: [...c.messages, optimisticMsg],
           };
@@ -354,6 +426,7 @@ export function WhatsAppInboxView({
           prospectId: activeConv.prospectId,
           actorUserId: senderId,
           actorUserName: senderName,
+          attachment: attachmentPayload,
         }),
       });
 
@@ -925,10 +998,59 @@ export function WhatsAppInboxView({
                         </div>
                       )}
 
+                      {/* Tampilan Lampiran File / Gambar */}
+                      {m.attachment && (
+                        <div className="mb-2">
+                          {m.attachment.mimeType.startsWith("image/") ||
+                          /\.(jpg|jpeg|png|webp|gif)$/i.test(m.attachment.fileName) ? (
+                            <div
+                              onClick={() => setLightboxUrl(m.attachment!.url || null)}
+                              className="cursor-pointer overflow-hidden rounded-md border border-black/5 hover:opacity-95 transition-opacity max-w-[280px]"
+                            >
+                              <img
+                                src={m.attachment.url}
+                                alt={m.attachment.fileName}
+                                className="w-full max-h-60 object-cover rounded-md"
+                                loading="lazy"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2.5 p-2 rounded-md bg-black/5 border border-black/10 max-w-[280px]">
+                              <div className="w-9 h-9 bg-white rounded flex items-center justify-center flex-shrink-0 text-[#00a884] shadow-xs">
+                                <FileText className="w-5 h-5" />
+                              </div>
+                              <div className="flex-1 min-w-0 pr-1">
+                                <p
+                                  className="text-xs font-medium text-[#111b21] truncate"
+                                  title={m.attachment.fileName}
+                                >
+                                  {m.attachment.fileName}
+                                </p>
+                                <p className="text-[10px] text-[#667781]">{m.attachment.fileSize}</p>
+                              </div>
+                              {m.attachment.url && (
+                                <a
+                                  href={m.attachment.url}
+                                  download={m.attachment.fileName}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 hover:bg-white text-slate-600 rounded-full transition-colors flex-shrink-0"
+                                  title="Unduh berkas"
+                                >
+                                  <Download className="w-4 h-4" />
+                                </a>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Teks Pesan */}
-                      <p className="whitespace-pre-wrap leading-relaxed pr-14 text-xs">
-                        {m.text}
-                      </p>
+                      {m.text && (
+                        <p className="whitespace-pre-wrap leading-relaxed pr-14 text-xs">
+                          {m.text}
+                        </p>
+                      )}
 
                       {/* Micro Timestamp & Centang Pengiriman */}
                       <div className="absolute bottom-1 right-2 flex items-center gap-1 select-none">
@@ -966,6 +1088,62 @@ export function WhatsAppInboxView({
               </div>
             )}
 
+            {/* Hidden File Input untuk Unggah Berkas & Gambar */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              className="hidden"
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.txt,.csv"
+            />
+
+            {/* Bilah Pratinjau Lampiran Siap Kirim */}
+            {pendingAttachment && (
+              <div className="bg-slate-100 border-t border-slate-200 px-4 py-2 flex items-center justify-between gap-3 animate-in fade-in duration-150 z-10">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  {pendingAttachment.isImage ? (
+                    <img
+                      src={pendingAttachment.previewUrl}
+                      alt={pendingAttachment.fileName}
+                      className="w-12 h-12 object-cover rounded-md border border-slate-300 shadow-xs flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 bg-white rounded-md border border-slate-300 flex flex-col items-center justify-center text-[#00a884] flex-shrink-0 shadow-xs">
+                      <FileText className="w-6 h-6" />
+                      <span className="text-[8px] font-bold uppercase text-slate-500 mt-0.5">
+                        {pendingAttachment.fileName.split(".").pop()?.slice(0, 4)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="truncate">
+                    <p className="text-xs font-semibold text-slate-800 truncate">
+                      {pendingAttachment.fileName}
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      {pendingAttachment.fileSize} •{" "}
+                      {pendingAttachment.isImage
+                        ? "Gambar siap dikirim"
+                        : "Dokumen siap dikirim"}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (pendingAttachment.previewUrl) {
+                      URL.revokeObjectURL(pendingAttachment.previewUrl);
+                    }
+                    setPendingAttachment(null);
+                  }}
+                  className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-slate-800 rounded-full transition-colors flex-shrink-0"
+                  title="Batal lampiran"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
             {/* Bottom Bar: Kolom Input Pesan 1:1 WhatsApp Web */}
             <div className="bg-[#f0f2f5] px-4 py-2.5 flex items-center gap-2 border-t border-[#d1d7db] z-10">
               <button
@@ -976,7 +1154,13 @@ export function WhatsAppInboxView({
               </button>
               <button
                 type="button"
-                className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-full transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+                className={`p-2 rounded-full transition-colors ${
+                  pendingAttachment
+                    ? "text-[#00a884] bg-[#00a884]/15"
+                    : "text-[#54656f] hover:bg-slate-200/60"
+                }`}
+                title="Lampirkan File atau Foto"
               >
                 <Paperclip className="w-5 h-5" />
               </button>
@@ -989,7 +1173,9 @@ export function WhatsAppInboxView({
                 <input
                   type="text"
                   placeholder={
-                    isAssignedToOther
+                    pendingAttachment
+                      ? "Tambahkan keterangan / caption (opsional)..."
+                      : isAssignedToOther
                       ? `Ketik balasan atas nama ${currentUser?.fullName || "Tim Sales"}...`
                       : "Ketik pesan..."
                   }
@@ -1000,12 +1186,13 @@ export function WhatsAppInboxView({
                 />
               </form>
 
-              {inputText.trim() ? (
+              {inputText.trim() || pendingAttachment ? (
                 <button
                   type="button"
                   onClick={() => handleSendMessage()}
                   disabled={isSending}
                   className="p-2 bg-[#00a884] hover:bg-[#008f6f] text-white rounded-full transition-colors shadow-sm"
+                  title="Kirim Pesan"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -1122,6 +1309,51 @@ export function WhatsAppInboxView({
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox Modal untuk Pratinjau Gambar Ukuran Penuh */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={lightboxUrl}
+              alt="Pratinjau Foto WhatsApp"
+              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+            />
+            <div className="mt-3 flex items-center gap-3">
+              <a
+                href={lightboxUrl}
+                download="whatsapp-image"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-semibold backdrop-blur-sm transition-colors flex items-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" /> Unduh Gambar
+              </a>
+              <button
+                type="button"
+                onClick={() => setLightboxUrl(null)}
+                className="px-3 py-1.5 bg-white text-slate-800 rounded-lg text-xs font-bold hover:bg-slate-100 transition-colors shadow-sm"
+              >
+                Tutup
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLightboxUrl(null)}
+              className="absolute -top-3 -right-3 p-2 bg-white text-slate-800 rounded-full shadow-lg hover:bg-slate-100 transition-colors"
+              title="Tutup"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}

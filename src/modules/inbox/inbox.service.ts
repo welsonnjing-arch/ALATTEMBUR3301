@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { ChatMessage, ConversationThread } from "./types";
+import { ChatAttachment, ChatMessage, ConversationThread } from "./types";
 import { prospectsData } from "@/modules/crm/crm.service";
 import { logActivity } from "@/lib/logger";
 
@@ -330,7 +330,8 @@ export async function getOrCreateConversationByProspect(prospect: {
 
 export async function appendIncomingMessage(
   conversationId: string,
-  text: string
+  text: string,
+  attachment?: ChatAttachment
 ): Promise<{ success: boolean; message?: ChatMessage }> {
   const idx = conversationsData.findIndex((c) => c.id === conversationId);
   if (idx === -1) return { success: false };
@@ -342,10 +343,12 @@ export async function appendIncomingMessage(
     text,
     isDraft: false,
     timestamp: new Date().toISOString(),
+    attachment,
   };
 
   conversationsData[idx].messages.push(newMsg);
-  conversationsData[idx].lastMessageSnippet = text.slice(0, 80);
+  const snippet = text.slice(0, 80) || (attachment ? `📎 ${attachment.fileName}` : "Pesan baru");
+  conversationsData[idx].lastMessageSnippet = snippet;
   conversationsData[idx].lastMessageAt = newMsg.timestamp;
   conversationsData[idx].unreadCount += 1;
 
@@ -356,7 +359,11 @@ export async function appendIncomingMessage(
     action: "INCOMING_CHAT_RECORDED",
     actorId: "SYSTEM_INBOX",
     targetId: conversationId,
-    metadata: { snippet: text.slice(0, 100) },
+    metadata: {
+      snippet,
+      hasAttachment: !!attachment,
+      attachmentName: attachment?.fileName,
+    },
   });
 
   return { success: true, message: newMsg };
@@ -367,7 +374,8 @@ export async function appendOutgoingMessage(
   text: string,
   sender: "SALES" | "AI" = "SALES",
   sentByUserId?: string,
-  sentByUserName?: string
+  sentByUserName?: string,
+  attachment?: ChatAttachment
 ): Promise<{ success: boolean; message?: ChatMessage }> {
   const idx = conversationsData.findIndex((c) => c.id === conversationId);
   if (idx === -1) return { success: false };
@@ -381,10 +389,12 @@ export async function appendOutgoingMessage(
     timestamp: new Date().toISOString(),
     sentByUserId,
     sentByUserName,
+    attachment,
   };
 
   conversationsData[idx].messages.push(newMsg);
-  conversationsData[idx].lastMessageSnippet = text.slice(0, 80);
+  const snippet = text.slice(0, 80) || (attachment ? `📎 ${attachment.fileName}` : "Pesan terkirim");
+  conversationsData[idx].lastMessageSnippet = snippet;
   conversationsData[idx].lastMessageAt = newMsg.timestamp;
 
   persistConversations();
@@ -395,8 +405,10 @@ export async function appendOutgoingMessage(
     actorId: sentByUserId || "SALES_OPERATOR",
     targetId: conversationId,
     metadata: {
-      snippet: text.slice(0, 100),
+      snippet,
       sentByUserName: sentByUserName || "Sales",
+      hasAttachment: !!attachment,
+      attachmentName: attachment?.fileName,
     },
   });
 

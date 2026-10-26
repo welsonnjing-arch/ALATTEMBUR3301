@@ -1,3 +1,10 @@
+export interface ChatAttachment {
+  fileName: string;
+  fileSize: string;
+  mimeType: string;
+  url?: string;
+}
+
 export interface ChatMessage {
   id: string;
   conversationId: string;
@@ -7,11 +14,7 @@ export interface ChatMessage {
   timestamp: string;
   sentByUserId?: string;
   sentByUserName?: string;
-  attachment?: {
-    fileName: string;
-    fileSize: string;
-    mimeType: string;
-  };
+  attachment?: ChatAttachment;
 }
 
 export interface ConversationThread {

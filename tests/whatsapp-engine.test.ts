@@ -167,4 +167,55 @@ describe("Native WhatsApp Web Engine & CRM Synchronization", () => {
       }
     }
   });
+
+  test("supports sending and receiving media attachments (images/documents) in conversations", async () => {
+    const testPhone = "081299900011";
+
+    // 1. Kirim pesan dengan lampiran dokumen PDF
+    const dummyPdfBase64 = Buffer.from("%PDF-1.4 mock content").toString("base64");
+    const sendWithDoc = await sendWhatsAppMessage({
+      whatsappNumber: testPhone,
+      text: "Berikut kami lampirkan proposal paket Business Website.",
+      actorUserId: "sales-1",
+      actorUserName: "Budi Santoso",
+      attachment: {
+        fileName: "Proposal-Business-Website.pdf",
+        fileSize: "1.2 MB",
+        mimeType: "application/pdf",
+        base64Data: dummyPdfBase64,
+      },
+    });
+
+    assert.equal(sendWithDoc.success, true);
+
+    const thread = conversationsData.find(
+      (c) => c.whatsappNumber.replace(/\D/g, "") === "6281299900011"
+    );
+    assert.ok(thread);
+    const lastMsg = thread.messages[thread.messages.length - 1];
+    assert.ok(lastMsg.attachment);
+    assert.equal(lastMsg.attachment?.fileName, "Proposal-Business-Website.pdf");
+    assert.equal(lastMsg.attachment?.mimeType, "application/pdf");
+    assert.ok(lastMsg.attachment?.url?.startsWith("/api/whatsapp/media/"));
+
+    // 2. Terima pesan masuk dengan lampiran gambar
+    const incomingRes = await handleIncomingWhatsAppMessage(
+      "6281299900011",
+      "Ini contoh logo perusahaan kami",
+      undefined,
+      {
+        fileName: "logo-perusahaan.png",
+        fileSize: "240 KB",
+        mimeType: "image/png",
+        url: "/api/whatsapp/media/mock-logo.png",
+      }
+    );
+
+    assert.equal(incomingRes.success, true);
+    const clientMsg = thread.messages[thread.messages.length - 1];
+    assert.equal(clientMsg.sender, "PROSPECT");
+    assert.ok(clientMsg.attachment);
+    assert.equal(clientMsg.attachment?.fileName, "logo-perusahaan.png");
+    assert.equal(clientMsg.attachment?.mimeType, "image/png");
+  });
 });

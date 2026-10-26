@@ -6,6 +6,7 @@ import makeWASocket, {
   DisconnectReason,
   WASocket,
   proto,
+  downloadMediaMessage,
 } from "@whiskeysockets/baileys";
 import pino from "pino";
 import {
@@ -20,6 +21,7 @@ import {
   getOrCreateConversationByProspect,
   persistConversations,
 } from "@/modules/inbox/inbox.service";
+import { ChatAttachment } from "@/modules/inbox/types";
 import {
   prospectsData,
   confirmOutreachSent,
@@ -62,6 +64,14 @@ const AUTH_DIR = isTestEnv
 function ensureAuthDir() {
   if (!fs.existsSync(AUTH_DIR)) {
     fs.mkdirSync(AUTH_DIR, { recursive: true });
+  }
+}
+
+const UPLOADS_DIR = path.join(process.cwd(), "data", "uploads", "whatsapp");
+
+function ensureUploadsDir() {
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
   }
 }
 
@@ -442,29 +452,119 @@ export async function startWhatsAppPairing(
           }
         }
 
-        // Ekstraksi teks dari seluruh variasi format pesan WhatsApp (teks biasa, pesan sementara/ephemeral, media caption, dsb)
-        const content = msg.message;
-        let text = "";
-
-        if (content) {
-          text =
-            content.conversation ||
-            content.extendedTextMessage?.text ||
-            content.ephemeralMessage?.message?.conversation ||
-            content.ephemeralMessage?.message?.extendedTextMessage?.text ||
-            content.viewOnceMessage?.message?.conversation ||
-            content.viewOnceMessage?.message?.extendedTextMessage?.text ||
-            content.viewOnceMessageV2?.message?.conversation ||
-            content.viewOnceMessageV2?.message?.extendedTextMessage?.text ||
-            content.documentWithCaptionMessage?.message?.documentMessage?.caption ||
-            content.imageMessage?.caption ||
-            content.videoMessage?.caption ||
-            "";
+        // Ekstraksi pesan yang mungkin terbungkus viewOnce, ephemeral, atau documentWithCaption
+        let innerMessage = msg.message;
+        if (innerMessage?.ephemeralMessage?.message) {
+          innerMessage = innerMessage.ephemeralMessage.message;
+        }
+        if (innerMessage?.viewOnceMessage?.message) {
+          innerMessage = innerMessage.viewOnceMessage.message;
+        }
+        if (innerMessage?.viewOnceMessageV2?.message) {
+          innerMessage = innerMessage.viewOnceMessageV2.message;
+        }
+        if (innerMessage?.documentWithCaptionMessage?.message) {
+          innerMessage = innerMessage.documentWithCaptionMessage.message;
         }
 
-        if (text && text.trim()) {
-          console.log(`[WA_INCOMING] Pesan diterima dari +${phone} (JID: ${rawJid}): "${text.trim().slice(0, 50)}"`);
-          await handleIncomingWhatsAppMessage(phone, text.trim(), rawJid);
+        let text =
+          innerMessage?.conversation ||
+          innerMessage?.extendedTextMessage?.text ||
+          innerMessage?.documentMessage?.caption ||
+          innerMessage?.imageMessage?.caption ||
+          innerMessage?.videoMessage?.caption ||
+          "";
+
+        // Deteksi apakah pesan menyertakan file atau gambar
+        let attachment: ChatAttachment | undefined = undefined;
+        const mediaMsg =
+          innerMessage?.imageMessage ||
+          innerMessage?.documentMessage ||
+          innerMessage?.videoMessage ||
+          innerMessage?.audioMessage;
+
+        if (mediaMsg) {
+          try {
+            ensureUploadsDir();
+            const isImage = !!innerMessage?.imageMessage;
+            const isDoc = !!innerMessage?.documentMessage;
+            const isVideo = !!innerMessage?.videoMessage;
+            const isAudio = !!innerMessage?.audioMessage;
+
+            const mime =
+              mediaMsg.mimetype ||
+              (isImage
+                ? "image/jpeg"
+                : isDoc
+                ? "application/pdf"
+                : isVideo
+                ? "video/mp4"
+                : isAudio
+                ? "audio/ogg"
+                : "application/octet-stream");
+
+            let ext = ".bin";
+            if (mime.includes("jpeg") || mime.includes("jpg")) ext = ".jpg";
+            else if (mime.includes("png")) ext = ".png";
+            else if (mime.includes("webp")) ext = ".webp";
+            else if (mime.includes("pdf")) ext = ".pdf";
+            else if (mime.includes("sheet") || mime.includes("excel")) ext = ".xlsx";
+            else if (mime.includes("word") || mime.includes("document")) ext = ".docx";
+            else if (mime.includes("zip")) ext = ".zip";
+            else if (isImage) ext = ".jpg";
+            else if (isVideo) ext = ".mp4";
+            else if (isAudio) ext = ".mp3";
+
+            const origName =
+              (mediaMsg as any).fileName ||
+              (isImage ? `foto_${Date.now()}${ext}` : `dokumen_${Date.now()}${ext}`);
+
+            const safeFilename = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}${path.extname(origName) || ext}`;
+            const diskPath = path.join(UPLOADS_DIR, safeFilename);
+
+            // Download media via Baileys
+            const buffer = (await downloadMediaMessage(
+              msg,
+              "buffer",
+              {},
+              {
+                logger: pino({ level: "silent" }) as any,
+                reuploadRequest: sock.updateMediaMessage,
+              }
+            )) as Buffer;
+
+            if (buffer && Buffer.isBuffer(buffer)) {
+              fs.writeFileSync(diskPath, buffer);
+              const sizeStr =
+                buffer.length > 1024 * 1024
+                  ? `${(buffer.length / (1024 * 1024)).toFixed(1)} MB`
+                  : `${(buffer.length / 1024).toFixed(1)} KB`;
+
+              attachment = {
+                fileName: origName,
+                fileSize: sizeStr,
+                mimeType: mime,
+                url: `/api/whatsapp/media/${safeFilename}`,
+              };
+
+              if (!text || !text.trim()) {
+                text = isImage ? "📷 Foto" : `📄 ${origName}`;
+              }
+            }
+          } catch (dlErr) {
+            console.warn("[WA_MEDIA] Gagal mengunduh media pesan masuk:", dlErr);
+            if (!text || !text.trim()) {
+              text = "📎 Lampiran Media";
+            }
+          }
+        }
+
+        if ((text && text.trim()) || attachment) {
+          console.log(
+            `[WA_INCOMING] Pesan diterima dari +${phone} (JID: ${rawJid}): "${(text || "").trim().slice(0, 50)}"` +
+              (attachment ? ` [Attachment: ${attachment.fileName}]` : "")
+          );
+          await handleIncomingWhatsAppMessage(phone, (text || "").trim(), rawJid, attachment);
         }
       }
     });
@@ -563,8 +663,8 @@ export async function disconnectWhatsApp(): Promise<WhatsAppSessionInfo> {
 export async function sendWhatsAppMessage(
   input: WhatsAppSendMessageInput
 ): Promise<WhatsAppMessageResult> {
-  if (!input.text || !input.text.trim()) {
-    return { success: false, error: "Pesan tidak boleh kosong." };
+  if ((!input.text || !input.text.trim()) && !input.attachment) {
+    return { success: false, error: "Pesan atau file lampiran tidak boleh kosong." };
   }
 
   const { formatted: waFormatted, isValid } = normalizeWhatsAppNumber(
@@ -575,7 +675,38 @@ export async function sendWhatsAppMessage(
     return { success: false, error: "Nomor WhatsApp tujuan tidak valid." };
   }
 
-  // 1. Cari atau buat thread percakapan di Inbox
+  // 1. Simpan lampiran (jika ada) ke penyimpanan lokal server
+  let attachmentObj: ChatAttachment | undefined = undefined;
+  let attachmentBuffer: Buffer | undefined = undefined;
+
+  if (input.attachment && input.attachment.base64Data) {
+    try {
+      ensureUploadsDir();
+      const base64Clean = input.attachment.base64Data.replace(/^data:.*?;base64,/, "");
+      attachmentBuffer = Buffer.from(base64Clean, "base64");
+      const ext =
+        path.extname(input.attachment.fileName) ||
+        (input.attachment.mimeType.startsWith("image/") ? ".jpg" : ".bin");
+      const safeFilename = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}${ext}`;
+      const filePath = path.join(UPLOADS_DIR, safeFilename);
+      fs.writeFileSync(filePath, attachmentBuffer);
+
+      attachmentObj = {
+        fileName: input.attachment.fileName,
+        fileSize:
+          input.attachment.fileSize ||
+          (attachmentBuffer.length > 1024 * 1024
+            ? `${(attachmentBuffer.length / (1024 * 1024)).toFixed(1)} MB`
+            : `${(attachmentBuffer.length / 1024).toFixed(1)} KB`),
+        mimeType: input.attachment.mimeType,
+        url: `/api/whatsapp/media/${safeFilename}`,
+      };
+    } catch (saveErr) {
+      console.error("[WA_SEND] Gagal menyimpan lampiran pengiriman:", saveErr);
+    }
+  }
+
+  // 2. Cari atau buat thread percakapan di Inbox
   let matchedThread = conversationsData.find(
     (c) => c.whatsappNumber.replace(/\D/g, "") === waFormatted
   );
@@ -600,16 +731,17 @@ export async function sendWhatsAppMessage(
     }
   }
 
-  // 2. Tambahkan pesan keluar ke thread Inbox Fynux
+  // 3. Tambahkan pesan keluar ke thread Inbox Fynux
   const appendRes = await appendOutgoingMessage(
     matchedThread.id,
     input.text.trim(),
     "SALES",
     input.actorUserId,
-    input.actorUserName
+    input.actorUserName,
+    attachmentObj
   );
 
-  // 3. Jika socket Baileys aktif terhubung ke WhatsApp asli, kirim secara nyata!
+  // 4. Jika socket Baileys aktif terhubung ke WhatsApp asli, kirim secara nyata!
   let deliveredViaSocket = false;
   let socketError: string | undefined;
 
@@ -663,8 +795,29 @@ export async function sendWhatsAppMessage(
         }
       }
 
-      console.log(`[WA_SEND] Mengirim pesan ke JID "${targetJid}": "${input.text.trim().slice(0, 50)}"`);
-      const sent = await waGlobal.waSocket.sendMessage(targetJid, { text: input.text.trim() });
+      let sent: any;
+      if (attachmentObj && attachmentBuffer) {
+        if (attachmentObj.mimeType.startsWith("image/")) {
+          console.log(`[WA_SEND] Mengirim gambar (${attachmentObj.fileName}) ke "${targetJid}"`);
+          sent = await waGlobal.waSocket.sendMessage(targetJid, {
+            image: attachmentBuffer,
+            caption: input.text.trim() || undefined,
+            mimetype: attachmentObj.mimeType,
+          });
+        } else {
+          console.log(`[WA_SEND] Mengirim dokumen (${attachmentObj.fileName}) ke "${targetJid}"`);
+          sent = await waGlobal.waSocket.sendMessage(targetJid, {
+            document: attachmentBuffer,
+            mimetype: attachmentObj.mimeType,
+            fileName: attachmentObj.fileName,
+            caption: input.text.trim() || undefined,
+          });
+        }
+      } else {
+        console.log(`[WA_SEND] Mengirim pesan teks ke JID "${targetJid}": "${input.text.trim().slice(0, 50)}"`);
+        sent = await waGlobal.waSocket.sendMessage(targetJid, { text: input.text.trim() });
+      }
+
       if (sent?.key?.id && sent?.message) {
         sentMessagesCache.set(sent.key.id, sent.message);
       }
@@ -729,9 +882,10 @@ export async function sendWhatsAppMessage(
 export async function handleIncomingWhatsAppMessage(
   rawPhone: string,
   text: string,
-  rawJid?: string
+  rawJid?: string,
+  attachment?: ChatAttachment
 ): Promise<{ success: boolean; conversationId?: string; prospectId?: string }> {
-  if (!text || !text.trim()) return { success: false };
+  if (!text?.trim() && !attachment) return { success: false };
 
   // Resolusi nomor telepon jika pengirim berupa LID WhatsApp (@lid)
   let effectivePhone = rawPhone.replace(/\D/g, "");
@@ -784,11 +938,12 @@ export async function handleIncomingWhatsAppMessage(
   }
 
   // 2. Tambahkan pesan masuk ke thread
-  await appendIncomingMessage(matchedThread.id, text.trim());
+  await appendIncomingMessage(matchedThread.id, text.trim(), attachment);
 
   // 3. Logika CRM Otomatis: Pindahkan ke RESPONDED dan hentikan spam follow-up
   if (matchedProspect) {
-    await recordClientReply(matchedProspect.id, text.trim(), "SYSTEM_WHATSAPP");
+    const replySnippet = text.trim() || (attachment ? `📎 ${attachment.fileName}` : "Balasan masuk");
+    await recordClientReply(matchedProspect.id, replySnippet, "SYSTEM_WHATSAPP");
   }
 
   if (waGlobal.waSession) {

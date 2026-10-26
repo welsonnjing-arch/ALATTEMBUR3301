@@ -18,12 +18,20 @@ export interface WhatsAppSessionInfo {
   error?: string | null;
 }
 
+export interface WhatsAppSendAttachmentInput {
+  fileName: string;
+  fileSize?: string;
+  mimeType: string;
+  base64Data: string;
+}
+
 export interface WhatsAppSendMessageInput {
   prospectId?: string;
   whatsappNumber: string;
   text: string;
   actorUserId?: string;
   actorUserName?: string;
+  attachment?: WhatsAppSendAttachmentInput;
 }
 
 export interface WhatsAppMessageResult {
