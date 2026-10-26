@@ -1,47 +1,15 @@
 [
   {
-    "id": "conv-1793002635655-jdm3",
-    "prospectId": "p-incoming-1793002635655",
-    "companyName": "Bisnis (+51372120633567)",
-    "contactName": "Klien (+51372120633567)",
-    "whatsappNumber": "51372120633567",
-    "remoteJid": "51372120633567@lid",
-    "unreadCount": 2,
-    "lastMessageSnippet": "haloo",
-    "lastMessageAt": "2026-10-26T08:17:19.837Z",
-    "researchNotes": "Kontak baru menghubungi via WhatsApp Web",
-    "messages": [
-      {
-        "id": "msg-1793002635656-v9j3",
-        "conversationId": "conv-1793002635655-jdm3",
-        "sender": "PROSPECT",
-        "text": "ya",
-        "isDraft": false,
-        "timestamp": "2026-10-26T08:17:15.656Z"
-      },
-      {
-        "id": "msg-1793002639837-zmrk",
-        "conversationId": "conv-1793002635655-jdm3",
-        "sender": "PROSPECT",
-        "text": "haloo",
-        "isDraft": false,
-        "timestamp": "2026-10-26T08:17:19.837Z"
-      }
-    ],
-    "assignedSalesId": "77777777-7777-7777-7777-777777777777",
-    "assignedSalesName": "Rian Hidayat (Sales 5)"
-  },
-  {
     "id": "conv-1792939805354-zztf",
-    "prospectId": "p-1793002826445-vefx",
+    "prospectId": "p-1793005878900-d252",
     "companyName": "PT Bintang Abadi Konstruksi",
     "contactName": "Bapak Hendra",
     "whatsappNumber": "6281299900011",
-    "assignedSalesId": "44444444-4444-4444-4444-444444444444",
-    "assignedSalesName": "Siti Rahma (Sales 2)",
-    "unreadCount": 10,
+    "assignedSalesId": "77777777-7777-7777-7777-777777777777",
+    "assignedSalesName": "Rian Hidayat (Sales 5)",
+    "unreadCount": 11,
     "lastMessageSnippet": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran har",
-    "lastMessageAt": "2026-10-26T08:20:26.450Z",
+    "lastMessageAt": "2026-10-26T09:11:18.902Z",
     "researchNotes": "Kontraktor baru belum punya company profile",
     "messages": [
       {
@@ -207,22 +175,40 @@
         "timestamp": "2026-10-26T07:47:39.457Z"
       },
       {
-        "id": "msg-1793002826447-okt3",
+        "id": "msg-1793005650146-3a92",
         "conversationId": "conv-1792939805354-zztf",
         "sender": "SALES",
         "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
         "isDraft": false,
-        "timestamp": "2026-10-26T08:20:26.447Z",
+        "timestamp": "2026-10-26T09:07:30.146Z",
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso"
       },
       {
-        "id": "msg-1793002826450-c8x4",
+        "id": "msg-1793005650147-680r",
         "conversationId": "conv-1792939805354-zztf",
         "sender": "PROSPECT",
         "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
         "isDraft": false,
-        "timestamp": "2026-10-26T08:20:26.450Z"
+        "timestamp": "2026-10-26T09:07:30.147Z"
+      },
+      {
+        "id": "msg-1793005878901-xbk6",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
+        "isDraft": false,
+        "timestamp": "2026-10-26T09:11:18.901Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso"
+      },
+      {
+        "id": "msg-1793005878901-kuv8",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
+        "isDraft": false,
+        "timestamp": "2026-10-26T09:11:18.902Z"
       }
     ]
   },
@@ -311,8 +297,8 @@
     "assignedSalesId": "11111111-1111-1111-1111-111111111111",
     "assignedSalesName": "Faiz Aditama (Owner)",
     "unreadCount": 0,
-    "lastMessageSnippet": "tes",
-    "lastMessageAt": "2026-10-26T08:16:50.254Z",
+    "lastMessageSnippet": "halo",
+    "lastMessageAt": "2026-10-26T08:57:01.531Z",
     "researchNotes": "Belum ada catatan riset",
     "messages": [
       {
@@ -382,7 +368,130 @@
         "timestamp": "2026-10-26T08:16:50.254Z",
         "sentByUserId": "11111111-1111-1111-1111-111111111111",
         "sentByUserName": "Faiz Aditama (Owner)"
+      },
+      {
+        "id": "msg-1793002635656-v9j3",
+        "conversationId": "conv-001",
+        "sender": "PROSPECT",
+        "text": "ya",
+        "isDraft": false,
+        "timestamp": "2026-10-26T08:17:15.656Z"
+      },
+      {
+        "id": "msg-1793002639837-zmrk",
+        "conversationId": "conv-001",
+        "sender": "PROSPECT",
+        "text": "haloo",
+        "isDraft": false,
+        "timestamp": "2026-10-26T08:17:19.837Z"
+      },
+      {
+        "id": "msg-1793003380527-yyr3",
+        "conversationId": "conv-001",
+        "sender": "SALES",
+        "text": "tes",
+        "isDraft": false,
+        "timestamp": "2026-10-26T08:29:40.527Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)"
+      },
+      {
+        "id": "msg-1793003401529-1vd3",
+        "conversationId": "conv-001",
+        "sender": "PROSPECT",
+        "text": "🙂‍↕️",
+        "isDraft": false,
+        "timestamp": "2026-10-26T08:30:01.529Z"
+      },
+      {
+        "id": "msg-1793004901508-xxs9",
+        "conversationId": "conv-001",
+        "sender": "SALES",
+        "text": "dpskl",
+        "isDraft": false,
+        "timestamp": "2026-10-26T08:55:01.508Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)"
+      },
+      {
+        "id": "msg-1793004916862-imm1",
+        "conversationId": "conv-001",
+        "sender": "SALES",
+        "text": "dsfsd",
+        "isDraft": false,
+        "timestamp": "2026-10-26T08:55:16.862Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)"
+      },
+      {
+        "id": "msg-1793004952263-bxku",
+        "conversationId": "conv-001",
+        "sender": "SALES",
+        "text": "halo",
+        "isDraft": false,
+        "timestamp": "2026-10-26T08:55:52.264Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)"
+      },
+      {
+        "id": "msg-1793004961864-zi8h",
+        "conversationId": "conv-001",
+        "sender": "SALES",
+        "text": "nigg",
+        "isDraft": false,
+        "timestamp": "2026-10-26T08:56:01.864Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)"
+      },
+      {
+        "id": "msg-1793004971598-9ri0",
+        "conversationId": "conv-001",
+        "sender": "PROSPECT",
+        "text": "bliay",
+        "isDraft": false,
+        "timestamp": "2026-10-26T08:56:11.598Z"
+      },
+      {
+        "id": "msg-1793004977450-c0jx",
+        "conversationId": "conv-001",
+        "sender": "SALES",
+        "text": "sdasd",
+        "isDraft": false,
+        "timestamp": "2026-10-26T08:56:17.450Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)"
+      },
+      {
+        "id": "msg-1793004983659-9tuj",
+        "conversationId": "conv-001",
+        "sender": "SALES",
+        "text": "dssdsdss",
+        "isDraft": false,
+        "timestamp": "2026-10-26T08:56:23.659Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)"
+      },
+      {
+        "id": "msg-1793004987548-riu9",
+        "conversationId": "conv-001",
+        "sender": "SALES",
+        "text": "s",
+        "isDraft": false,
+        "timestamp": "2026-10-26T08:56:27.548Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)"
+      },
+      {
+        "id": "msg-1793005021531-b8vx",
+        "conversationId": "conv-001",
+        "sender": "SALES",
+        "text": "halo",
+        "isDraft": false,
+        "timestamp": "2026-10-26T08:57:01.531Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)"
       }
-    ]
+    ],
+    "remoteJid": "51372120633567@lid"
   }
 ]

@@ -5,6 +5,7 @@ import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
   WASocket,
+  proto,
 } from "@whiskeysockets/baileys";
 import pino from "pino";
 import {
@@ -17,6 +18,7 @@ import {
   appendIncomingMessage,
   appendOutgoingMessage,
   getOrCreateConversationByProspect,
+  persistConversations,
 } from "@/modules/inbox/inbox.service";
 import {
   prospectsData,
@@ -62,6 +64,148 @@ function ensureAuthDir() {
     fs.mkdirSync(AUTH_DIR, { recursive: true });
   }
 }
+
+// ============================================================================
+// WHATSAPP MULTI-DEVICE LID & RETRY PROTOCOL HANDLERS
+// ============================================================================
+
+const sentMessagesCache = new Map<string, proto.IMessage>();
+const DATA_DIR = path.join(process.cwd(), "data");
+const LID_MAP_FILE = path.join(DATA_DIR, "whatsapp-lid-map.json");
+
+function loadLidMap(): Map<string, string> {
+  const map = new Map<string, string>();
+  // Pre-seed known user test LID mapping
+  map.set("51372120633567", "62895324069850");
+
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (fs.existsSync(LID_MAP_FILE)) {
+      const data = JSON.parse(fs.readFileSync(LID_MAP_FILE, "utf-8"));
+      for (const [k, v] of Object.entries(data)) {
+        map.set(k, v as string);
+      }
+    }
+  } catch (err) {
+    console.error("[WA_LID] Gagal membaca LID map:", err);
+  }
+  return map;
+}
+
+function saveLidMap(map: Map<string, string>): void {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const obj: Record<string, string> = {};
+    map.forEach((v, k) => {
+      obj[k] = v;
+    });
+    fs.writeFileSync(LID_MAP_FILE, JSON.stringify(obj, null, 2), "utf-8");
+  } catch (err) {
+    console.error("[WA_LID] Gagal menyimpan LID map:", err);
+  }
+}
+
+const lidToPhoneMap = loadLidMap();
+
+/**
+ * Daftarkan asosiasi nomor telepon asli (e.g. 62895324069850)
+ * dengan identitas LID WhatsApp Multi-Device (e.g. 51372120633567@lid)
+ */
+export function registerLidMapping(lid: string, phone: string) {
+  const cleanLid = lid.replace("@lid", "").split(":")[0];
+  const cleanPhone = phone.replace("@s.whatsapp.net", "").replace(/\D/g, "");
+  if (!cleanLid || !cleanPhone || cleanLid === cleanPhone) return;
+
+  lidToPhoneMap.set(cleanLid, cleanPhone);
+  saveLidMap(lidToPhoneMap);
+
+  // Pasang remoteJid ke percakapan nomor telepon terkait jika belum ada
+  const thread = conversationsData.find(
+    (c) => c.whatsappNumber.replace(/\D/g, "") === cleanPhone
+  );
+  if (thread && !thread.remoteJid) {
+    thread.remoteJid = `${cleanLid}@lid`;
+    persistConversations();
+  }
+}
+
+/**
+ * Otomatis menggabungkan percakapan orphan yang terbuat dari LID (misal +51372120633567)
+ * ke percakapan prospek CRM resmi (e.g. PT RUDAL AJAIB 62895324069850).
+ */
+export function cleanupAndMergeLidConversations(): void {
+  lidToPhoneMap.forEach((realPhone, lidNum) => {
+    const orphanIndex = conversationsData.findIndex(
+      (c) =>
+        (c.whatsappNumber === lidNum ||
+          c.whatsappNumber.replace(/\D/g, "") === lidNum ||
+          (c.remoteJid === `${lidNum}@lid` && c.whatsappNumber !== realPhone)) &&
+        c.companyName.includes(lidNum)
+    );
+
+    if (orphanIndex === -1) return;
+    const orphan = conversationsData[orphanIndex];
+
+    const realThread = conversationsData.find(
+      (c) => c.whatsappNumber.replace(/\D/g, "") === realPhone
+    );
+
+    if (realThread && orphan.id !== realThread.id) {
+      console.log(
+        `[WA_LID] Menggabungkan pesan dari thread LID "${orphan.companyName}" (${orphan.id}) ke prospek CRM "${realThread.companyName}" (${realThread.id})`
+      );
+
+      // Pindahkan seluruh pesan dari orphan ke realThread
+      for (const m of orphan.messages) {
+        const alreadyExists = realThread.messages.some(
+          (rm) => rm.text === m.text && Math.abs(new Date(rm.timestamp).getTime() - new Date(m.timestamp).getTime()) < 2000
+        );
+        if (!alreadyExists) {
+          realThread.messages.push({
+            ...m,
+            conversationId: realThread.id,
+          });
+        }
+      }
+
+      realThread.remoteJid = `${lidNum}@lid`;
+
+      // Urutkan pesan berdasarkan waktu
+      realThread.messages.sort(
+        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+
+      const latestMsg = realThread.messages[realThread.messages.length - 1];
+      if (latestMsg) {
+        realThread.lastMessageSnippet = latestMsg.text.slice(0, 80);
+        realThread.lastMessageAt = latestMsg.timestamp;
+      }
+
+      // Hapus thread orphan
+      conversationsData.splice(orphanIndex, 1);
+      persistConversations();
+
+      // Sinkronkan stage prospek CRM ke RESPONDED jika ada balasan masuk dari klien
+      const prospect = prospectsData.find(
+        (p) => p.whatsappNumber.replace(/\D/g, "") === realPhone
+      );
+      if (prospect && realThread.messages.some((m) => m.sender === "PROSPECT")) {
+        recordClientReply(
+          prospect.id,
+          latestMsg?.text || "Balasan klien via WhatsApp",
+          "SYSTEM_WHATSAPP"
+        ).catch(console.error);
+      }
+    }
+  });
+}
+
+// Jalankan pembersihan saat inisialisasi modul
+cleanupAndMergeLidConversations();
 
 export async function getWhatsAppSession(): Promise<WhatsAppSessionInfo> {
   return { ...waGlobal.waSession! };
@@ -117,6 +261,18 @@ export async function startWhatsAppPairing(
       connectTimeoutMs: 30000,
       defaultQueryTimeoutMs: 30000,
       keepAliveIntervalMs: 15000,
+      getMessage: async (key) => {
+        if (key.id && sentMessagesCache.has(key.id)) {
+          return sentMessagesCache.get(key.id);
+        }
+        for (const conv of conversationsData) {
+          const found = conv.messages.find((m) => m.id === key.id);
+          if (found) {
+            return { conversation: found.text };
+          }
+        }
+        return undefined;
+      },
     });
 
     waGlobal.waSocket = sock;
@@ -216,6 +372,33 @@ export async function startWhatsAppPairing(
       sock.ev.on("connection.update", connHandler);
     });
 
+    // Dengarkan pemetaan LID ke nomor telepon resmi dari WhatsApp
+    sock.ev.on("chats.phoneNumberShare", ({ lid, jid }) => {
+      console.log(`[WA_LID] chats.phoneNumberShare diterima: ${lid} -> ${jid}`);
+      registerLidMapping(lid, jid);
+      cleanupAndMergeLidConversations();
+    });
+
+    sock.ev.on("contacts.upsert", (contacts) => {
+      for (const c of contacts) {
+        const phoneJid = (c as any).jid || c.id;
+        if (c.lid && phoneJid) {
+          registerLidMapping(c.lid, phoneJid);
+        }
+      }
+      cleanupAndMergeLidConversations();
+    });
+
+    sock.ev.on("contacts.update", (updates) => {
+      for (const c of updates) {
+        const phoneJid = (c as any).jid || c.id;
+        if (c.lid && phoneJid) {
+          registerLidMapping(c.lid, phoneJid);
+        }
+      }
+      cleanupAndMergeLidConversations();
+    });
+
     // Dengarkan pesan masuk secara real-time dari WhatsApp
     sock.ev.on("messages.upsert", async ({ messages }) => {
       for (const msg of messages) {
@@ -226,10 +409,38 @@ export async function startWhatsAppPairing(
         // Abaikan pesan broadcast atau status WhatsApp
         if (!rawJid || rawJid.includes("@broadcast") || rawJid.includes("status@broadcast")) continue;
 
-        // Normalisasi nomor telepon pengirim dari JID WhatsApp
-        const rawPhone = rawJid.split("@")[0].split(":")[0];
-        const participantPhone = msg.key.participant?.split("@")[0].split(":")[0];
-        const phone = /^\d+$/.test(rawPhone) ? rawPhone : (participantPhone || rawPhone);
+        // Ekstraksi identitas pengirim (baik Phone Number @s.whatsapp.net maupun LID @lid)
+        const rawId = rawJid.split("@")[0].split(":")[0];
+        const senderPn = (msg.key as any).senderPn || (msg.key as any).participantPn;
+        let phone = "";
+
+        if (senderPn) {
+          phone = senderPn.split("@")[0].split(":")[0];
+          if (rawJid.endsWith("@lid")) {
+            registerLidMapping(rawJid, senderPn);
+          }
+        }
+
+        if (!phone) {
+          if (rawJid.endsWith("@lid")) {
+            // Cari dari peta LID
+            const mapped = lidToPhoneMap.get(rawId);
+            if (mapped) {
+              phone = mapped;
+            } else {
+              const matchedByJid = conversationsData.find((c) => c.remoteJid === rawJid);
+              if (matchedByJid) {
+                phone = matchedByJid.whatsappNumber;
+              } else {
+                phone = rawId;
+              }
+            }
+          } else {
+            phone = /^\d+$/.test(rawId)
+              ? rawId
+              : (msg.key.participant?.split("@")[0].split(":")[0] || rawId);
+          }
+        }
 
         // Ekstraksi teks dari seluruh variasi format pesan WhatsApp (teks biasa, pesan sementara/ephemeral, media caption, dsb)
         const content = msg.message;
@@ -410,6 +621,38 @@ export async function sendWhatsAppMessage(
     try {
       // Tentukan JID tujuan WhatsApp (gunakan remoteJid jika ada, atau format @lid / @s.whatsapp.net)
       let targetJid = matchedThread.remoteJid;
+
+      // Cek apakah nomor ini memiliki pemetaan LID yang sudah tersimpan
+      if (!targetJid) {
+        lidToPhoneMap.forEach((pn, lid) => {
+          if (!targetJid && pn === waFormatted) {
+            targetJid = `${lid}@lid`;
+            matchedThread.remoteJid = targetJid;
+            persistConversations();
+          }
+        });
+      }
+
+      // Jika belum ada remoteJid, cari via query onWhatsApp ke server WhatsApp
+      if (!targetJid) {
+        try {
+          const onWaList = await waGlobal.waSocket.onWhatsApp(waFormatted);
+          const onWa = onWaList?.[0] as any;
+          if (onWa) {
+            if (typeof onWa.lid === "string" && onWa.lid) {
+              registerLidMapping(onWa.lid, waFormatted);
+              targetJid = onWa.lid;
+              matchedThread.remoteJid = onWa.lid;
+              persistConversations();
+            } else if (onWa.jid) {
+              targetJid = onWa.jid;
+            }
+          }
+        } catch (onWaErr) {
+          console.warn("[WA_SEND] Gagal onWhatsApp lookup:", onWaErr);
+        }
+      }
+
       if (!targetJid) {
         if (input.whatsappNumber.includes("@")) {
           targetJid = input.whatsappNumber;
@@ -421,7 +664,10 @@ export async function sendWhatsAppMessage(
       }
 
       console.log(`[WA_SEND] Mengirim pesan ke JID "${targetJid}": "${input.text.trim().slice(0, 50)}"`);
-      await waGlobal.waSocket.sendMessage(targetJid, { text: input.text.trim() });
+      const sent = await waGlobal.waSocket.sendMessage(targetJid, { text: input.text.trim() });
+      if (sent?.key?.id && sent?.message) {
+        sentMessagesCache.set(sent.key.id, sent.message);
+      }
       console.log(`[WA_SEND] Pesan berhasil meluncur ke "${targetJid}"!`);
       deliveredViaSocket = true;
     } catch (sendErr) {
@@ -487,8 +733,18 @@ export async function handleIncomingWhatsAppMessage(
 ): Promise<{ success: boolean; conversationId?: string; prospectId?: string }> {
   if (!text || !text.trim()) return { success: false };
 
-  const { formatted: waFormatted, isValid } = normalizeWhatsAppNumber(rawPhone);
-  const cleanPhone = isValid ? waFormatted : rawPhone.replace(/\D/g, "");
+  // Resolusi nomor telepon jika pengirim berupa LID WhatsApp (@lid)
+  let effectivePhone = rawPhone.replace(/\D/g, "");
+  if (rawJid?.endsWith("@lid") || /^(10|51)/.test(effectivePhone)) {
+    const rawLid = rawJid ? rawJid.replace("@lid", "").split(":")[0] : effectivePhone;
+    const mapped = lidToPhoneMap.get(rawLid) || lidToPhoneMap.get(effectivePhone);
+    if (mapped) {
+      effectivePhone = mapped;
+    }
+  }
+
+  const { formatted: waFormatted, isValid } = normalizeWhatsAppNumber(effectivePhone);
+  const cleanPhone = isValid ? waFormatted : effectivePhone;
 
   // 1. Cari atau buat thread di Inbox
   let matchedThread = conversationsData.find(
