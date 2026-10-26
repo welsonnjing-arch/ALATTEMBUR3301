@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Clock, Calendar, ExternalLink, CheckCircle2, ChevronRight, Phone } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Clock, Calendar, ExternalLink, CheckCircle2, ChevronRight, Phone, MessageSquare } from "lucide-react";
 import { Prospect } from "@/modules/crm/types";
 import { isFollowUpDueTodayOrOverdue, isFollowUpOverdue } from "@/modules/follow-up/follow-up.service";
 import { confirmOutreachSentAction } from "@/modules/crm/crm.actions";
@@ -13,6 +14,7 @@ interface FollowUpQueueCardProps {
 }
 
 export function FollowUpQueueCard({ prospects, onRefresh }: FollowUpQueueCardProps) {
+  const router = useRouter();
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -88,11 +90,20 @@ export function FollowUpQueueCard({ prospects, onRefresh }: FollowUpQueueCardPro
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button
                     type="button"
-                    onClick={() => handleReachNow(p)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+                    onClick={() => router.push(`/inbox?prospectId=${p.id}`)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
                   >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Reach Now
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    Chat di Inbox
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleReachNow(p)}
+                    title="Buka WhatsApp Web eksternal (wa.me)"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg border border-slate-300 transition-colors"
+                  >
+                    <ExternalLink className="w-3 h-3 text-slate-500" />
+                    WA Eksternal
                   </button>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   Search,
   Send,
@@ -23,6 +23,7 @@ import {
   UserCheck,
   Users,
   ShieldAlert,
+  Trash2,
 } from "lucide-react";
 import { ConversationThread, ChatMessage } from "@/modules/inbox/types";
 import { WhatsAppSessionInfo } from "@/modules/whatsapp/types";
@@ -48,6 +49,8 @@ interface WhatsAppInboxViewProps {
   initialSession: WhatsAppSessionInfo;
   prospects: Prospect[];
   currentUser?: UserSessionData | null;
+  initialProspectId?: string;
+  initialPhone?: string;
 }
 
 export function WhatsAppInboxView({
@@ -55,17 +58,45 @@ export function WhatsAppInboxView({
   initialSession,
   prospects,
   currentUser,
+  initialProspectId,
+  initialPhone,
 }: WhatsAppInboxViewProps) {
+  // Jika diarahkan langsung dari URL / CRM (?prospectId=xxx atau ?phone=xxx)
+  const initialMatchedConv = useMemo(() => {
+    if (initialProspectId) {
+      const byId = initialConversations.find((c) => c.prospectId === initialProspectId);
+      if (byId) return byId;
+      const matchedP = prospects.find((p) => p.id === initialProspectId);
+      if (matchedP) {
+        const clean = matchedP.whatsappNumber.replace(/\D/g, "");
+        return initialConversations.find(
+          (c) => c.whatsappNumber.replace(/\D/g, "") === clean
+        );
+      }
+    }
+    if (initialPhone) {
+      const clean = initialPhone.replace(/\D/g, "");
+      return initialConversations.find(
+        (c) => c.whatsappNumber.replace(/\D/g, "") === clean
+      );
+    }
+    return null;
+  }, [initialProspectId, initialPhone, initialConversations, prospects]);
+
   const [conversations, setConversations] = useState<ConversationThread[]>(initialConversations);
   const [activeConvId, setActiveConvId] = useState<string>(
-    initialConversations[0]?.id || ""
+    initialMatchedConv?.id || initialConversations[0]?.id || ""
   );
   const [session, setSession] = useState<WhatsAppSessionInfo>(initialSession);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Default: Jika login sebagai SALES, langsung buka 'MY_CHATS' agar chat miliknya tidak tercampur
+  // Default: Jika ada initialMatchedConv, buka 'ALL'. Jika login sebagai SALES, buka 'MY_CHATS'
   const [filterTab, setFilterTab] = useState<"MY_CHATS" | "ALL" | "UNASSIGNED" | "CRM">(
-    currentUser?.role === "SALES" ? "MY_CHATS" : "ALL"
+    initialMatchedConv
+      ? "ALL"
+      : currentUser?.role === "SALES"
+      ? "MY_CHATS"
+      : "ALL"
   );
   const [selectedSalesAgent, setSelectedSalesAgent] = useState<string>("ALL");
   const [isAssignDropdownOpen, setIsAssignDropdownOpen] = useState(false);
@@ -82,6 +113,41 @@ export function WhatsAppInboxView({
 
   // Auto scroll ke pesan terbawah
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-init percakapan dari CRM jika belum ada thread di Inbox
+  useEffect(() => {
+    if (initialProspectId && !initialMatchedConv) {
+      const targetP = prospects.find((p) => p.id === initialProspectId);
+      if (targetP) {
+        fetch("/api/whatsapp/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prospectId: targetP.id,
+            companyName: targetP.companyName,
+            contactName: targetP.contactName,
+            whatsappNumber: targetP.whatsappNumber,
+            researchNotes: targetP.researchNotes,
+            assignedSalesId: targetP.assignedSalesId || currentUser?.id,
+            assignedSalesName: targetP.assignedSalesName || currentUser?.fullName,
+          }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.thread) {
+              setConversations((prev) => [
+                data.thread,
+                ...prev.filter((c) => c.id !== data.thread.id),
+              ]);
+              setActiveConvId(data.thread.id);
+              setFilterTab("ALL");
+              setSelectedSalesAgent("ALL");
+            }
+          })
+          .catch((err) => console.error("Gagal inisialisasi ruang obrolan:", err));
+      }
+    }
+  }, [initialProspectId, initialMatchedConv, prospects, currentUser]);
 
   const activeConv = conversations.find((c) => c.id === activeConvId);
 
@@ -166,6 +232,26 @@ export function WhatsAppInboxView({
     (c) => c.assignedSalesId === currentUser?.id
   ).length;
   const unassignedCount = conversations.filter((c) => !c.assignedSalesId).length;
+
+  // Menghapus percakapan dari Inbox
+  const handleDeleteConversation = async () => {
+    if (!activeConv) return;
+    const confirmMsg = `Hapus ruang obrolan dengan "${activeConv.companyName}"?\n\nRiwayat pesan akan dihapus dari Inbox.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const res = await fetch(`/api/whatsapp/conversations?id=${activeConv.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        const remaining = conversations.filter((c) => c.id !== activeConv.id);
+        setConversations(remaining);
+        setActiveConvId(remaining[0]?.id || "");
+      }
+    } catch (err) {
+      console.error("Gagal menghapus percakapan:", err);
+    }
+  };
 
   // Menugaskan percakapan ke sales tertentu (Hanya berhak dilakukan oleh Owner)
   const handleAssignSales = async (salesId: string, salesName: string) => {
@@ -759,6 +845,14 @@ export function WhatsAppInboxView({
                 </button>
                 <button
                   type="button"
+                  onClick={handleDeleteConversation}
+                  title="Hapus obrolan ini dari Inbox"
+                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
                   className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-full transition-colors"
                 >
                   <MoreVertical className="w-4 h-4" />
@@ -946,17 +1040,6 @@ export function WhatsAppInboxView({
                 <div
                   key={p.id}
                   onClick={async () => {
-                    const cleanPhone = p.whatsappNumber.replace(/\D/g, "");
-                    const existing = conversations.find(
-                      (c) => c.whatsappNumber.replace(/\D/g, "") === cleanPhone
-                    );
-
-                    if (existing) {
-                      setActiveConvId(existing.id);
-                      setIsNewChatModalOpen(false);
-                      return;
-                    }
-
                     try {
                       const res = await fetch("/api/whatsapp/conversations", {
                         method: "POST",
@@ -980,6 +1063,8 @@ export function WhatsAppInboxView({
                             ...prev.filter((c) => c.id !== data.thread.id),
                           ]);
                           setActiveConvId(data.thread.id);
+                          setFilterTab("ALL");
+                          setSelectedSalesAgent("ALL");
                         }
                       }
                     } catch (err) {

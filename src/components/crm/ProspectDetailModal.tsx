@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   X,
   Phone,
@@ -44,6 +45,7 @@ export function ProspectDetailModal({
 }: ProspectDetailModalProps) {
   if (!isOpen || !prospect) return null;
 
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"DETAILS" | "TIMELINE" | "UPDATE">("DETAILS");
   const [selectedStage, setSelectedStage] = useState<PipelineStage>(prospect.stage);
   const [selectedNextAction, setSelectedNextAction] = useState<NextAction>(prospect.nextAction);
@@ -52,6 +54,31 @@ export function ProspectDetailModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showMarkSentDialog, setShowMarkSentDialog] = useState(false);
   const [outreachNotes, setOutreachNotes] = useState("");
+
+  const handleOpenInDashboardInbox = async () => {
+    setIsProcessing(true);
+    try {
+      await fetch("/api/whatsapp/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prospectId: prospect.id,
+          companyName: prospect.companyName,
+          contactName: prospect.contactName,
+          whatsappNumber: prospect.whatsappNumber,
+          researchNotes: prospect.researchNotes,
+          assignedSalesId: prospect.assignedSalesId,
+          assignedSalesName: prospect.assignedSalesName,
+        }),
+      });
+    } catch (err) {
+      console.error("Gagal sinkronisasi ruang obrolan:", err);
+    } finally {
+      setIsProcessing(false);
+      onClose();
+      router.push(`/inbox?prospectId=${prospect.id}`);
+    }
+  };
 
   const handleReachNow = () => {
     // 1. Buat draf pesan pembuka santun berbasis hasil riset
@@ -212,11 +239,21 @@ export function ProspectDetailModal({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={handleReachNow}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+                    onClick={handleOpenInDashboardInbox}
+                    disabled={isProcessing}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-50"
                   >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Reach Now via WhatsApp
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    Buka di Inbox WA
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReachNow}
+                    title="Buka via WhatsApp Web eksternal (wa.me)"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg border border-slate-300 transition-colors"
+                  >
+                    <ExternalLink className="w-3 h-3 text-slate-500" />
+                    WA Eksternal
                   </button>
                 </div>
               </div>

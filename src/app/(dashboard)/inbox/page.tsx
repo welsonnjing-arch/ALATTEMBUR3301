@@ -4,7 +4,14 @@ import { getAllProspects } from "@/modules/crm/crm.service";
 import { WhatsAppInboxView } from "@/components/inbox/WhatsAppInboxView";
 import { getSessionCookie } from "@/modules/auth/session";
 
-export default async function WhatsAppInboxPage() {
+interface PageProps {
+  searchParams?: {
+    prospectId?: string;
+    phone?: string;
+  };
+}
+
+export default async function WhatsAppInboxPage({ searchParams }: PageProps) {
   const [conversations, session, prospects, currentUser] = await Promise.all([
     getAllConversations(),
     getWhatsAppSession(),
@@ -19,6 +26,8 @@ export default async function WhatsAppInboxPage() {
         initialSession={session}
         prospects={prospects}
         currentUser={currentUser}
+        initialProspectId={searchParams?.prospectId}
+        initialPhone={searchParams?.phone}
       />
     </div>
   );

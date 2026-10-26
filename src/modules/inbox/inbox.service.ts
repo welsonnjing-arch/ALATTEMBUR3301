@@ -188,13 +188,59 @@ if (!inboxGlobal.conversationsData || inboxGlobal.conversationsData.length === 0
 
 export const conversationsData = inboxGlobal.conversationsData;
 
+/**
+ * Sinkronisasi data obrolan Inbox dengan data prospek CRM aktif.
+ * Memastikan nama perusahaan, kontak, penugasan sales, dan catatan riset selalu mutakhir.
+ */
+export function syncConversationsWithProspects(): void {
+  const store = prospectsData;
+  let changed = false;
+
+  for (const conv of conversationsData) {
+    const cleanPhone = conv.whatsappNumber.replace(/\D/g, "");
+    const matchedProspect = store.find(
+      (p) => p.whatsappNumber.replace(/\D/g, "") === cleanPhone && !p.isArchived
+    );
+
+    if (matchedProspect) {
+      if (
+        conv.companyName !== matchedProspect.companyName ||
+        conv.contactName !== matchedProspect.contactName ||
+        conv.prospectId !== matchedProspect.id ||
+        (matchedProspect.assignedSalesId &&
+          conv.assignedSalesId !== matchedProspect.assignedSalesId)
+      ) {
+        conv.companyName = matchedProspect.companyName;
+        conv.contactName = matchedProspect.contactName;
+        conv.prospectId = matchedProspect.id;
+        if (matchedProspect.assignedSalesId) {
+          conv.assignedSalesId = matchedProspect.assignedSalesId;
+          conv.assignedSalesName = matchedProspect.assignedSalesName;
+        }
+        if (matchedProspect.researchNotes) {
+          conv.researchNotes = matchedProspect.researchNotes;
+        }
+        changed = true;
+      }
+    }
+  }
+
+  if (changed) {
+    persistConversations();
+  }
+}
+
+// Sinkronkan saat awal modul dimuat
+syncConversationsWithProspects();
+
 export async function getAllConversations(): Promise<ConversationThread[]> {
+  syncConversationsWithProspects();
   return [...conversationsData];
 }
 
 export async function getConversationById(id: string): Promise<ConversationThread | null> {
   const conv = conversationsData.find((c) => c.id === id);
-  return conv ? { ...conv } : null;
+  return conv || null;
 }
 
 export async function getConversationByPhone(phone: string): Promise<ConversationThread | null> {
@@ -202,7 +248,29 @@ export async function getConversationByPhone(phone: string): Promise<Conversatio
   const conv = conversationsData.find(
     (c) => c.whatsappNumber.replace(/\D/g, "") === cleanPhone
   );
-  return conv ? { ...conv } : null;
+  return conv || null;
+}
+
+export async function deleteConversation(conversationId: string): Promise<boolean> {
+  const idx = conversationsData.findIndex((c) => c.id === conversationId);
+  if (idx === -1) return false;
+  const [deleted] = conversationsData.splice(idx, 1);
+  persistConversations();
+
+  logActivity({
+    category: "CRM",
+    action: "PROSPECT_DELETED",
+    actorId: "USER",
+    targetId: conversationId,
+    targetType: "PROSPECT",
+    metadata: {
+      action: "CONVERSATION_DELETED",
+      companyName: deleted.companyName,
+      whatsappNumber: deleted.whatsappNumber,
+    },
+  });
+
+  return true;
 }
 
 export async function getOrCreateConversationByProspect(prospect: {
@@ -215,12 +283,23 @@ export async function getOrCreateConversationByProspect(prospect: {
   assignedSalesId?: string;
   assignedSalesName?: string;
 }): Promise<ConversationThread> {
-  const existing = await getConversationByPhone(prospect.whatsappNumber);
+  const cleanPhone = prospect.whatsappNumber.replace(/\D/g, "");
+  const existing = conversationsData.find(
+    (c) => c.whatsappNumber.replace(/\D/g, "") === cleanPhone
+  );
+
   if (existing) {
+    // Sinkronkan data terbaru dari prospek CRM
+    existing.prospectId = prospect.id;
+    existing.companyName = prospect.companyName;
+    existing.contactName = prospect.contactName;
+    if (prospect.researchNotes) {
+      existing.researchNotes = prospect.researchNotes;
+    }
     if (prospect.remoteJid && !existing.remoteJid) {
       existing.remoteJid = prospect.remoteJid;
     }
-    if (prospect.assignedSalesId && !existing.assignedSalesId) {
+    if (prospect.assignedSalesId) {
       existing.assignedSalesId = prospect.assignedSalesId;
       existing.assignedSalesName = prospect.assignedSalesName;
     }

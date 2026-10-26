@@ -1,15 +1,15 @@
 [
   {
     "id": "conv-1792939805354-zztf",
-    "prospectId": "p-1792939805354-xht5",
+    "prospectId": "p-1793002187949-v9zj",
     "companyName": "PT Bintang Abadi Konstruksi",
     "contactName": "Bapak Hendra",
     "whatsappNumber": "6281299900011",
-    "assignedSalesId": "77777777-7777-7777-7777-777777777777",
-    "assignedSalesName": "Rian Hidayat (Sales 5)",
-    "unreadCount": 9,
+    "assignedSalesId": "sales-1",
+    "assignedSalesName": "Budi Santoso (Sales)",
+    "unreadCount": 10,
     "lastMessageSnippet": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran har",
-    "lastMessageAt": "2026-10-26T07:47:39.457Z",
+    "lastMessageAt": "2026-10-26T08:09:52.072Z",
     "researchNotes": "Kontraktor baru belum punya company profile",
     "messages": [
       {
@@ -173,6 +173,24 @@
         "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
         "isDraft": false,
         "timestamp": "2026-10-26T07:47:39.457Z"
+      },
+      {
+        "id": "msg-1793002187949-lykz",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
+        "isDraft": false,
+        "timestamp": "2026-10-26T08:09:47.949Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso"
+      },
+      {
+        "id": "msg-1793002192072-032h",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
+        "isDraft": false,
+        "timestamp": "2026-10-26T08:09:52.072Z"
       }
     ]
   },
@@ -254,16 +272,16 @@
   },
   {
     "id": "conv-001",
-    "prospectId": "p-001",
-    "companyName": "SMAN 2 Ngaglik",
-    "contactName": "Bambang Sudarsono (Wakasek Kurikulum)",
+    "prospectId": "p-1793000353012-pldg",
+    "companyName": "PT RUDAL AJAIB",
+    "contactName": "PT RUDAL AJAIB",
     "whatsappNumber": "62895324069850",
-    "assignedSalesId": "77777777-7777-7777-7777-777777777777",
-    "assignedSalesName": "Rian Hidayat (Sales 5)",
+    "assignedSalesId": "11111111-1111-1111-1111-111111111111",
+    "assignedSalesName": "Faiz Aditama (Owner)",
     "unreadCount": 0,
     "lastMessageSnippet": "Invoice pelunasan presensi digital telah terbit.",
     "lastMessageAt": "2026-02-12T10:00:00Z",
-    "researchNotes": "Sekolah negeri 900+ siswa. Membutuhkan sistem web presensi digital multi-device.",
+    "researchNotes": "Belum ada catatan riset",
     "messages": [
       {
         "id": "msg-020",

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  deleteConversation,
   getAllConversations,
   getOrCreateConversationByProspect,
 } from "@/modules/inbox/inbox.service";
@@ -38,6 +39,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, thread });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Gagal membuat ruang obrolan";
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const conversationId = searchParams.get("id");
+    if (!conversationId) {
+      return NextResponse.json(
+        { success: false, error: "ID percakapan wajib disertakan." },
+        { status: 400 }
+      );
+    }
+
+    const deleted = await deleteConversation(conversationId);
+    return NextResponse.json({ success: deleted });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Gagal menghapus percakapan";
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
