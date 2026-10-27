@@ -1,5 +1,47 @@
 [
   {
+    "id": "proj-1793097337828",
+    "name": "Website Demo - PT Demo Klien",
+    "clientId": "client-demo-123",
+    "clientName": "PT Demo Klien",
+    "status": "ACTIVE",
+    "progressPercent": 0,
+    "scopeDescription": "Demo website landing page dari request chat WA.",
+    "startDate": "2026-10-27",
+    "deadline": "2026-11-05",
+    "assignedMemberIds": [
+      "33333333-3333-3333-3333-333333333333"
+    ],
+    "assignedMemberNames": [
+      "Budi Santoso (Sales 1)"
+    ],
+    "externalLinks": [],
+    "chatMessages": [],
+    "createdAt": "2026-10-27T10:35:37.828Z",
+    "updatedAt": "2026-10-27T10:35:37.828Z"
+  },
+  {
+    "id": "proj-1793097314773",
+    "name": "Website Demo - PT Demo Klien",
+    "clientId": "client-demo-123",
+    "clientName": "PT Demo Klien",
+    "status": "ACTIVE",
+    "progressPercent": 0,
+    "scopeDescription": "Demo website landing page dari request chat WA.",
+    "startDate": "2026-10-27",
+    "deadline": "2026-11-05",
+    "assignedMemberIds": [
+      "33333333-3333-3333-3333-333333333333"
+    ],
+    "assignedMemberNames": [
+      "Budi Santoso (Sales 1)"
+    ],
+    "externalLinks": [],
+    "chatMessages": [],
+    "createdAt": "2026-10-27T10:35:14.773Z",
+    "updatedAt": "2026-10-27T10:35:14.773Z"
+  },
+  {
     "id": "proj-1793096336406",
     "name": "Website Demo - PT Demo Klien",
     "clientId": "client-demo-123",

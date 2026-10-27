@@ -20,8 +20,12 @@ import {
   appendOutgoingMessage,
   getOrCreateConversationByProspect,
   persistConversations,
+  updateMessageStatus,
+  updateMessageExternalId,
+  markConversationAsRead,
+  markThreadOutgoingMessagesAsRead,
 } from "@/modules/inbox/inbox.service";
-import { ChatAttachment } from "@/modules/inbox/types";
+import { ChatAttachment, MessageStatus } from "@/modules/inbox/types";
 import {
   prospectsData,
   confirmOutreachSent,
@@ -569,6 +573,42 @@ export async function startWhatsAppPairing(
       }
     });
 
+    // Dengarkan status centang pesan dari WhatsApp (SERVER_ACK, DELIVERY_ACK, READ)
+    sock.ev.on("messages.update", async (updates) => {
+      for (const { key, update } of updates) {
+        if (key.id && update.status !== undefined) {
+          // 2: SERVER_ACK (SENT - Centang 1 abu-abu)
+          // 3: DELIVERY_ACK (DELIVERED - Centang 2 abu-abu)
+          // 4: READ (READ - Centang 2 biru)
+          // 5: PLAYED (READ - Centang 2 biru)
+          let newStatus: MessageStatus | null = null;
+          if (update.status === 2) newStatus = "SENT";
+          else if (update.status === 3) newStatus = "DELIVERED";
+          else if (update.status === 4 || update.status === 5) newStatus = "READ";
+
+          if (newStatus) {
+            console.log(`[WA_STATUS] Status pesan ${key.id} terupdate ke ${newStatus}`);
+            updateMessageStatus(key.id, newStatus);
+          }
+        }
+      }
+    });
+
+    // Dengarkan read receipt resmi dari WhatsApp penerima
+    sock.ev.on("message-receipt.update", async (receipts) => {
+      for (const { key, receipt } of receipts) {
+        if (key.id) {
+          if (receipt.readTimestamp) {
+            console.log(`[WA_STATUS] Pesan ${key.id} telah dibaca oleh penerima (READ - Centang Biru)`);
+            updateMessageStatus(key.id, "READ");
+          } else if (receipt.receiptTimestamp) {
+            console.log(`[WA_STATUS] Pesan ${key.id} sampai di HP penerima (DELIVERED - Centang 2 Abu)`);
+            updateMessageStatus(key.id, "DELIVERED");
+          }
+        }
+      }
+    });
+
     await qrPromise;
     waGlobal.isInitializing = false;
 
@@ -818,10 +858,15 @@ export async function sendWhatsAppMessage(
         sent = await waGlobal.waSocket.sendMessage(targetJid, { text: input.text.trim() });
       }
 
-      if (sent?.key?.id && sent?.message) {
-        sentMessagesCache.set(sent.key.id, sent.message);
+      if (sent?.key?.id) {
+        if (sent?.message) {
+          sentMessagesCache.set(sent.key.id, sent.message);
+        }
+        if (appendRes.message) {
+          updateMessageExternalId(appendRes.message.id, sent.key.id);
+        }
       }
-      console.log(`[WA_SEND] Pesan berhasil meluncur ke "${targetJid}"!`);
+      console.log(`[WA_SEND] Pesan berhasil meluncur ke "${targetJid}"! (ID: ${sent?.key?.id || "N/A"})`);
       deliveredViaSocket = true;
     } catch (sendErr) {
       socketError = sendErr instanceof Error ? sendErr.message : "Gagal mengirim via WhatsApp socket";
@@ -967,4 +1012,60 @@ export async function handleIncomingWhatsAppMessage(
     conversationId: matchedThread.id,
     prospectId: matchedProspect?.id,
   };
+}
+
+/**
+ * Tandai percakapan sebagai telah dibaca dan kirim read receipt ke WhatsApp jika socket aktif
+ */
+export async function markConversationMessagesAsRead(
+  conversationId: string
+): Promise<{ success: boolean }> {
+  const conv = conversationsData.find((c) => c.id === conversationId);
+  if (!conv) return { success: false };
+
+  markConversationAsRead(conversationId);
+
+  // Jika socket Baileys aktif dan remoteJid tersedia, kirim tanda centang biru ke nomor lawan
+  if (waGlobal.waSocket && waGlobal.waSession?.status === "CONNECTED" && conv.remoteJid) {
+    try {
+      const incomingUnread = conv.messages.filter((m) => m.sender === "PROSPECT");
+      const keys = incomingUnread.map((m) => ({
+        remoteJid: conv.remoteJid!,
+        id: m.externalMessageId || m.id,
+        fromMe: false,
+      }));
+      if (keys.length > 0) {
+        await waGlobal.waSocket.readMessages(keys);
+      }
+    } catch (readErr) {
+      console.warn("[WA_READ] Gagal mengirim status read ke Baileys:", readErr);
+    }
+  }
+
+  return { success: true };
+}
+
+/**
+ * Simulasikan penerima membuka dan membaca pesan (Centang 2 Biru / READ)
+ */
+export async function simulateRecipientReadMessages(
+  conversationId: string
+): Promise<{ success: boolean; updatedCount: number }> {
+  const conv = conversationsData.find((c) => c.id === conversationId);
+  if (!conv) return { success: false, updatedCount: 0 };
+
+  let count = 0;
+  for (const m of conv.messages) {
+    if ((m.sender === "SALES" || m.sender === "AI") && m.status !== "READ") {
+      m.status = "READ";
+      m.statusUpdatedAt = new Date().toISOString();
+      count++;
+    }
+  }
+
+  if (count > 0) {
+    persistConversations();
+  }
+
+  return { success: true, updatedCount: count };
 }

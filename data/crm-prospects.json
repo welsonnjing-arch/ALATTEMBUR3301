@@ -1,54 +1,54 @@
 [
   {
-    "id": "p-1793096336388-b0n6",
+    "id": "p-1793097337799-5cmy",
     "companyName": "PT Bintang Abadi Konstruksi",
     "contactName": "Bapak Hendra",
     "whatsappNumber": "6281299900011",
     "source": "Riset Internal Fynux",
     "researchNotes": "Kontraktor baru belum punya company profile",
     "potentialServices": "Basic Website Development",
-    "assignedSalesId": "44444444-4444-4444-4444-444444444444",
-    "assignedSalesName": "Siti Rahma (Sales 2)",
+    "assignedSalesId": "sales-1",
+    "assignedSalesName": "Budi Santoso (Sales)",
     "stage": "RESPONDED",
     "nextAction": "REPLY_TO_CLIENT",
     "followUpStep": "FU1",
     "isArchived": false,
     "followUpLogs": [
       {
-        "id": "fu-1793096336390",
-        "prospectId": "p-1793096336388-b0n6",
+        "id": "fu-1793097337801",
+        "prospectId": "p-1793097337799-5cmy",
         "step": "INITIAL",
         "channel": "WHATSAPP",
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
-        "confirmedSentAt": "2026-10-27T10:18:56.390Z",
+        "confirmedSentAt": "2026-10-27T10:35:37.801Z",
         "notes": "Outreach pertama dikirim via Native WhatsApp Web Engine."
       }
     ],
-    "createdAt": "2026-10-27T10:18:56.388Z",
-    "updatedAt": "2026-10-27T10:18:56.396Z",
-    "lastReachAt": "2026-10-27T10:18:56.396Z"
+    "createdAt": "2026-10-27T10:35:37.799Z",
+    "updatedAt": "2026-10-27T10:35:37.806Z",
+    "lastReachAt": "2026-10-27T10:35:37.805Z"
   },
   {
-    "id": "p-1793096334598-v1c7",
+    "id": "p-1793097335230-uhl4",
     "companyName": "PT Maju Terus Konstruksi",
     "contactName": "Ir. Hendro",
     "whatsappNumber": "6281999888777",
     "source": "Riset Internal Fynux",
     "researchNotes": "Website lama lambat dan belum mobile responsive, butuh web profil modern.",
     "potentialServices": "Basic Website Development",
-    "assignedSalesId": "sales-user-id",
-    "assignedSalesName": "Budi Santoso (Sales)",
+    "assignedSalesId": "77777777-7777-7777-7777-777777777777",
+    "assignedSalesName": "Rian Hidayat (Sales 5)",
     "stage": "NEW",
     "nextAction": "REACH_NOW",
     "followUpStep": "INITIAL",
     "isArchived": false,
     "followUpLogs": [],
-    "createdAt": "2026-10-27T10:18:54.598Z",
-    "updatedAt": "2026-10-27T10:18:54.598Z"
+    "createdAt": "2026-10-27T10:35:35.230Z",
+    "updatedAt": "2026-10-27T10:35:37.805Z"
   },
   {
-    "id": "p-1793096334598-9guv",
+    "id": "p-1793097335229-u1bu",
     "companyName": "PT Test Tanpa Riset Wajib",
     "contactName": "Budi",
     "whatsappNumber": "6281234567899",
@@ -62,59 +62,59 @@
     "followUpStep": "INITIAL",
     "isArchived": false,
     "followUpLogs": [],
-    "createdAt": "2026-10-27T10:18:54.598Z",
-    "updatedAt": "2026-10-27T10:18:54.598Z"
+    "createdAt": "2026-10-27T10:35:35.229Z",
+    "updatedAt": "2026-10-27T10:35:35.229Z"
   },
   {
-    "id": "p-1793096261726-3lf2",
+    "id": "p-1793097314757-c6qa",
     "companyName": "PT Bintang Abadi Konstruksi",
     "contactName": "Bapak Hendra",
     "whatsappNumber": "6281299900011",
     "source": "Riset Internal Fynux",
     "researchNotes": "Kontraktor baru belum punya company profile",
     "potentialServices": "Basic Website Development",
-    "assignedSalesId": "44444444-4444-4444-4444-444444444444",
-    "assignedSalesName": "Siti Rahma (Sales 2)",
+    "assignedSalesId": "sales-1",
+    "assignedSalesName": "Budi Santoso (Sales)",
     "stage": "RESPONDED",
     "nextAction": "REPLY_TO_CLIENT",
     "followUpStep": "FU1",
     "isArchived": false,
     "followUpLogs": [
       {
-        "id": "fu-1793096261730",
-        "prospectId": "p-1793096261726-3lf2",
+        "id": "fu-1793097314759",
+        "prospectId": "p-1793097314757-c6qa",
         "step": "INITIAL",
         "channel": "WHATSAPP",
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
-        "confirmedSentAt": "2026-10-27T10:17:41.730Z",
+        "confirmedSentAt": "2026-10-27T10:35:14.759Z",
         "notes": "Outreach pertama dikirim via Native WhatsApp Web Engine."
       }
     ],
-    "createdAt": "2026-10-27T10:17:41.726Z",
-    "updatedAt": "2026-10-27T10:17:41.736Z",
-    "lastReachAt": "2026-10-27T10:17:41.736Z"
+    "createdAt": "2026-10-27T10:35:14.757Z",
+    "updatedAt": "2026-10-27T10:35:14.766Z",
+    "lastReachAt": "2026-10-27T10:35:14.766Z"
   },
   {
-    "id": "p-1793096260133-nkin",
+    "id": "p-1793097312821-7095",
     "companyName": "PT Maju Terus Konstruksi",
     "contactName": "Ir. Hendro",
     "whatsappNumber": "6281999888777",
     "source": "Riset Internal Fynux",
     "researchNotes": "Website lama lambat dan belum mobile responsive, butuh web profil modern.",
     "potentialServices": "Basic Website Development",
-    "assignedSalesId": "sales-user-id",
-    "assignedSalesName": "Budi Santoso (Sales)",
+    "assignedSalesId": "77777777-7777-7777-7777-777777777777",
+    "assignedSalesName": "Rian Hidayat (Sales 5)",
     "stage": "NEW",
     "nextAction": "REACH_NOW",
     "followUpStep": "INITIAL",
     "isArchived": false,
     "followUpLogs": [],
-    "createdAt": "2026-10-27T10:17:40.133Z",
-    "updatedAt": "2026-10-27T10:17:40.133Z"
+    "createdAt": "2026-10-27T10:35:12.821Z",
+    "updatedAt": "2026-10-27T10:35:14.763Z"
   },
   {
-    "id": "p-1793096260131-4s0r",
+    "id": "p-1793097312820-bqk1",
     "companyName": "PT Test Tanpa Riset Wajib",
     "contactName": "Budi",
     "whatsappNumber": "6281234567899",
@@ -128,8 +128,8 @@
     "followUpStep": "INITIAL",
     "isArchived": false,
     "followUpLogs": [],
-    "createdAt": "2026-10-27T10:17:40.131Z",
-    "updatedAt": "2026-10-27T10:17:40.131Z"
+    "createdAt": "2026-10-27T10:35:12.820Z",
+    "updatedAt": "2026-10-27T10:35:12.820Z"
   },
   {
     "id": "p-1793006689891-ma9u",
@@ -140,8 +140,8 @@
     "source": "Riset Internal Fynux",
     "researchNotes": "Belum ada catatan riset",
     "potentialServices": "Basic Website Development",
-    "assignedSalesId": "77777777-7777-7777-7777-777777777777",
-    "assignedSalesName": "Rian Hidayat (Sales 5)",
+    "assignedSalesId": "44444444-4444-4444-4444-444444444444",
+    "assignedSalesName": "Siti Rahma (Sales 2)",
     "stage": "RESPONDED",
     "nextAction": "REPLY_TO_CLIENT",
     "followUpStep": "FU1",
@@ -159,7 +159,7 @@
       }
     ],
     "createdAt": "2026-10-26T09:24:49.891Z",
-    "updatedAt": "2026-10-27T10:18:56.395Z",
-    "lastReachAt": "2026-10-26T09:56:33.334Z"
+    "updatedAt": "2026-10-27T10:35:37.804Z",
+    "lastReachAt": "2026-10-27T10:20:12.041Z"
   }
 ]

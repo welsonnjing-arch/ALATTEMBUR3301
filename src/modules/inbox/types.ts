@@ -1,3 +1,5 @@
+export type MessageStatus = "PENDING" | "SENT" | "DELIVERED" | "READ" | "FAILED";
+
 export interface ChatAttachment {
   fileName: string;
   fileSize: string;
@@ -15,6 +17,9 @@ export interface ChatMessage {
   sentByUserId?: string;
   sentByUserName?: string;
   attachment?: ChatAttachment;
+  status?: MessageStatus;
+  externalMessageId?: string;
+  statusUpdatedAt?: string;
 }
 
 export interface ConversationThread {

@@ -10,6 +10,7 @@ import {
   MoreVertical,
   CheckCheck,
   Check,
+  Clock,
   Smartphone,
   Plus,
   Building2,
@@ -29,19 +30,71 @@ import {
   FolderPlus,
   CheckSquare,
 } from "lucide-react";
-import { ConversationThread, ChatMessage } from "@/modules/inbox/types";
+import { ConversationThread, ChatMessage, MessageStatus } from "@/modules/inbox/types";
 import { WhatsAppSessionInfo } from "@/modules/whatsapp/types";
 import { Prospect } from "@/modules/crm/types";
 import { UserSessionData } from "@/modules/auth/types";
 import {
   sendWhatsAppMessageAction,
   simulateIncomingWhatsAppMessageAction,
+  markConversationAsReadAction,
+  simulateRecipientReadMessagesAction,
+  updateMessageStatusAction,
 } from "@/modules/whatsapp/whatsapp.actions";
 import { WhatsAppPairingModal } from "@/components/whatsapp/WhatsAppPairingModal";
 import { WhatsAppCreateProjectModal } from "./WhatsAppCreateProjectModal";
 import { WhatsAppCreateTaskModal } from "./WhatsAppCreateTaskModal";
 import { WhatsAppEmojiPicker } from "./WhatsAppEmojiPicker";
 import { formatDateTimeWIB } from "@/lib/date";
+
+export function MessageStatusTick({
+  status,
+  size = "md",
+}: {
+  status?: MessageStatus;
+  size?: "sm" | "md";
+}) {
+  const iconClass = size === "sm" ? "w-3 h-3 flex-shrink-0" : "w-3.5 h-3.5 flex-shrink-0";
+
+  switch (status) {
+    case "PENDING":
+      return (
+        <span title="Menunggu pengiriman...">
+          <Clock className={`${iconClass} text-[#8696a0] animate-pulse`} />
+        </span>
+      );
+    case "SENT":
+      return (
+        <span title="Terkirim ke server WhatsApp (Centang 1 abu-abu)">
+          <Check className={`${iconClass} text-[#8696a0]`} />
+        </span>
+      );
+    case "DELIVERED":
+      return (
+        <span title="Tersampaikan ke HP penerima - Belum dibaca (Centang 2 abu-abu)">
+          <CheckCheck className={`${iconClass} text-[#8696a0]`} />
+        </span>
+      );
+    case "READ":
+      return (
+        <span title="Telah dibaca oleh penerima (Centang 2 biru)">
+          <CheckCheck className={`${iconClass} text-[#53bdeb]`} />
+        </span>
+      );
+    case "FAILED":
+      return (
+        <span className="text-rose-500 font-bold text-[10px]" title="Gagal terkirim">
+          !
+        </span>
+      );
+    default:
+      return (
+        <span title="Telah dibaca">
+          <CheckCheck className={`${iconClass} text-[#53bdeb]`} />
+        </span>
+      );
+  }
+}
 
 export const SALES_TEAM = [
   { id: "22222222-2222-2222-2222-222222222222", name: "Budi Santoso (Sales 1)" },
@@ -421,6 +474,7 @@ export function WhatsAppInboxView({
       text: textToSend,
       isDraft: false,
       timestamp: new Date().toISOString(),
+      status: "SENT",
       attachment: attachmentToSend
         ? {
             fileName: attachmentToSend.fileName,
@@ -469,6 +523,28 @@ export function WhatsAppInboxView({
           alert(sendData.warning);
           setIsPairingModalOpen(true);
         }
+        const createdId = sendData?.messageId || optimisticMsg.id;
+
+        // Transisi status ke DELIVERED (centang 2 abu-abu) setelah 1.5 detik jika lawan belum membaca
+        setTimeout(() => {
+          setConversations((prev) =>
+            prev.map((c) => {
+              if (c.id === activeConv.id) {
+                return {
+                  ...c,
+                  messages: c.messages.map((m) =>
+                    (m.id === optimisticMsg.id || m.id === createdId) && m.status === "SENT"
+                      ? { ...m, status: "DELIVERED" }
+                      : m
+                  ),
+                };
+              }
+              return c;
+            })
+          );
+          updateMessageStatusAction(createdId, "DELIVERED").catch(() => {});
+        }, 1500);
+
         const convRes = await fetch("/api/whatsapp/conversations", {
           cache: "no-store",
         });
@@ -484,7 +560,7 @@ export function WhatsAppInboxView({
     }
   };
 
-  // Simulasi pesan masuk dari klien (untuk menguji pemicu panggung CRM ke RESPONDED)
+  // Simulasi pesan masuk dari klien (untuk menguji pemicu panggung CRM ke RESPONDED & centang biru)
   const handleSimulateClientReply = async () => {
     if (!activeConv || isSimulating) return;
 
@@ -500,7 +576,7 @@ export function WhatsAppInboxView({
 
     setIsSimulating(true);
 
-    // Optimistic UI
+    // Optimistic UI: ubah seluruh pesan sales sebelumnya menjadi READ (centang 2 biru)
     const incomingMsg: ChatMessage = {
       id: `sim-${Date.now()}`,
       conversationId: activeConv.id,
@@ -513,12 +589,17 @@ export function WhatsAppInboxView({
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id === activeConv.id) {
+          const updatedMessages = c.messages.map((m) =>
+            m.sender === "SALES" || m.sender === "AI"
+              ? { ...m, status: "READ" as MessageStatus }
+              : m
+          );
           return {
             ...c,
             lastMessageSnippet: randomReply.slice(0, 80),
             lastMessageAt: incomingMsg.timestamp,
             unreadCount: c.unreadCount + 1,
-            messages: [...c.messages, incomingMsg],
+            messages: [...updatedMessages, incomingMsg],
           };
         }
         return c;
@@ -531,6 +612,30 @@ export function WhatsAppInboxView({
     );
 
     setIsSimulating(false);
+  };
+
+  // Simulasi penerima membuka dan membaca pesan (Centang 2 Biru)
+  const handleSimulateRecipientRead = async () => {
+    if (!activeConv) return;
+
+    setConversations((prev) =>
+      prev.map((c) => {
+        if (c.id === activeConv.id) {
+          const updated = c.messages.map((m) =>
+            m.sender === "SALES" || m.sender === "AI"
+              ? { ...m, status: "READ" as MessageStatus }
+              : m
+          );
+          return {
+            ...c,
+            messages: updated,
+          };
+        }
+        return c;
+      })
+    );
+
+    await simulateRecipientReadMessagesAction(activeConv.id);
   };
 
   // Warna badge status panggung CRM
@@ -753,6 +858,7 @@ export function WhatsAppInboxView({
                           item.id === c.id ? { ...item, unreadCount: 0 } : item
                         )
                       );
+                      markConversationAsReadAction(c.id).catch(console.error);
                     }
                   }}
                   className={`px-4 py-3 flex items-center gap-3 cursor-pointer transition-colors ${
@@ -820,19 +926,29 @@ export function WhatsAppInboxView({
                       )}
                     </div>
 
-                    {/* Snippet Pesan & Double Check */}
-                    <div className="flex items-center justify-between mt-1">
-                      <div className="flex items-center gap-1 text-[11px] text-[#667781] truncate">
-                        <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] flex-shrink-0" />
-                        <span className="truncate">{c.lastMessageSnippet}</span>
-                      </div>
+                    {/* Snippet Pesan & Check Ticks */}
+                    {(() => {
+                      const lastMsg = c.messages[c.messages.length - 1];
+                      const isOutgoing =
+                        lastMsg && (lastMsg.sender === "SALES" || lastMsg.sender === "AI");
 
-                      {c.unreadCount > 0 && (
-                        <span className="w-4 h-4 rounded-full bg-[#25d366] text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 ml-1">
-                          {c.unreadCount}
-                        </span>
-                      )}
-                    </div>
+                      return (
+                        <div className="flex items-center justify-between mt-1">
+                          <div className="flex items-center gap-1 text-[11px] text-[#667781] truncate">
+                            {isOutgoing && (
+                              <MessageStatusTick status={lastMsg?.status} size="sm" />
+                            )}
+                            <span className="truncate">{c.lastMessageSnippet}</span>
+                          </div>
+
+                          {c.unreadCount > 0 && (
+                            <span className="w-4 h-4 rounded-full bg-[#25d366] text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 ml-1">
+                              {c.unreadCount}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
@@ -971,11 +1087,22 @@ export function WhatsAppInboxView({
                   type="button"
                   onClick={handleSimulateClientReply}
                   disabled={isSimulating}
-                  title="Simulasi pesan masuk dari prospek ini untuk memicu status CRM ke RESPONDED"
+                  title="Simulasi pesan masuk dari prospek ini untuk memicu status CRM ke RESPONDED & centang biru"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 shadow-sm transition-colors"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-purple-600" />
                   <span>{isSimulating ? "Menerima..." : "Simulasi Balas"}</span>
+                </button>
+
+                {/* Tombol Simulasi Dibaca (Centang Biru) */}
+                <button
+                  type="button"
+                  onClick={handleSimulateRecipientRead}
+                  title="Simulasikan penerima telah membuka dan membaca pesan (Centang 2 Biru)"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-semibold rounded-lg border border-sky-200 shadow-sm transition-colors"
+                >
+                  <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />
+                  <span className="hidden sm:inline">Simulasi Dibaca</span>
                 </button>
 
                 <button
@@ -1139,7 +1266,7 @@ export function WhatsAppInboxView({
                           })}
                         </span>
                         {isSales && (
-                          <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />
+                          <MessageStatusTick status={m.status} size="sm" />
                         )}
                       </div>
                     </div>

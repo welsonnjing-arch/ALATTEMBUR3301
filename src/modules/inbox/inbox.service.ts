@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { ChatAttachment, ChatMessage, ConversationThread } from "./types";
+import { ChatAttachment, ChatMessage, ConversationThread, MessageStatus } from "./types";
 import { prospectsData } from "@/modules/crm/crm.service";
 import { logActivity } from "@/lib/logger";
 
@@ -37,6 +37,7 @@ const INITIAL_CONVERSATIONS_DATA: ConversationThread[] = [
         text: "Selamat siang Ibu Rina, perkenalkan saya Siti dari Fynux Digital Solutions. Kami melihat PT Padma Widya Setiajaya memiliki rekam jejak konstruksi yang luar biasa, namun website resmi perusahaan sepertinya belum aktif. Apakah saat ini ada rencana publikasi portofolio online untuk tender?",
         isDraft: false,
         timestamp: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
+        status: "READ",
       },
       {
         id: "msg-002",
@@ -55,6 +56,7 @@ const INITIAL_CONVERSATIONS_DATA: ConversationThread[] = [
         text: "Untuk kebutuhan tender, kami merekomendasikan Business Website seharga Rp 3.500.000 dengan CMS kustom agar tim Ibu bisa memperbarui galeri proyek kapan saja, lengkap dengan domain, hosting, dan SSL.",
         isDraft: false,
         timestamp: new Date(Date.now() - 3600000 * 24 * 1).toISOString(),
+        status: "READ",
       },
       {
         id: "msg-004",
@@ -89,6 +91,7 @@ const INITIAL_CONVERSATIONS_DATA: ConversationThread[] = [
         text: "Halo Mas Aditya, salam kenal dari Fynux Digital Solutions. Kami sempat memantau roastery Kopi Nusantara yang ramai sekali pemesanannya di Instagram. Apakah Mas Adit tertarik membuat website katalog beans otomatis agar pelanggan grosir bisa langsung order rapi?",
         isDraft: false,
         timestamp: new Date(Date.now() - 3600000 * 12).toISOString(),
+        status: "DELIVERED",
       },
     ],
   },
@@ -114,6 +117,7 @@ const INITIAL_CONVERSATIONS_DATA: ConversationThread[] = [
         text: "Selamat pagi Pak Bambang, berikut kami lampirkan nota pelunasan dan invoice proyek SIM-Presensi berbasis web v1.0.",
         isDraft: false,
         timestamp: "2026-02-12T09:30:00Z",
+        status: "READ",
       },
       {
         id: "msg-021",
@@ -133,6 +137,22 @@ interface InboxGlobalStore {
 
 const inboxGlobal = globalThis as unknown as InboxGlobalStore;
 
+function normalizeConversationMessageStatuses(conversations: ConversationThread[]): ConversationThread[] {
+  for (const conv of conversations) {
+    for (let i = 0; i < conv.messages.length; i++) {
+      const msg = conv.messages[i];
+      if ((msg.sender === "SALES" || msg.sender === "AI") && !msg.status) {
+        // Cek apakah ada balasan dari PROSPECT sesudah pesan ini
+        const hasSubsequentReply = conv.messages
+          .slice(i + 1)
+          .some((next) => next.sender === "PROSPECT");
+        msg.status = hasSubsequentReply ? "READ" : "DELIVERED";
+      }
+    }
+  }
+  return conversations;
+}
+
 /**
  * Muat percakapan dari persistent file storage jika ada.
  * Jika file belum ada, gunakan INITIAL_CONVERSATIONS_DATA dan buat file di disk.
@@ -144,7 +164,7 @@ function loadPersistedConversations(): ConversationThread[] {
       const content = fs.readFileSync(CONVERSATIONS_FILE, "utf-8");
       const parsed = JSON.parse(content);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return normalizeConversationMessageStatuses(parsed);
       }
     }
   } catch (err) {
@@ -160,7 +180,7 @@ function loadPersistedConversations(): ConversationThread[] {
     );
   } catch {}
 
-  return [...INITIAL_CONVERSATIONS_DATA];
+  return normalizeConversationMessageStatuses([...INITIAL_CONVERSATIONS_DATA]);
 }
 
 /**
@@ -328,6 +348,100 @@ export async function getOrCreateConversationByProspect(prospect: {
   return newThread;
 }
 
+/**
+ * Perbarui status tanda centang pesan (PENDING, SENT, DELIVERED, READ)
+ * Mendukung pencarian berdasarkan ID pesan internal atau ID eksternal dari WhatsApp/Baileys
+ */
+export function updateMessageStatus(
+  identifier: string,
+  newStatus: MessageStatus
+): boolean {
+  const statusRank: Record<MessageStatus, number> = {
+    FAILED: 0,
+    PENDING: 1,
+    SENT: 2,
+    DELIVERED: 3,
+    READ: 4,
+  };
+
+  let updated = false;
+  for (const conv of conversationsData) {
+    for (const msg of conv.messages) {
+      if (msg.id === identifier || msg.externalMessageId === identifier) {
+        const currentRank = statusRank[msg.status || "SENT"] || 0;
+        const targetRank = statusRank[newStatus] || 0;
+        // Hanya izinkan status maju ke depan (misal SENT -> DELIVERED -> READ)
+        if (targetRank >= currentRank) {
+          msg.status = newStatus;
+          msg.statusUpdatedAt = new Date().toISOString();
+          updated = true;
+        }
+      }
+    }
+  }
+
+  if (updated) {
+    persistConversations();
+  }
+  return updated;
+}
+
+/**
+ * Kaitkan ID pesan eksternal WhatsApp (Baileys key.id / WAMID) dengan pesan internal
+ */
+export function updateMessageExternalId(
+  internalId: string,
+  externalId: string
+): boolean {
+  for (const conv of conversationsData) {
+    const msg = conv.messages.find((m) => m.id === internalId);
+    if (msg) {
+      msg.externalMessageId = externalId;
+      persistConversations();
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Tandai semua pesan keluar Sales dalam percakapan sebagai telah dibaca (READ - Centang 2 Biru)
+ * Terpicu otomatis saat klien membalas pesan atau saat simulasi read
+ */
+export function markThreadOutgoingMessagesAsRead(conversationId: string): boolean {
+  const conv = conversationsData.find((c) => c.id === conversationId);
+  if (!conv) return false;
+
+  let changed = false;
+  for (const msg of conv.messages) {
+    if ((msg.sender === "SALES" || msg.sender === "AI") && msg.status !== "READ") {
+      msg.status = "READ";
+      msg.statusUpdatedAt = new Date().toISOString();
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    persistConversations();
+  }
+  return changed;
+}
+
+/**
+ * Tandai percakapan sebagai telah dibaca oleh Sales (reset unreadCount ke 0 dan simpan secara persisten)
+ */
+export function markConversationAsRead(conversationId: string): boolean {
+  const conv = conversationsData.find((c) => c.id === conversationId);
+  if (!conv) return false;
+
+  if (conv.unreadCount > 0) {
+    conv.unreadCount = 0;
+    persistConversations();
+    return true;
+  }
+  return false;
+}
+
 export async function appendIncomingMessage(
   conversationId: string,
   text: string,
@@ -335,6 +449,15 @@ export async function appendIncomingMessage(
 ): Promise<{ success: boolean; message?: ChatMessage }> {
   const idx = conversationsData.findIndex((c) => c.id === conversationId);
   if (idx === -1) return { success: false };
+
+  // Otomatis tandai seluruh pesan sales keluar sebelumnya sebagai READ (centang 2 biru)
+  // karena klien secara pasti telah menerima & membaca pesan sebelum membalas!
+  for (const m of conversationsData[idx].messages) {
+    if (m.sender === "SALES" || m.sender === "AI") {
+      m.status = "READ";
+      m.statusUpdatedAt = new Date().toISOString();
+    }
+  }
 
   const newMsg: ChatMessage = {
     id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -375,7 +498,9 @@ export async function appendOutgoingMessage(
   sender: "SALES" | "AI" = "SALES",
   sentByUserId?: string,
   sentByUserName?: string,
-  attachment?: ChatAttachment
+  attachment?: ChatAttachment,
+  status: MessageStatus = "SENT",
+  externalMessageId?: string
 ): Promise<{ success: boolean; message?: ChatMessage }> {
   const idx = conversationsData.findIndex((c) => c.id === conversationId);
   if (idx === -1) return { success: false };
@@ -390,6 +515,9 @@ export async function appendOutgoingMessage(
     sentByUserId,
     sentByUserName,
     attachment,
+    status,
+    externalMessageId,
+    statusUpdatedAt: new Date().toISOString(),
   };
 
   conversationsData[idx].messages.push(newMsg);
@@ -409,6 +537,7 @@ export async function appendOutgoingMessage(
       sentByUserName: sentByUserName || "Sales",
       hasAttachment: !!attachment,
       attachmentName: attachment?.fileName,
+      status,
     },
   });
 

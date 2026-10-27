@@ -8,8 +8,12 @@ import {
   disconnectWhatsApp,
   sendWhatsAppMessage,
   handleIncomingWhatsAppMessage,
+  markConversationMessagesAsRead,
+  simulateRecipientReadMessages,
 } from "./whatsapp.service";
 import { WhatsAppSendMessageInput } from "./types";
+import { MessageStatus } from "@/modules/inbox/types";
+import { updateMessageStatus } from "@/modules/inbox/inbox.service";
 
 export async function getWhatsAppSessionAction() {
   return await getWhatsAppSession();
@@ -73,4 +77,27 @@ export async function addConversationNoteAction(
   );
   revalidatePath("/inbox");
   return res;
+}
+
+export async function markConversationAsReadAction(conversationId: string) {
+  const res = await markConversationMessagesAsRead(conversationId);
+  revalidatePath("/inbox");
+  return res;
+}
+
+export async function simulateRecipientReadMessagesAction(conversationId: string) {
+  const res = await simulateRecipientReadMessages(conversationId);
+  revalidatePath("/inbox");
+  return res;
+}
+
+export async function updateMessageStatusAction(
+  messageId: string,
+  status: MessageStatus
+) {
+  const updated = updateMessageStatus(messageId, status);
+  if (updated) {
+    revalidatePath("/inbox");
+  }
+  return { success: updated };
 }

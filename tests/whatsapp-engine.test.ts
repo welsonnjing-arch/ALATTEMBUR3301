@@ -270,4 +270,55 @@ describe("Native WhatsApp Web Engine & CRM Synchronization", () => {
     assert.equal(createdTask.projectId, createdProj.id);
     assert.equal(createdTask.priority, "HIGH");
   });
+
+  test("tracks message delivery receipts: SENT (centang 1), DELIVERED (centang 2 abu-abu), and READ (centang 2 biru)", async () => {
+    const { updateMessageStatus } = await import("../src/modules/inbox/inbox.service");
+    const { simulateRecipientReadMessages, markConversationMessagesAsRead } = await import(
+      "../src/modules/whatsapp/whatsapp.service"
+    );
+
+    const testPhone = "081255566677";
+    // 1. Kirim pesan keluar baru dari sales
+    const sendRes = await sendWhatsAppMessage({
+      whatsappNumber: testPhone,
+      text: "Halo Bapak, kami ingin follow up penawaran website yang kami kirimkan kemarin.",
+      actorUserId: "sales-1",
+      actorUserName: "Budi Santoso",
+    });
+
+    assert.equal(sendRes.success, true);
+    assert.ok(sendRes.messageId);
+
+    const cleanPhone = "6281255566677";
+    const thread = conversationsData.find(
+      (c) => c.whatsappNumber.replace(/\D/g, "") === cleanPhone
+    );
+    assert.ok(thread);
+
+    const sentMsg = thread.messages.find((m) => m.id === sendRes.messageId);
+    assert.ok(sentMsg);
+    // Verifikasi pesan baru berstatus SENT (centang 1 abu-abu)
+    assert.equal(sentMsg.status, "SENT");
+
+    // 2. Simulasi update pengiriman dari WhatsApp server (DELIVERY_ACK / DELIVERED - centang 2 abu-abu)
+    const delivered = updateMessageStatus(sendRes.messageId, "DELIVERED");
+    assert.equal(delivered, true);
+    assert.equal(sentMsg.status, "DELIVERED");
+
+    // 3. Simulasi penerima membuka dan membaca pesan (READ - centang 2 biru)
+    const readRes = await simulateRecipientReadMessages(thread.id);
+    assert.equal(readRes.success, true);
+    assert.ok(readRes.updatedCount >= 1);
+    assert.equal(sentMsg.status, "READ");
+
+    // 4. Kirim balasan dari klien -> verifikasi unreadCount bertambah dan read receipt
+    const replyRes = await handleIncomingWhatsAppMessage(cleanPhone, "Iya Mas Budi, sudah kami baca.");
+    assert.equal(replyRes.success, true);
+    assert.ok(thread.unreadCount >= 1);
+
+    // Tandai dibaca oleh sales operator
+    const markReadRes = await markConversationMessagesAsRead(thread.id);
+    assert.equal(markReadRes.success, true);
+    assert.equal(thread.unreadCount, 0);
+  });
 });
