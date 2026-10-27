@@ -141,12 +141,21 @@ function normalizeConversationMessageStatuses(conversations: ConversationThread[
   for (const conv of conversations) {
     for (let i = 0; i < conv.messages.length; i++) {
       const msg = conv.messages[i];
-      if ((msg.sender === "SALES" || msg.sender === "AI") && !msg.status) {
-        // Cek apakah ada balasan dari PROSPECT sesudah pesan ini
-        const hasSubsequentReply = conv.messages
+      if (msg.sender === "SALES" || msg.sender === "AI") {
+        // Cek apakah ada balasan dari PROSPECT atau pesan berstatus READ sesudah pesan ini
+        const hasSubsequentReadOrReply = conv.messages
           .slice(i + 1)
-          .some((next) => next.sender === "PROSPECT");
-        msg.status = hasSubsequentReply ? "READ" : "DELIVERED";
+          .some(
+            (next) =>
+              next.sender === "PROSPECT" ||
+              (next.status === "READ" && (next.sender === "SALES" || next.sender === "AI"))
+          );
+
+        if (hasSubsequentReadOrReply) {
+          msg.status = "READ";
+        } else if (!msg.status) {
+          msg.status = "DELIVERED";
+        }
       }
     }
   }
@@ -255,6 +264,7 @@ syncConversationsWithProspects();
 
 export async function getAllConversations(): Promise<ConversationThread[]> {
   syncConversationsWithProspects();
+  normalizeConversationMessageStatuses(conversationsData);
   return [...conversationsData];
 }
 
@@ -366,14 +376,33 @@ export function updateMessageStatus(
 
   let updated = false;
   for (const conv of conversationsData) {
-    for (const msg of conv.messages) {
+    let targetIndex = -1;
+    for (let i = 0; i < conv.messages.length; i++) {
+      const msg = conv.messages[i];
       if (msg.id === identifier || msg.externalMessageId === identifier) {
+        targetIndex = i;
         const currentRank = statusRank[msg.status || "SENT"] || 0;
         const targetRank = statusRank[newStatus] || 0;
         // Hanya izinkan status maju ke depan (misal SENT -> DELIVERED -> READ)
         if (targetRank >= currentRank) {
           msg.status = newStatus;
           msg.statusUpdatedAt = new Date().toISOString();
+          updated = true;
+        }
+      }
+    }
+
+    // Jika pesan ini terkonfirmasi telah dibaca (READ), maka seluruh pesan keluar sales sebelumnya
+    // dalam percakapan ini juga pasti sudah dilihat dan dibaca oleh penerima
+    if (newStatus === "READ" && targetIndex !== -1) {
+      for (let i = 0; i <= targetIndex; i++) {
+        const prevMsg = conv.messages[i];
+        if (
+          (prevMsg.sender === "SALES" || prevMsg.sender === "AI") &&
+          prevMsg.status !== "READ"
+        ) {
+          prevMsg.status = "READ";
+          prevMsg.statusUpdatedAt = new Date().toISOString();
           updated = true;
         }
       }

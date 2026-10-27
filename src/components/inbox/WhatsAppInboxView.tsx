@@ -54,31 +54,34 @@ export function MessageStatusTick({
   status?: MessageStatus;
   size?: "sm" | "md";
 }) {
-  const iconClass = size === "sm" ? "w-3 h-3 flex-shrink-0" : "w-3.5 h-3.5 flex-shrink-0";
+  const iconClass = size === "sm" ? "w-3.5 h-3.5 flex-shrink-0" : "w-4 h-4 flex-shrink-0";
 
   switch (status) {
     case "PENDING":
       return (
         <span title="Menunggu pengiriman...">
-          <Clock className={`${iconClass} text-[#8696a0] animate-pulse`} />
+          <Clock className={`${iconClass} animate-pulse`} style={{ color: "#8696a0" }} />
         </span>
       );
     case "SENT":
       return (
         <span title="Terkirim ke server WhatsApp (Centang 1 abu-abu)">
-          <Check className={`${iconClass} text-[#8696a0]`} />
+          <Check className={`${iconClass}`} style={{ color: "#8696a0" }} />
         </span>
       );
     case "DELIVERED":
       return (
         <span title="Tersampaikan ke HP penerima - Belum dibaca (Centang 2 abu-abu)">
-          <CheckCheck className={`${iconClass} text-[#8696a0]`} />
+          <CheckCheck className={`${iconClass}`} style={{ color: "#8696a0" }} />
         </span>
       );
     case "READ":
       return (
         <span title="Telah dibaca oleh penerima (Centang 2 biru)">
-          <CheckCheck className={`${iconClass} text-[#53bdeb]`} />
+          <CheckCheck
+            className={`${iconClass} stroke-[2.4]`}
+            style={{ color: "#53bdeb" }}
+          />
         </span>
       );
     case "FAILED":
@@ -90,7 +93,10 @@ export function MessageStatusTick({
     default:
       return (
         <span title="Telah dibaca">
-          <CheckCheck className={`${iconClass} text-[#53bdeb]`} />
+          <CheckCheck
+            className={`${iconClass} stroke-[2.4]`}
+            style={{ color: "#53bdeb" }}
+          />
         </span>
       );
   }
@@ -265,7 +271,7 @@ export function WhatsAppInboxView({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeConv?.messages]);
 
-  // Real-time auto-sync percakapan dan status koneksi WhatsApp dari server setiap 2-3 detik
+  // Real-time auto-sync percakapan dan status koneksi WhatsApp dari server setiap 1.2 detik
   useEffect(() => {
     const syncInterval = setInterval(async () => {
       try {
@@ -273,19 +279,8 @@ export function WhatsAppInboxView({
         if (res.ok) {
           const latest: ConversationThread[] = await res.json();
           setConversations((prev) => {
-            const hasChange =
-              prev.length !== latest.length ||
-              latest.some((c) => {
-                const prevItem = prev.find((p) => p.id === c.id);
-                return (
-                  !prevItem ||
-                  prevItem.messages.length !== c.messages.length ||
-                  prevItem.lastMessageSnippet !== c.lastMessageSnippet ||
-                  prevItem.unreadCount !== c.unreadCount ||
-                  prevItem.assignedSalesId !== c.assignedSalesId
-                );
-              });
-            return hasChange ? latest : prev;
+            const isDiff = JSON.stringify(prev) !== JSON.stringify(latest);
+            return isDiff ? latest : prev;
           });
         }
 
@@ -299,7 +294,7 @@ export function WhatsAppInboxView({
       } catch (err) {
         // Abaikan error polling background
       }
-    }, 2500);
+    }, 1200);
 
     return () => clearInterval(syncInterval);
   }, []);

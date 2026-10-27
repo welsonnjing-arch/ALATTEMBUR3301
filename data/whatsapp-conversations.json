@@ -5,11 +5,11 @@
     "companyName": "Kontak WA +6281255566677",
     "contactName": "Pengguna +6281255566677",
     "whatsappNumber": "6281255566677",
-    "assignedSalesId": "sales-1",
-    "assignedSalesName": "Budi Santoso",
+    "assignedSalesId": "77777777-7777-7777-7777-777777777777",
+    "assignedSalesName": "Rian Hidayat (Sales 5)",
     "unreadCount": 0,
     "lastMessageSnippet": "Iya Mas Budi, sudah kami baca.",
-    "lastMessageAt": "2026-10-27T10:35:37.835Z",
+    "lastMessageAt": "2026-10-27T13:48:01.613Z",
     "researchNotes": "Kontak langsung dari WhatsApp Web Inbox",
     "messages": [
       {
@@ -22,7 +22,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.835Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.613Z"
       },
       {
         "id": "msg-1793097337835-inff",
@@ -31,18 +31,38 @@
         "text": "Iya Mas Budi, sudah kami baca.",
         "isDraft": false,
         "timestamp": "2026-10-27T10:35:37.835Z"
+      },
+      {
+        "id": "msg-1793108881612-bbij",
+        "conversationId": "conv-1793097337833-crq0",
+        "sender": "SALES",
+        "text": "Halo Bapak, kami ingin follow up penawaran website yang kami kirimkan kemarin.",
+        "isDraft": false,
+        "timestamp": "2026-10-27T13:48:01.612Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso",
+        "status": "READ",
+        "statusUpdatedAt": "2026-10-27T13:48:01.613Z"
+      },
+      {
+        "id": "msg-1793108881613-vac2",
+        "conversationId": "conv-1793097337833-crq0",
+        "sender": "PROSPECT",
+        "text": "Iya Mas Budi, sudah kami baca.",
+        "isDraft": false,
+        "timestamp": "2026-10-27T13:48:01.613Z"
       }
     ]
   },
   {
     "id": "conv-1793096425952-8jeo",
-    "prospectId": "p-1793097335230-uhl4",
+    "prospectId": "p-1793108879150-pso6",
     "companyName": "PT Maju Terus Konstruksi",
     "contactName": "Ir. Hendro",
     "whatsappNumber": "6281999888777",
     "remoteJid": "106034169442369@lid",
-    "assignedSalesId": "77777777-7777-7777-7777-777777777777",
-    "assignedSalesName": "Rian Hidayat (Sales 5)",
+    "assignedSalesId": "44444444-4444-4444-4444-444444444444",
+    "assignedSalesName": "Siti Rahma (Sales 2)",
     "unreadCount": 0,
     "lastMessageSnippet": "tes",
     "lastMessageAt": "2026-10-27T10:22:01.863Z",
@@ -70,9 +90,9 @@
     "remoteJid": "51372120633567@lid",
     "assignedSalesId": "44444444-4444-4444-4444-444444444444",
     "assignedSalesName": "Siti Rahma (Sales 2)",
-    "unreadCount": 4,
-    "lastMessageSnippet": "😁😁😁😁😁😁",
-    "lastMessageAt": "2026-10-27T10:20:11.561Z",
+    "unreadCount": 0,
+    "lastMessageSnippet": "tes",
+    "lastMessageAt": "2026-10-27T13:40:18.299Z",
     "researchNotes": "Belum ada catatan riset",
     "messages": [
       {
@@ -206,7 +226,7 @@
         "timestamp": "2026-10-27T10:13:34.607Z",
         "sentByUserId": "22222222-2222-2222-2222-222222222222",
         "sentByUserName": "Budi Santoso (Sales 1)",
-        "status": "DELIVERED"
+        "status": "READ"
       },
       {
         "id": "msg-1793096030064-93iu",
@@ -217,7 +237,7 @@
         "timestamp": "2026-10-27T10:13:50.064Z",
         "sentByUserId": "22222222-2222-2222-2222-222222222222",
         "sentByUserName": "Budi Santoso (Sales 1)",
-        "status": "DELIVERED"
+        "status": "READ"
       },
       {
         "id": "msg-1793096411561-r0ib",
@@ -228,21 +248,34 @@
         "timestamp": "2026-10-27T10:20:11.561Z",
         "sentByUserId": "11111111-1111-1111-1111-111111111111",
         "sentByUserName": "Faiz Aditama (Owner)",
-        "status": "DELIVERED"
+        "status": "READ"
+      },
+      {
+        "id": "msg-1793108418299-jnlv",
+        "conversationId": "conv-1793008504596-v8ea",
+        "sender": "SALES",
+        "text": "tes",
+        "isDraft": false,
+        "timestamp": "2026-10-27T13:40:18.299Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)",
+        "status": "READ",
+        "externalMessageId": "3EB0BF863358B45F41A367",
+        "statusUpdatedAt": "2026-10-27T13:40:26.961Z"
       }
     ]
   },
   {
     "id": "conv-1792939805354-zztf",
-    "prospectId": "p-1793097337799-5cmy",
+    "prospectId": "p-1793108881586-tz5v",
     "companyName": "PT Bintang Abadi Konstruksi",
     "contactName": "Bapak Hendra",
     "whatsappNumber": "6281299900011",
     "assignedSalesId": "sales-1",
     "assignedSalesName": "Budi Santoso (Sales)",
-    "unreadCount": 25,
+    "unreadCount": 27,
     "lastMessageSnippet": "Ini contoh logo perusahaan kami",
-    "lastMessageAt": "2026-10-27T10:35:37.806Z",
+    "lastMessageAt": "2026-10-27T13:48:01.595Z",
     "researchNotes": "Kontraktor baru belum punya company profile",
     "messages": [
       {
@@ -255,7 +288,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.805Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1792939805355-cafq",
@@ -275,7 +308,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1792939889729-k1jk",
@@ -295,7 +328,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1792939911037-aijx",
@@ -315,7 +348,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1792940556666-w2ps",
@@ -335,7 +368,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793000168264-3loe",
@@ -355,7 +388,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793000733274-32yc",
@@ -375,7 +408,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793000779182-2o83",
@@ -395,7 +428,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793000814911-ykdb",
@@ -415,7 +448,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793000859457-onzr",
@@ -435,7 +468,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793005650147-680r",
@@ -455,7 +488,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793005878901-kuv8",
@@ -475,7 +508,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793008211293-d1j9",
@@ -501,7 +534,7 @@
           "url": "/api/whatsapp/media/1793008211296-8uih.pdf"
         },
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793008211297-dwxn",
@@ -527,7 +560,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793009362724-u2ur",
@@ -553,7 +586,7 @@
           "url": "/api/whatsapp/media/1793009362727-pmai.pdf"
         },
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793009362727-w2br",
@@ -579,7 +612,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793009393950-mdsp",
@@ -605,7 +638,7 @@
           "url": "/api/whatsapp/media/1793009393954-hm62.pdf"
         },
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793009393954-x2y5",
@@ -631,7 +664,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793010980246-6x7c",
@@ -657,7 +690,7 @@
           "url": "/api/whatsapp/media/1793010980250-oon5.pdf"
         },
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793010980251-vbcn",
@@ -683,7 +716,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793096261732-m64r",
@@ -709,7 +742,7 @@
           "url": "/api/whatsapp/media/1793096261736-4ugx.pdf"
         },
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793096261736-l9ku",
@@ -735,7 +768,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793097314760-ujyb",
@@ -761,7 +794,7 @@
           "url": "/api/whatsapp/media/1793097314764-m3ie.pdf"
         },
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793097314766-ve6p",
@@ -787,7 +820,7 @@
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793097337801-r0u9",
@@ -813,7 +846,7 @@
           "url": "/api/whatsapp/media/1793097337805-a6u2.pdf"
         },
         "status": "READ",
-        "statusUpdatedAt": "2026-10-27T10:35:37.806Z"
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
       },
       {
         "id": "msg-1793097337806-5fjf",
@@ -822,6 +855,58 @@
         "text": "Ini contoh logo perusahaan kami",
         "isDraft": false,
         "timestamp": "2026-10-27T10:35:37.806Z",
+        "attachment": {
+          "fileName": "logo-perusahaan.png",
+          "fileSize": "240 KB",
+          "mimeType": "image/png",
+          "url": "/api/whatsapp/media/mock-logo.png"
+        }
+      },
+      {
+        "id": "msg-1793108881587-vcga",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
+        "isDraft": false,
+        "timestamp": "2026-10-27T13:48:01.587Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso",
+        "status": "READ",
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
+      },
+      {
+        "id": "msg-1793108881588-8gnf",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
+        "isDraft": false,
+        "timestamp": "2026-10-27T13:48:01.588Z"
+      },
+      {
+        "id": "msg-1793108881595-nrag",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Berikut kami lampirkan proposal paket Business Website.",
+        "isDraft": false,
+        "timestamp": "2026-10-27T13:48:01.595Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso",
+        "attachment": {
+          "fileName": "Proposal-Business-Website.pdf",
+          "fileSize": "1.2 MB",
+          "mimeType": "application/pdf",
+          "url": "/api/whatsapp/media/1793108881594-j0ql.pdf"
+        },
+        "status": "READ",
+        "statusUpdatedAt": "2026-10-27T13:48:01.595Z"
+      },
+      {
+        "id": "msg-1793108881595-fto9",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Ini contoh logo perusahaan kami",
+        "isDraft": false,
+        "timestamp": "2026-10-27T13:48:01.595Z",
         "attachment": {
           "fileName": "logo-perusahaan.png",
           "fileSize": "240 KB",

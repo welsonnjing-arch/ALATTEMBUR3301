@@ -4,6 +4,9 @@ import { getAllProspects } from "@/modules/crm/crm.service";
 import { WhatsAppInboxView } from "@/components/inbox/WhatsAppInboxView";
 import { getSessionCookie } from "@/modules/auth/session";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface PageProps {
   searchParams?: {
     prospectId?: string;
