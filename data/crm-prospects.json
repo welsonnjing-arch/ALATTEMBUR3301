@@ -1,6 +1,6 @@
 [
   {
-    "id": "p-1793010980244-g9ue",
+    "id": "p-1793096336388-b0n6",
     "companyName": "PT Bintang Abadi Konstruksi",
     "contactName": "Bapak Hendra",
     "whatsappNumber": "6281299900011",
@@ -15,22 +15,22 @@
     "isArchived": false,
     "followUpLogs": [
       {
-        "id": "fu-1793010980246",
-        "prospectId": "p-1793010980244-g9ue",
+        "id": "fu-1793096336390",
+        "prospectId": "p-1793096336388-b0n6",
         "step": "INITIAL",
         "channel": "WHATSAPP",
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
-        "confirmedSentAt": "2026-10-26T10:36:20.246Z",
+        "confirmedSentAt": "2026-10-27T10:18:56.390Z",
         "notes": "Outreach pertama dikirim via Native WhatsApp Web Engine."
       }
     ],
-    "createdAt": "2026-10-26T10:36:20.244Z",
-    "updatedAt": "2026-10-26T10:36:20.251Z",
-    "lastReachAt": "2026-10-26T10:36:20.251Z"
+    "createdAt": "2026-10-27T10:18:56.388Z",
+    "updatedAt": "2026-10-27T10:18:56.396Z",
+    "lastReachAt": "2026-10-27T10:18:56.396Z"
   },
   {
-    "id": "p-1793010978168-32ki",
+    "id": "p-1793096334598-v1c7",
     "companyName": "PT Maju Terus Konstruksi",
     "contactName": "Ir. Hendro",
     "whatsappNumber": "6281999888777",
@@ -44,11 +44,11 @@
     "followUpStep": "INITIAL",
     "isArchived": false,
     "followUpLogs": [],
-    "createdAt": "2026-10-26T10:36:18.168Z",
-    "updatedAt": "2026-10-26T10:36:18.168Z"
+    "createdAt": "2026-10-27T10:18:54.598Z",
+    "updatedAt": "2026-10-27T10:18:54.598Z"
   },
   {
-    "id": "p-1793010978167-lrox",
+    "id": "p-1793096334598-9guv",
     "companyName": "PT Test Tanpa Riset Wajib",
     "contactName": "Budi",
     "whatsappNumber": "6281234567899",
@@ -62,11 +62,11 @@
     "followUpStep": "INITIAL",
     "isArchived": false,
     "followUpLogs": [],
-    "createdAt": "2026-10-26T10:36:18.167Z",
-    "updatedAt": "2026-10-26T10:36:18.167Z"
+    "createdAt": "2026-10-27T10:18:54.598Z",
+    "updatedAt": "2026-10-27T10:18:54.598Z"
   },
   {
-    "id": "p-1793009393948-tuu8",
+    "id": "p-1793096261726-3lf2",
     "companyName": "PT Bintang Abadi Konstruksi",
     "contactName": "Bapak Hendra",
     "whatsappNumber": "6281299900011",
@@ -81,22 +81,22 @@
     "isArchived": false,
     "followUpLogs": [
       {
-        "id": "fu-1793009393949",
-        "prospectId": "p-1793009393948-tuu8",
+        "id": "fu-1793096261730",
+        "prospectId": "p-1793096261726-3lf2",
         "step": "INITIAL",
         "channel": "WHATSAPP",
         "sentByUserId": "sales-1",
         "sentByUserName": "Budi Santoso",
-        "confirmedSentAt": "2026-10-26T10:09:53.949Z",
+        "confirmedSentAt": "2026-10-27T10:17:41.730Z",
         "notes": "Outreach pertama dikirim via Native WhatsApp Web Engine."
       }
     ],
-    "createdAt": "2026-10-26T10:09:53.948Z",
-    "updatedAt": "2026-10-26T10:09:53.954Z",
-    "lastReachAt": "2026-10-26T10:09:53.954Z"
+    "createdAt": "2026-10-27T10:17:41.726Z",
+    "updatedAt": "2026-10-27T10:17:41.736Z",
+    "lastReachAt": "2026-10-27T10:17:41.736Z"
   },
   {
-    "id": "p-1793009392299-48cj",
+    "id": "p-1793096260133-nkin",
     "companyName": "PT Maju Terus Konstruksi",
     "contactName": "Ir. Hendro",
     "whatsappNumber": "6281999888777",
@@ -110,11 +110,11 @@
     "followUpStep": "INITIAL",
     "isArchived": false,
     "followUpLogs": [],
-    "createdAt": "2026-10-26T10:09:52.299Z",
-    "updatedAt": "2026-10-26T10:09:52.299Z"
+    "createdAt": "2026-10-27T10:17:40.133Z",
+    "updatedAt": "2026-10-27T10:17:40.133Z"
   },
   {
-    "id": "p-1793009392297-zm3x",
+    "id": "p-1793096260131-4s0r",
     "companyName": "PT Test Tanpa Riset Wajib",
     "contactName": "Budi",
     "whatsappNumber": "6281234567899",
@@ -128,140 +128,8 @@
     "followUpStep": "INITIAL",
     "isArchived": false,
     "followUpLogs": [],
-    "createdAt": "2026-10-26T10:09:52.297Z",
-    "updatedAt": "2026-10-26T10:09:52.297Z"
-  },
-  {
-    "id": "p-1793009362721-wqxt",
-    "companyName": "PT Bintang Abadi Konstruksi",
-    "contactName": "Bapak Hendra",
-    "whatsappNumber": "6281299900011",
-    "source": "Riset Internal Fynux",
-    "researchNotes": "Kontraktor baru belum punya company profile",
-    "potentialServices": "Basic Website Development",
-    "assignedSalesId": "44444444-4444-4444-4444-444444444444",
-    "assignedSalesName": "Siti Rahma (Sales 2)",
-    "stage": "RESPONDED",
-    "nextAction": "REPLY_TO_CLIENT",
-    "followUpStep": "FU1",
-    "isArchived": false,
-    "followUpLogs": [
-      {
-        "id": "fu-1793009362723",
-        "prospectId": "p-1793009362721-wqxt",
-        "step": "INITIAL",
-        "channel": "WHATSAPP",
-        "sentByUserId": "sales-1",
-        "sentByUserName": "Budi Santoso",
-        "confirmedSentAt": "2026-10-26T10:09:22.723Z",
-        "notes": "Outreach pertama dikirim via Native WhatsApp Web Engine."
-      }
-    ],
-    "createdAt": "2026-10-26T10:09:22.721Z",
-    "updatedAt": "2026-10-26T10:09:22.728Z",
-    "lastReachAt": "2026-10-26T10:09:22.727Z"
-  },
-  {
-    "id": "p-1793009360832-xdq2",
-    "companyName": "PT Maju Terus Konstruksi",
-    "contactName": "Ir. Hendro",
-    "whatsappNumber": "6281999888777",
-    "source": "Riset Internal Fynux",
-    "researchNotes": "Website lama lambat dan belum mobile responsive, butuh web profil modern.",
-    "potentialServices": "Basic Website Development",
-    "assignedSalesId": "sales-user-id",
-    "assignedSalesName": "Budi Santoso (Sales)",
-    "stage": "NEW",
-    "nextAction": "REACH_NOW",
-    "followUpStep": "INITIAL",
-    "isArchived": false,
-    "followUpLogs": [],
-    "createdAt": "2026-10-26T10:09:20.832Z",
-    "updatedAt": "2026-10-26T10:09:20.832Z"
-  },
-  {
-    "id": "p-1793009360829-go80",
-    "companyName": "PT Test Tanpa Riset Wajib",
-    "contactName": "Budi",
-    "whatsappNumber": "6281234567899",
-    "source": "Riset Internal Fynux",
-    "researchNotes": "Belum ada catatan riset",
-    "potentialServices": "Basic Website Development",
-    "assignedSalesId": "sales-user-id",
-    "assignedSalesName": "Budi Santoso (Sales)",
-    "stage": "NEW",
-    "nextAction": "REACH_NOW",
-    "followUpStep": "INITIAL",
-    "isArchived": false,
-    "followUpLogs": [],
-    "createdAt": "2026-10-26T10:09:20.829Z",
-    "updatedAt": "2026-10-26T10:09:20.829Z"
-  },
-  {
-    "id": "p-1793008211290-l6va",
-    "companyName": "PT Bintang Abadi Konstruksi",
-    "contactName": "Bapak Hendra",
-    "whatsappNumber": "6281299900011",
-    "source": "Riset Internal Fynux",
-    "researchNotes": "Kontraktor baru belum punya company profile",
-    "potentialServices": "Basic Website Development",
-    "assignedSalesId": "77777777-7777-7777-7777-777777777777",
-    "assignedSalesName": "Rian Hidayat (Sales 5)",
-    "stage": "RESPONDED",
-    "nextAction": "REPLY_TO_CLIENT",
-    "followUpStep": "FU1",
-    "isArchived": false,
-    "followUpLogs": [
-      {
-        "id": "fu-1793008211292",
-        "prospectId": "p-1793008211290-l6va",
-        "step": "INITIAL",
-        "channel": "WHATSAPP",
-        "sentByUserId": "sales-1",
-        "sentByUserName": "Budi Santoso",
-        "confirmedSentAt": "2026-10-26T09:50:11.292Z",
-        "notes": "Outreach pertama dikirim via Native WhatsApp Web Engine."
-      }
-    ],
-    "createdAt": "2026-10-26T09:50:11.290Z",
-    "updatedAt": "2026-10-26T09:50:11.297Z",
-    "lastReachAt": "2026-10-26T09:50:11.297Z"
-  },
-  {
-    "id": "p-1793008209279-9acu",
-    "companyName": "PT Maju Terus Konstruksi",
-    "contactName": "Ir. Hendro",
-    "whatsappNumber": "6281999888777",
-    "source": "Riset Internal Fynux",
-    "researchNotes": "Website lama lambat dan belum mobile responsive, butuh web profil modern.",
-    "potentialServices": "Basic Website Development",
-    "assignedSalesId": "sales-user-id",
-    "assignedSalesName": "Budi Santoso (Sales)",
-    "stage": "NEW",
-    "nextAction": "REACH_NOW",
-    "followUpStep": "INITIAL",
-    "isArchived": false,
-    "followUpLogs": [],
-    "createdAt": "2026-10-26T09:50:09.279Z",
-    "updatedAt": "2026-10-26T09:50:09.279Z"
-  },
-  {
-    "id": "p-1793008209278-4pg5",
-    "companyName": "PT Test Tanpa Riset Wajib",
-    "contactName": "Budi",
-    "whatsappNumber": "6281234567899",
-    "source": "Riset Internal Fynux",
-    "researchNotes": "Belum ada catatan riset",
-    "potentialServices": "Basic Website Development",
-    "assignedSalesId": "sales-user-id",
-    "assignedSalesName": "Budi Santoso (Sales)",
-    "stage": "NEW",
-    "nextAction": "REACH_NOW",
-    "followUpStep": "INITIAL",
-    "isArchived": false,
-    "followUpLogs": [],
-    "createdAt": "2026-10-26T09:50:09.278Z",
-    "updatedAt": "2026-10-26T09:50:09.278Z"
+    "createdAt": "2026-10-27T10:17:40.131Z",
+    "updatedAt": "2026-10-27T10:17:40.131Z"
   },
   {
     "id": "p-1793006689891-ma9u",
@@ -291,7 +159,7 @@
       }
     ],
     "createdAt": "2026-10-26T09:24:49.891Z",
-    "updatedAt": "2026-10-26T10:36:20.250Z",
+    "updatedAt": "2026-10-27T10:18:56.395Z",
     "lastReachAt": "2026-10-26T09:56:33.334Z"
   }
 ]

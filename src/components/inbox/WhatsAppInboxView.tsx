@@ -40,6 +40,7 @@ import {
 import { WhatsAppPairingModal } from "@/components/whatsapp/WhatsAppPairingModal";
 import { WhatsAppCreateProjectModal } from "./WhatsAppCreateProjectModal";
 import { WhatsAppCreateTaskModal } from "./WhatsAppCreateTaskModal";
+import { WhatsAppEmojiPicker } from "./WhatsAppEmojiPicker";
 import { formatDateTimeWIB } from "@/lib/date";
 
 export const SALES_TEAM = [
@@ -109,9 +110,29 @@ export function WhatsAppInboxView({
   const [isAssigning, setIsAssigning] = useState(false);
 
   // State Pesan Aktif
+  const chatInputRef = useRef<HTMLInputElement>(null);
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+
+  const handleSelectEmoji = (emoji: string) => {
+    if (chatInputRef.current) {
+      const start = chatInputRef.current.selectionStart ?? inputText.length;
+      const end = chatInputRef.current.selectionEnd ?? inputText.length;
+      const newText = inputText.substring(0, start) + emoji + inputText.substring(end);
+      setInputText(newText);
+      setTimeout(() => {
+        if (chatInputRef.current) {
+          chatInputRef.current.focus();
+          const newPos = start + emoji.length;
+          chatInputRef.current.setSelectionRange(newPos, newPos);
+        }
+      }, 0);
+    } else {
+      setInputText((prev) => prev + emoji);
+    }
+  };
 
   // Attachment & Media State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1202,10 +1223,23 @@ export function WhatsAppInboxView({
             )}
 
             {/* Bottom Bar: Kolom Input Pesan 1:1 WhatsApp Web */}
-            <div className="bg-[#f0f2f5] px-4 py-2.5 flex items-center gap-2 border-t border-[#d1d7db] z-10">
+            <div className="bg-[#f0f2f5] px-4 py-2.5 flex items-center gap-2 border-t border-[#d1d7db] z-10 relative">
+              {/* Menu Popup Emoji Picker */}
+              <WhatsAppEmojiPicker
+                isOpen={isEmojiPickerOpen}
+                onClose={() => setIsEmojiPickerOpen(false)}
+                onSelectEmoji={handleSelectEmoji}
+              />
+
               <button
                 type="button"
-                className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-full transition-colors"
+                onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
+                className={`p-2 rounded-full transition-colors ${
+                  isEmojiPickerOpen
+                    ? "text-[#00a884] bg-[#00a884]/15"
+                    : "text-[#54656f] hover:bg-slate-200/60"
+                }`}
+                title="Pilih Emoji"
               >
                 <Smile className="w-5 h-5" />
               </button>
@@ -1228,6 +1262,7 @@ export function WhatsAppInboxView({
                 className="flex-1 flex items-center"
               >
                 <input
+                  ref={chatInputRef}
                   type="text"
                   placeholder={
                     pendingAttachment

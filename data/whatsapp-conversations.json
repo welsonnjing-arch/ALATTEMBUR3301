@@ -8,9 +8,9 @@
     "remoteJid": "51372120633567@lid",
     "assignedSalesId": "77777777-7777-7777-7777-777777777777",
     "assignedSalesName": "Rian Hidayat (Sales 5)",
-    "unreadCount": 3,
-    "lastMessageSnippet": "ini untuk anunya",
-    "lastMessageAt": "2026-10-26T09:57:34.917Z",
+    "unreadCount": 4,
+    "lastMessageSnippet": "baik pak bisa di kirim saja untuk big ass nya",
+    "lastMessageAt": "2026-10-27T10:13:50.064Z",
     "researchNotes": "Belum ada catatan riset",
     "messages": [
       {
@@ -100,20 +100,68 @@
           "mimeType": "application/pdf",
           "url": "/api/whatsapp/media/1793008654916-n2h0.pdf"
         }
+      },
+      {
+        "id": "msg-1793011122898-gaem",
+        "conversationId": "conv-1793008504596-v8ea",
+        "sender": "SALES",
+        "text": "📌 [TASK TO DO DIBUAT]\n• Judul: Buat website untuk PT DILDO NASIONAL MERDEKA FINAL\n• PIC Utama: Eko Pratama (Developer)\n• Prioritas: HIGH\n• Deadline: 2026-10-29\nTask telah terdaftar di menu /tasks.",
+        "isDraft": false,
+        "timestamp": "2026-10-26T10:38:42.898Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)"
+      },
+      {
+        "id": "msg-1793011146609-3wmz",
+        "conversationId": "conv-1793008504596-v8ea",
+        "sender": "SALES",
+        "text": "HALO",
+        "isDraft": false,
+        "timestamp": "2026-10-26T10:39:06.609Z",
+        "sentByUserId": "11111111-1111-1111-1111-111111111111",
+        "sentByUserName": "Faiz Aditama (Owner)"
+      },
+      {
+        "id": "msg-1793095975758-dyvm",
+        "conversationId": "conv-1793008504596-v8ea",
+        "sender": "PROSPECT",
+        "text": "iya bokong besar",
+        "isDraft": false,
+        "timestamp": "2026-10-27T10:12:55.758Z"
+      },
+      {
+        "id": "msg-1793096014607-80xg",
+        "conversationId": "conv-1793008504596-v8ea",
+        "sender": "SALES",
+        "text": "tertarik?",
+        "isDraft": false,
+        "timestamp": "2026-10-27T10:13:34.607Z",
+        "sentByUserId": "22222222-2222-2222-2222-222222222222",
+        "sentByUserName": "Budi Santoso (Sales 1)"
+      },
+      {
+        "id": "msg-1793096030064-93iu",
+        "conversationId": "conv-1793008504596-v8ea",
+        "sender": "SALES",
+        "text": "baik pak bisa di kirim saja untuk big ass nya",
+        "isDraft": false,
+        "timestamp": "2026-10-27T10:13:50.064Z",
+        "sentByUserId": "22222222-2222-2222-2222-222222222222",
+        "sentByUserName": "Budi Santoso (Sales 1)"
       }
     ]
   },
   {
     "id": "conv-1792939805354-zztf",
-    "prospectId": "p-1793010980244-g9ue",
+    "prospectId": "p-1793096336388-b0n6",
     "companyName": "PT Bintang Abadi Konstruksi",
     "contactName": "Bapak Hendra",
     "whatsappNumber": "6281299900011",
     "assignedSalesId": "44444444-4444-4444-4444-444444444444",
     "assignedSalesName": "Siti Rahma (Sales 2)",
-    "unreadCount": 19,
+    "unreadCount": 23,
     "lastMessageSnippet": "Ini contoh logo perusahaan kami",
-    "lastMessageAt": "2026-10-26T10:36:20.251Z",
+    "lastMessageAt": "2026-10-27T10:18:56.396Z",
     "researchNotes": "Kontraktor baru belum punya company profile",
     "messages": [
       {
@@ -499,6 +547,102 @@
         "text": "Ini contoh logo perusahaan kami",
         "isDraft": false,
         "timestamp": "2026-10-26T10:36:20.251Z",
+        "attachment": {
+          "fileName": "logo-perusahaan.png",
+          "fileSize": "240 KB",
+          "mimeType": "image/png",
+          "url": "/api/whatsapp/media/mock-logo.png"
+        }
+      },
+      {
+        "id": "msg-1793096261728-v7i8",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
+        "isDraft": false,
+        "timestamp": "2026-10-27T10:17:41.728Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso"
+      },
+      {
+        "id": "msg-1793096261732-m64r",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
+        "isDraft": false,
+        "timestamp": "2026-10-27T10:17:41.732Z"
+      },
+      {
+        "id": "msg-1793096261736-e7ot",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Berikut kami lampirkan proposal paket Business Website.",
+        "isDraft": false,
+        "timestamp": "2026-10-27T10:17:41.736Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso",
+        "attachment": {
+          "fileName": "Proposal-Business-Website.pdf",
+          "fileSize": "1.2 MB",
+          "mimeType": "application/pdf",
+          "url": "/api/whatsapp/media/1793096261736-4ugx.pdf"
+        }
+      },
+      {
+        "id": "msg-1793096261736-l9ku",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Ini contoh logo perusahaan kami",
+        "isDraft": false,
+        "timestamp": "2026-10-27T10:17:41.736Z",
+        "attachment": {
+          "fileName": "logo-perusahaan.png",
+          "fileSize": "240 KB",
+          "mimeType": "image/png",
+          "url": "/api/whatsapp/media/mock-logo.png"
+        }
+      },
+      {
+        "id": "msg-1793096336389-dche",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Selamat siang Pak Hendra, salam kenal dari tim Fynux...",
+        "isDraft": false,
+        "timestamp": "2026-10-27T10:18:56.389Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso"
+      },
+      {
+        "id": "msg-1793096336390-1420",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Halo Mas Budi, terima kasih infonya. Boleh kirimkan portofolio dan penawaran harganya?",
+        "isDraft": false,
+        "timestamp": "2026-10-27T10:18:56.390Z"
+      },
+      {
+        "id": "msg-1793096336395-fhh0",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "SALES",
+        "text": "Berikut kami lampirkan proposal paket Business Website.",
+        "isDraft": false,
+        "timestamp": "2026-10-27T10:18:56.395Z",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso",
+        "attachment": {
+          "fileName": "Proposal-Business-Website.pdf",
+          "fileSize": "1.2 MB",
+          "mimeType": "application/pdf",
+          "url": "/api/whatsapp/media/1793096336395-sogw.pdf"
+        }
+      },
+      {
+        "id": "msg-1793096336396-96ti",
+        "conversationId": "conv-1792939805354-zztf",
+        "sender": "PROSPECT",
+        "text": "Ini contoh logo perusahaan kami",
+        "isDraft": false,
+        "timestamp": "2026-10-27T10:18:56.396Z",
         "attachment": {
           "fileName": "logo-perusahaan.png",
           "fileSize": "240 KB",
