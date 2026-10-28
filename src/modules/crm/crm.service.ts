@@ -285,6 +285,7 @@ export async function createProspect(
     followUpStep: "INITIAL",
     isArchived: false,
     followUpLogs: [],
+    tags: input.tags || [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -431,6 +432,59 @@ export async function bulkCreateProspects(
     prospects: created,
     errors,
   };
+}
+
+/**
+ * Perbarui informasi detail prospek CRM (catatan riset bisnis, pain points, industri/niche, tags, dsb.)
+ */
+export async function updateProspectDetails(
+  prospectId: string,
+  input: {
+    researchNotes?: string;
+    painPoints?: string;
+    industry?: string;
+    tags?: string[];
+    companyName?: string;
+    contactName?: string;
+    email?: string;
+    website?: string;
+    location?: string;
+  },
+  actorUserId?: string,
+  actorUserName?: string
+): Promise<{ success: boolean; prospect?: Prospect; error?: string }> {
+  const prospect = prospectsData.find((p) => p.id === prospectId && !p.isArchived);
+  if (!prospect) {
+    return { success: false, error: "Prospek tidak ditemukan." };
+  }
+
+  if (input.researchNotes !== undefined) prospect.researchNotes = input.researchNotes;
+  if (input.painPoints !== undefined) prospect.painPoints = input.painPoints;
+  if (input.industry !== undefined) prospect.industry = input.industry;
+  if (input.tags !== undefined) prospect.tags = input.tags;
+  if (input.companyName !== undefined) prospect.companyName = input.companyName;
+  if (input.contactName !== undefined) prospect.contactName = input.contactName;
+  if (input.email !== undefined) prospect.email = input.email;
+  if (input.website !== undefined) prospect.website = input.website;
+  if (input.location !== undefined) prospect.location = input.location;
+  prospect.updatedAt = new Date().toISOString();
+
+  persistProspects();
+
+  logActivity({
+    category: "CRM",
+    action: "PROSPECT_UPDATED",
+    actorId: actorUserId || "user",
+    targetId: prospectId,
+    targetType: "PROSPECT",
+    metadata: {
+      updatedFields: Object.keys(input),
+      companyName: prospect.companyName,
+      actorUserName,
+    },
+  });
+
+  return { success: true, prospect };
 }
 
 export async function updateProspectStage(

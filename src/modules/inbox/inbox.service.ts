@@ -249,6 +249,12 @@ export function syncConversationsWithProspects(): void {
         if (matchedProspect.researchNotes) {
           conv.researchNotes = matchedProspect.researchNotes;
         }
+        if (
+          matchedProspect.tags &&
+          JSON.stringify(conv.tags || []) !== JSON.stringify(matchedProspect.tags)
+        ) {
+          conv.tags = [...matchedProspect.tags];
+        }
         changed = true;
       }
     }
@@ -312,6 +318,7 @@ export async function getOrCreateConversationByProspect(prospect: {
   remoteJid?: string;
   assignedSalesId?: string;
   assignedSalesName?: string;
+  tags?: string[];
 }): Promise<ConversationThread> {
   const cleanPhone = prospect.whatsappNumber.replace(/\D/g, "");
   const existing = conversationsData.find(
@@ -333,6 +340,9 @@ export async function getOrCreateConversationByProspect(prospect: {
       existing.assignedSalesId = prospect.assignedSalesId;
       existing.assignedSalesName = prospect.assignedSalesName;
     }
+    if (prospect.tags) {
+      existing.tags = [...prospect.tags];
+    }
     persistConversations();
     return existing;
   }
@@ -350,6 +360,7 @@ export async function getOrCreateConversationByProspect(prospect: {
     lastMessageSnippet: "Percakapan baru dimulai",
     lastMessageAt: new Date().toISOString(),
     researchNotes: prospect.researchNotes || "Belum ada catatan riset",
+    tags: prospect.tags ? [...prospect.tags] : [],
     messages: [],
   };
 
@@ -633,4 +644,60 @@ export async function assignConversationToSales(
   });
 
   return { success: true, thread };
+}
+
+/**
+ * Perbarui Tags dan data Riset/Pain Points/Industri percakapan dan sinkronkan ke CRM
+ */
+export async function updateConversationCRMDetails(
+  conversationId: string,
+  data: {
+    tags?: string[];
+    researchNotes?: string;
+    painPoints?: string;
+    industry?: string;
+    contactName?: string;
+    companyName?: string;
+  },
+  actorUserId?: string,
+  actorUserName?: string
+): Promise<{ success: boolean; thread?: ConversationThread; conversation?: ConversationThread; error?: string }> {
+  const conv = conversationsData.find((c) => c.id === conversationId);
+  if (!conv) {
+    return { success: false, error: "Percakapan tidak ditemukan." };
+  }
+
+  if (data.tags !== undefined) conv.tags = data.tags;
+  if (data.researchNotes !== undefined) conv.researchNotes = data.researchNotes;
+  if (data.companyName !== undefined) conv.companyName = data.companyName;
+  if (data.contactName !== undefined) conv.contactName = data.contactName;
+
+  persistConversations();
+
+  // Sinkronkan ke Prospek CRM terkait jika ada
+  const cleanPhone = conv.whatsappNumber.replace(/\D/g, "");
+  const prospect = prospectsData.find(
+    (p) =>
+      (conv.prospectId && p.id === conv.prospectId) ||
+      p.whatsappNumber.replace(/\D/g, "") === cleanPhone
+  );
+
+  if (prospect) {
+    const { updateProspectDetails } = await import("@/modules/crm/crm.service");
+    await updateProspectDetails(
+      prospect.id,
+      {
+        researchNotes: data.researchNotes,
+        painPoints: data.painPoints,
+        industry: data.industry,
+        tags: data.tags,
+        companyName: data.companyName,
+        contactName: data.contactName,
+      },
+      actorUserId,
+      actorUserName
+    );
+  }
+
+  return { success: true, thread: conv, conversation: conv };
 }

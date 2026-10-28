@@ -29,6 +29,8 @@ import {
   FileText,
   FolderPlus,
   CheckSquare,
+  Info,
+  Tag,
 } from "lucide-react";
 import { ConversationThread, ChatMessage, MessageStatus } from "@/modules/inbox/types";
 import { WhatsAppSessionInfo } from "@/modules/whatsapp/types";
@@ -45,6 +47,7 @@ import { WhatsAppPairingModal } from "@/components/whatsapp/WhatsAppPairingModal
 import { WhatsAppCreateProjectModal } from "./WhatsAppCreateProjectModal";
 import { WhatsAppCreateTaskModal } from "./WhatsAppCreateTaskModal";
 import { WhatsAppEmojiPicker } from "./WhatsAppEmojiPicker";
+import { WhatsAppContactDetailsDrawer } from "./WhatsAppContactDetailsDrawer";
 import { formatDateTimeWIB } from "@/lib/date";
 
 export function MessageStatusTick({
@@ -211,6 +214,13 @@ export function WhatsAppInboxView({
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [isContactInfoOpen, setIsContactInfoOpen] = useState(false);
+  const [localProspects, setLocalProspects] = useState<Prospect[]>(prospects);
+
+  useEffect(() => {
+    setLocalProspects(prospects);
+  }, [prospects]);
+
   const [actionFeedback, setActionFeedback] = useState<{
     type: "PROJECT" | "TASK";
     message: string;
@@ -260,10 +270,11 @@ export function WhatsAppInboxView({
 
   // Cari data prospek CRM yang bersesuaian dengan percakapan aktif
   const activeProspect = activeConv
-    ? prospects.find(
+    ? localProspects.find(
         (p) =>
+          (activeConv.prospectId && p.id === activeConv.prospectId) ||
           p.whatsappNumber.replace(/\D/g, "") ===
-          activeConv.whatsappNumber.replace(/\D/g, "")
+            activeConv.whatsappNumber.replace(/\D/g, "")
       )
     : null;
 
@@ -306,7 +317,8 @@ export function WhatsAppInboxView({
       c.companyName.toLowerCase().includes(q) ||
       c.contactName.toLowerCase().includes(q) ||
       c.whatsappNumber.includes(q) ||
-      c.lastMessageSnippet.toLowerCase().includes(q);
+      c.lastMessageSnippet.toLowerCase().includes(q) ||
+      (c.tags && c.tags.some((t) => t.toLowerCase().includes(q)));
 
     if (!matchSearch) return false;
 
@@ -834,10 +846,11 @@ export function WhatsAppInboxView({
           {filteredConversations.length > 0 ? (
             filteredConversations.map((c) => {
               const isSelected = c.id === activeConvId;
-              const prospect = prospects.find(
+              const prospect = localProspects.find(
                 (p) =>
+                  (c.prospectId && p.id === c.prospectId) ||
                   p.whatsappNumber.replace(/\D/g, "") ===
-                  c.whatsappNumber.replace(/\D/g, "")
+                    c.whatsappNumber.replace(/\D/g, "")
               );
 
               const isMine = c.assignedSalesId === currentUser?.id;
@@ -921,6 +934,25 @@ export function WhatsAppInboxView({
                       )}
                     </div>
 
+                    {/* Tags List */}
+                    {c.tags && c.tags.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1 mt-1">
+                        {c.tags.slice(0, 3).map((tag) => (
+                          <span
+                            key={tag}
+                            className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 font-medium border border-indigo-200"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                        {c.tags.length > 3 && (
+                          <span className="text-[9px] text-slate-400 font-medium">
+                            +{c.tags.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     {/* Snippet Pesan & Check Ticks */}
                     {(() => {
                       const lastMsg = c.messages[c.messages.length - 1];
@@ -959,37 +991,64 @@ export function WhatsAppInboxView({
       {/* ======================================================== */}
       {/* 2. RUANG CHAT AKTIF (1:1 WHATSAPP WEB CHAT WINDOW)       */}
       {/* ======================================================== */}
-      <div className="flex-1 flex flex-col h-full bg-[#efeae2] relative">
-        {activeConv ? (
-          <>
-            {/* Header Ruang Chat */}
-            <div className="h-16 bg-[#f0f2f5] px-4 py-2.5 flex items-center justify-between border-b border-[#d1d7db] z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-slate-300 text-slate-700 font-bold flex items-center justify-center text-sm shadow-sm flex-shrink-0">
-                  {activeConv.companyName.substring(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xs font-bold text-[#111b21]">
-                      {activeConv.contactName}
-                    </h3>
-                    {activeProspect && (
-                      <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${getStageBadge(
-                          activeProspect.stage
-                        )}`}
-                      >
-                        CRM: {activeProspect.stage}
+      <div className="flex-1 flex h-full overflow-hidden relative">
+        <div className="flex-1 flex flex-col h-full bg-[#efeae2] relative min-w-0">
+          {activeConv ? (
+            <>
+              {/* Header Ruang Chat */}
+              <div className="h-16 bg-[#f0f2f5] px-4 py-2.5 flex items-center justify-between border-b border-[#d1d7db] z-10">
+                <div
+                  onClick={() => setIsContactInfoOpen((prev) => !prev)}
+                  className="flex items-center gap-3 cursor-pointer p-1 -m-1 rounded-lg hover:bg-slate-200/60 transition-colors group select-none"
+                  title="Klik untuk membuka Info Kontak, Tags & Riset CRM"
+                >
+                  <div className="w-10 h-10 rounded-full bg-slate-300 group-hover:bg-indigo-200 text-slate-700 group-hover:text-indigo-800 font-bold flex items-center justify-center text-sm shadow-sm flex-shrink-0 transition-colors">
+                    {activeConv.companyName.substring(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-xs font-bold text-[#111b21] group-hover:text-indigo-600 transition-colors">
+                        {activeConv.contactName}
+                      </h3>
+                      {activeProspect && (
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${getStageBadge(
+                            activeProspect.stage
+                          )}`}
+                        >
+                          CRM: {activeProspect.stage}
+                        </span>
+                      )}
+                      {/* Tags in Header */}
+                      {activeConv.tags && activeConv.tags.length > 0 && (
+                        <div className="hidden sm:flex items-center gap-1">
+                          {activeConv.tags.slice(0, 2).map((t) => (
+                            <span
+                              key={t}
+                              className="text-[9px] px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-700 font-medium"
+                            >
+                              #{t}
+                            </span>
+                          ))}
+                          {activeConv.tags.length > 2 && (
+                            <span className="text-[9px] text-slate-500 font-medium">
+                              +{activeConv.tags.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-[#667781] flex items-center gap-1.5">
+                      <span>{activeConv.companyName}</span>
+                      <span>·</span>
+                      <span>+{activeConv.whatsappNumber}</span>
+                      <span className="text-indigo-600 text-[10px] font-semibold group-hover:underline flex items-center gap-0.5">
+                        <Info className="w-3 h-3 inline" />
+                        Riset & Info
                       </span>
-                    )}
-                  </div>
-                  <div className="text-[11px] text-[#667781] flex items-center gap-1">
-                    <span>{activeConv.companyName}</span>
-                    <span>·</span>
-                    <span>+{activeConv.whatsappNumber}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
               {/* Action Buttons di Header Chat */}
               <div className="flex items-center gap-2">
@@ -1098,6 +1157,20 @@ export function WhatsAppInboxView({
                 >
                   <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />
                   <span className="hidden sm:inline">Simulasi Dibaca</span>
+                </button>
+
+                {/* Tombol Info Kontak & Riset CRM */}
+                <button
+                  type="button"
+                  onClick={() => setIsContactInfoOpen((prev) => !prev)}
+                  title={isContactInfoOpen ? "Tutup Info Kontak & Riset CRM" : "Buka Info Kontak & Riset CRM"}
+                  className={`p-2 rounded-full transition-colors ${
+                    isContactInfoOpen
+                      ? "bg-indigo-100 text-indigo-700 shadow-xs"
+                      : "text-[#54656f] hover:bg-slate-200/60"
+                  }`}
+                >
+                  <Info className="w-4 h-4" />
                 </button>
 
                 <button
@@ -1434,6 +1507,51 @@ export function WhatsAppInboxView({
             </p>
           </div>
         )}
+        </div>
+
+        {/* Drawer Info Kontak & Riset Bisnis CRM */}
+        {activeConv && (
+          <WhatsAppContactDetailsDrawer
+            isOpen={isContactInfoOpen}
+            onClose={() => setIsContactInfoOpen(false)}
+            conversation={activeConv}
+            prospect={activeProspect || null}
+            currentUser={currentUser}
+            onOpenCreateProject={() => setIsCreateProjectModalOpen(true)}
+            onOpenCreateTask={() => setIsCreateTaskModalOpen(true)}
+            onUpdated={(updated) => {
+              setConversations((prev) =>
+                prev.map((c) =>
+                  c.id === activeConv.id
+                    ? {
+                        ...c,
+                        tags: updated.tags,
+                        researchNotes: updated.researchNotes,
+                      }
+                    : c
+                )
+              );
+              setLocalProspects((prev) =>
+                prev.map((p) => {
+                  const isMatch =
+                    (activeConv.prospectId && p.id === activeConv.prospectId) ||
+                    p.whatsappNumber.replace(/\D/g, "") ===
+                      activeConv.whatsappNumber.replace(/\D/g, "");
+                  if (isMatch) {
+                    return {
+                      ...p,
+                      tags: updated.tags,
+                      industry: updated.industry ?? p.industry,
+                      painPoints: updated.painPoints ?? p.painPoints,
+                      researchNotes: updated.researchNotes,
+                    };
+                  }
+                  return p;
+                })
+              );
+            }}
+          />
+        )}
       </div>
 
       {/* ======================================================== */}
@@ -1467,7 +1585,7 @@ export function WhatsAppInboxView({
               <p className="text-[11px] text-slate-500 mb-2">
                 Pilih prospek dari database CRM untuk membuka ruang obrolan:
               </p>
-              {prospects.map((p) => (
+              {localProspects.map((p) => (
                 <div
                   key={p.id}
                   onClick={async () => {

@@ -101,3 +101,34 @@ export async function updateMessageStatusAction(
   }
   return { success: updated };
 }
+
+export async function updateConversationCRMDetailsAction(
+  conversationId: string,
+  data: {
+    tags?: string[];
+    researchNotes?: string;
+    painPoints?: string;
+    industry?: string;
+    contactName?: string;
+    companyName?: string;
+  }
+) {
+  const { getSessionCookie } = await import("@/modules/auth/session");
+  const { updateConversationCRMDetails } = await import("@/modules/inbox/inbox.service");
+  const session = await getSessionCookie();
+
+  const res = await updateConversationCRMDetails(
+    conversationId,
+    data,
+    session?.id || "user",
+    session?.fullName || "User"
+  );
+
+  if (res.success) {
+    revalidatePath("/inbox");
+    revalidatePath("/crm");
+    revalidatePath("/sales-workspace");
+  }
+
+  return res;
+}

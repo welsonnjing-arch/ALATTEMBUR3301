@@ -34,6 +34,7 @@ export interface Prospect {
   failedReason?: FailedReason;
   isArchived?: boolean;
   followUpLogs?: FollowUpLogItem[];
+  tags?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -51,6 +52,7 @@ export interface CreateProspectInput {
   painPoints?: string;
   potentialServices?: string;
   assignedSalesId?: string;
+  tags?: string[];
 }
 
 export interface NormalizePhoneResult {

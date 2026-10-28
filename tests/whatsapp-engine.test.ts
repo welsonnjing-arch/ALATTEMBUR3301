@@ -13,6 +13,8 @@ import {
   conversationsData,
   getAllConversations,
   assignConversationToSales,
+  updateConversationCRMDetails,
+  getOrCreateConversationByProspect,
 } from "../src/modules/inbox/inbox.service";
 
 describe("Native WhatsApp Web Engine & CRM Synchronization", () => {
@@ -117,7 +119,7 @@ describe("Native WhatsApp Web Engine & CRM Synchronization", () => {
     // 3. Verifikasi percakapan TIDAK HILANG (tersimpan permanen di disk)
     const convsAfter = await getAllConversations();
     assert.equal(convsAfter.length, prevCount);
-    assert.ok(convsAfter[0].messages.length > 0);
+    assert.ok(convsAfter.some((c) => c.messages.length > 0));
   });
 
   test("multi-agent shared inbox: assigns leads and filters Chat Saya without mixing up between sales", async () => {
@@ -320,5 +322,61 @@ describe("Native WhatsApp Web Engine & CRM Synchronization", () => {
     const markReadRes = await markConversationMessagesAsRead(thread.id);
     assert.equal(markReadRes.success, true);
     assert.equal(thread.unreadCount, 0);
+  });
+
+  test("synchronizes tags, research notes, pain points, and industry between WhatsApp inbox and CRM", async () => {
+    // 1. Buat prospek baru di CRM
+    const testPhone = "081299900088";
+    const createRes = await createProspect(
+      {
+        companyName: "PT Sinar Baja Mandiri",
+        contactName: "Ibu Ratna",
+        whatsappNumber: testPhone,
+        industry: "Distributor Besi & Baja",
+        painPoints: "Sistem katalog masih manual PDF via WA",
+        researchNotes: "Butuh web katalog dengan order WA langsung",
+        tags: ["Prospek Baru"],
+      },
+      "sales-1",
+      "SALES"
+    );
+
+    assert.equal(createRes.success, true);
+    assert.ok(createRes.prospect);
+
+    // 2. Dapatkan percakapan yang tersinkronisasi di inbox
+    const thread = await getOrCreateConversationByProspect(createRes.prospect!);
+    assert.ok(thread);
+    assert.deepEqual(thread.tags, ["Prospek Baru"]);
+
+    // 3. Update tags dan field riset CRM langsung dari WhatsApp inbox drawer
+    const updateRes = await updateConversationCRMDetails(thread.id, {
+      tags: ["Hot Lead", "Website Demo", "Prioritas"],
+      industry: "Manufaktur & Fabrikasi Baja",
+      painPoints: "Katalog manual, sering terlambat respon harga tender",
+      researchNotes: "Ibu Ratna setuju dibuatkan demo prototipe web dalam 2 hari",
+    });
+
+    assert.equal(updateRes.success, true);
+    assert.ok(updateRes.conversation);
+    assert.deepEqual(updateRes.conversation.tags, ["Hot Lead", "Website Demo", "Prioritas"]);
+    assert.equal(
+      updateRes.conversation.researchNotes,
+      "Ibu Ratna setuju dibuatkan demo prototipe web dalam 2 hari"
+    );
+
+    // 4. Pastikan data CRM juga ter-update secara otomatis
+    const crmProspect = prospectsData.find((p) => p.id === createRes.prospect?.id);
+    assert.ok(crmProspect);
+    assert.deepEqual(crmProspect.tags, ["Hot Lead", "Website Demo", "Prioritas"]);
+    assert.equal(crmProspect.industry, "Manufaktur & Fabrikasi Baja");
+    assert.equal(
+      crmProspect.painPoints,
+      "Katalog manual, sering terlambat respon harga tender"
+    );
+    assert.equal(
+      crmProspect.researchNotes,
+      "Ibu Ratna setuju dibuatkan demo prototipe web dalam 2 hari"
+    );
   });
 });

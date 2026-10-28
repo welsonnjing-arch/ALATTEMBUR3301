@@ -36,4 +36,5 @@ export interface ConversationThread {
   lastMessageAt: string;
   researchNotes: string;
   messages: ChatMessage[];
+  tags?: string[];
 }

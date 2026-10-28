@@ -14,6 +14,7 @@ import {
   reactivateProspect,
   recordClientReply,
   updateProspectStage,
+  updateProspectDetails,
 } from "./crm.service";
 import { CreateProspectInput, Prospect } from "./types";
 import { FailedReason, NextAction, PipelineStage } from "@/types/enums";
@@ -188,6 +189,40 @@ export async function bulkDeleteProspectsAction(prospectIds: string[]) {
     revalidatePath("/crm");
     revalidatePath("/sales-workspace");
     revalidatePath("/inbox");
+  }
+  return res;
+}
+
+export async function updateProspectDetailsAction(
+  prospectId: string,
+  input: {
+    researchNotes?: string;
+    painPoints?: string;
+    industry?: string;
+    tags?: string[];
+    companyName?: string;
+    contactName?: string;
+    email?: string;
+    website?: string;
+    location?: string;
+  }
+) {
+  const session = await getSessionCookie();
+  if (!session) {
+    return { success: false, error: "Sesi telah berakhir." };
+  }
+
+  const res = await updateProspectDetails(
+    prospectId,
+    input,
+    session.id,
+    session.fullName
+  );
+
+  if (res.success) {
+    revalidatePath("/crm");
+    revalidatePath("/inbox");
+    revalidatePath("/sales-workspace");
   }
   return res;
 }
