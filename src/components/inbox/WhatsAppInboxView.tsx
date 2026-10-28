@@ -169,6 +169,7 @@ export function WhatsAppInboxView({
   );
   const [selectedSalesAgent, setSelectedSalesAgent] = useState<string>("ALL");
   const [isAssignDropdownOpen, setIsAssignDropdownOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
 
   // State Pesan Aktif
@@ -996,205 +997,258 @@ export function WhatsAppInboxView({
           {activeConv ? (
             <>
               {/* Header Ruang Chat */}
-              <div className="h-16 bg-[#f0f2f5] px-4 py-2.5 flex items-center justify-between border-b border-[#d1d7db] z-10">
+              <div className="h-16 bg-[#f0f2f5] px-4 py-2.5 flex items-center justify-between border-b border-[#d1d7db] z-10 gap-3">
+                {/* Info Kontak & Profil (Kiri) */}
                 <div
                   onClick={() => setIsContactInfoOpen((prev) => !prev)}
-                  className="flex items-center gap-3 cursor-pointer p-1 -m-1 rounded-lg hover:bg-slate-200/60 transition-colors group select-none"
+                  className="flex items-center gap-3 cursor-pointer p-1 -m-1 rounded-lg hover:bg-slate-200/60 transition-colors group select-none min-w-0"
                   title="Klik untuk membuka Info Kontak, Tags & Riset CRM"
                 >
-                  <div className="w-10 h-10 rounded-full bg-slate-300 group-hover:bg-indigo-200 text-slate-700 group-hover:text-indigo-800 font-bold flex items-center justify-center text-sm shadow-sm flex-shrink-0 transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-slate-300 group-hover:bg-indigo-200 text-slate-700 group-hover:text-indigo-800 font-bold flex items-center justify-center text-sm shadow-xs flex-shrink-0 transition-colors">
                     {activeConv.companyName.substring(0, 2).toUpperCase()}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-xs font-bold text-[#111b21] group-hover:text-indigo-600 transition-colors">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold text-[#111b21] group-hover:text-indigo-600 transition-colors truncate max-w-[180px] sm:max-w-[260px]">
                         {activeConv.contactName}
                       </h3>
                       {activeProspect && (
                         <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${getStageBadge(
+                          className={`text-[10px] px-2 py-0.5 rounded-full border font-bold flex-shrink-0 ${getStageBadge(
                             activeProspect.stage
                           )}`}
                         >
                           CRM: {activeProspect.stage}
                         </span>
                       )}
-                      {/* Tags in Header */}
+                      {/* Tags */}
                       {activeConv.tags && activeConv.tags.length > 0 && (
-                        <div className="hidden sm:flex items-center gap-1">
+                        <div className="hidden lg:flex items-center gap-1 flex-shrink-0">
                           {activeConv.tags.slice(0, 2).map((t) => (
                             <span
                               key={t}
-                              className="text-[9px] px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-700 font-medium"
+                              className="text-[9px] px-1.5 py-0.2 rounded-full bg-indigo-50 text-indigo-700 font-medium border border-indigo-200"
                             >
                               #{t}
                             </span>
                           ))}
                           {activeConv.tags.length > 2 && (
-                            <span className="text-[9px] text-slate-500 font-medium">
+                            <span className="text-[9px] text-slate-400 font-medium">
                               +{activeConv.tags.length - 2}
                             </span>
                           )}
                         </div>
                       )}
                     </div>
-                    <div className="text-[11px] text-[#667781] flex items-center gap-1.5">
-                      <span>{activeConv.companyName}</span>
+                    <div className="text-[11px] text-[#667781] flex items-center gap-1.5 mt-0.5 truncate">
+                      <span className="truncate max-w-[140px] sm:max-w-[200px] font-medium text-slate-600">
+                        {activeConv.companyName}
+                      </span>
                       <span>·</span>
-                      <span>+{activeConv.whatsappNumber}</span>
-                      <span className="text-indigo-600 text-[10px] font-semibold group-hover:underline flex items-center gap-0.5">
-                        <Info className="w-3 h-3 inline" />
+                      <span className="font-mono">+{activeConv.whatsappNumber}</span>
+                      <span className="text-indigo-600 hover:text-indigo-800 text-[10px] font-semibold bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/60 px-1.5 py-0.2 rounded flex items-center gap-1 transition-colors flex-shrink-0">
+                        <Info className="w-2.5 h-2.5" />
                         Riset & Info
                       </span>
                     </div>
                   </div>
                 </div>
 
-              {/* Action Buttons di Header Chat */}
-              <div className="flex items-center gap-2">
-                {/* Multi-Agent Assignment: Hanya Owner yang Berhak Mengatur/Memindahkan */}
-                {isOwner ? (
+                {/* Action Buttons di Header Chat (Kanan) */}
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                  {/* Multi-Agent Assignment: Hanya Owner yang Berhak Mengatur/Memindahkan */}
+                  {isOwner ? (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsAssignDropdownOpen((prev) => !prev)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors shadow-xs ${
+                          activeConv.assignedSalesName
+                            ? "bg-white hover:bg-slate-50 text-slate-700 border-slate-300"
+                            : "bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 animate-pulse"
+                        }`}
+                      >
+                        <UserCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                        <span className="max-w-[130px] truncate">
+                          {activeConv.assignedSalesName
+                            ? activeConv.assignedSalesName.replace(/\s*\(.*\)/, "")
+                            : "Tugaskan Sales"}
+                        </span>
+                        <ChevronDown className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                      </button>
+
+                      {/* Dropdown Menu untuk Transfer / Assignment (Khusus Owner) */}
+                      {isAssignDropdownOpen && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-20"
+                            onClick={() => setIsAssignDropdownOpen(false)}
+                          />
+                          <div className="absolute right-0 mt-1.5 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30 divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100">
+                            <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              Tugaskan Kontak Ini Ke (Owner):
+                            </div>
+                            <div className="max-h-56 overflow-y-auto">
+                              {SALES_TEAM.map((sales) => (
+                                <button
+                                  key={sales.id}
+                                  type="button"
+                                  onClick={() => {
+                                    handleAssignSales(sales.id, sales.name);
+                                    setIsAssignDropdownOpen(false);
+                                  }}
+                                  className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 transition-colors ${
+                                    activeConv.assignedSalesId === sales.id
+                                      ? "font-bold text-[#00a884] bg-[#e7fce3]/40"
+                                      : "text-slate-700"
+                                  }`}
+                                >
+                                  <span>{sales.name}</span>
+                                  {activeConv.assignedSalesId === sales.id && (
+                                    <Check className="w-3.5 h-3.5 text-[#00a884]" />
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    /* Tampilan Read-Only untuk Sales / Non-Owner */
+                    <div
+                      title="Hanya Owner yang berhak mengatur atau mengubah penugasan kontak"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border bg-white text-slate-700 border-slate-200 select-none shadow-xs"
+                    >
+                      <UserCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                      <span className="max-w-[130px] truncate">
+                        {activeConv.assignedSalesName
+                          ? `Sales: ${activeConv.assignedSalesName.replace(/\s*\(.*\)/, "")}`
+                          : "Menunggu Penugasan"}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Tombol Info Kontak & Riset CRM */}
+                  <button
+                    type="button"
+                    onClick={() => setIsContactInfoOpen((prev) => !prev)}
+                    title={isContactInfoOpen ? "Tutup Info Kontak & Riset CRM" : "Buka Info Kontak & Riset CRM"}
+                    className={`p-2 rounded-full transition-colors ${
+                      isContactInfoOpen
+                        ? "bg-indigo-100 text-indigo-700 shadow-xs"
+                        : "text-[#54656f] hover:bg-slate-200/60"
+                    }`}
+                  >
+                    <Info className="w-4 h-4" />
+                  </button>
+
+                  {/* Tombol Search dalam Chat */}
+                  <button
+                    type="button"
+                    className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-full transition-colors"
+                    title="Cari dalam percakapan ini"
+                  >
+                    <Search className="w-4 h-4" />
+                  </button>
+
+                  {/* Menu Opsi Lainnya (More) */}
                   <div className="relative">
                     <button
                       type="button"
-                      onClick={() => setIsAssignDropdownOpen((prev) => !prev)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors shadow-sm ${
-                        activeConv.assignedSalesName
-                          ? "bg-white hover:bg-slate-50 text-slate-700 border-slate-300"
-                          : "bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 animate-pulse"
+                      onClick={() => setIsMoreMenuOpen((prev) => !prev)}
+                      title="Menu Lainnya"
+                      className={`p-2 rounded-full transition-colors ${
+                        isMoreMenuOpen
+                          ? "bg-slate-200/80 text-slate-800"
+                          : "text-[#54656f] hover:bg-slate-200/60"
                       }`}
                     >
-                      <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>
-                        {activeConv.assignedSalesName
-                          ? activeConv.assignedSalesName
-                          : "Tugaskan ke Sales"}
-                      </span>
-                      <ChevronDown className="w-3 h-3 text-slate-400" />
+                      <MoreVertical className="w-4 h-4" />
                     </button>
 
-                    {/* Dropdown Menu untuk Transfer / Assignment (Khusus Owner) */}
-                    {isAssignDropdownOpen && (
-                      <div className="absolute right-0 mt-1.5 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30 divide-y divide-slate-100">
-                        <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          Tugaskan Kontak Ini Ke (Owner):
+                    {isMoreMenuOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-20"
+                          onClick={() => setIsMoreMenuOpen(false)}
+                        />
+                        <div className="absolute right-0 mt-1.5 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-30 divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100 text-slate-700">
+                          {/* Aksi Bisnis */}
+                          <div className="py-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsMoreMenuOpen(false);
+                                setIsCreateProjectModalOpen(true);
+                              }}
+                              className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 hover:bg-slate-50 transition-colors"
+                            >
+                              <FolderPlus className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                              <span>Tambah Proyek (/projects)</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsMoreMenuOpen(false);
+                                setIsCreateTaskModalOpen(true);
+                              }}
+                              className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 hover:bg-slate-50 transition-colors"
+                            >
+                              <CheckSquare className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                              <span>Tambah Task To Do (/tasks)</span>
+                            </button>
+                          </div>
+
+                          {/* Aksi Testing & Simulasi */}
+                          <div className="py-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsMoreMenuOpen(false);
+                                handleSimulateClientReply();
+                              }}
+                              disabled={isSimulating}
+                              className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 text-purple-700 hover:bg-purple-50 transition-colors"
+                            >
+                              <Sparkles className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                              <span>{isSimulating ? "Menerima..." : "Simulasi Balasan Klien"}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsMoreMenuOpen(false);
+                                handleSimulateRecipientRead();
+                              }}
+                              className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 text-sky-700 hover:bg-sky-50 transition-colors"
+                            >
+                              <CheckCheck className="w-4 h-4 text-[#53bdeb] flex-shrink-0" />
+                              <span>Simulasi Dibaca (Centang Biru)</span>
+                            </button>
+                          </div>
+
+                          {/* Aksi Hapus Chat */}
+                          <div className="py-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsMoreMenuOpen(false);
+                                handleDeleteConversation();
+                              }}
+                              className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 text-rose-600 hover:bg-rose-50 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4 text-rose-500 flex-shrink-0" />
+                              <span>Hapus Percakapan</span>
+                            </button>
+                          </div>
                         </div>
-                        {SALES_TEAM.map((sales) => (
-                          <button
-                            key={sales.id}
-                            type="button"
-                            onClick={() => handleAssignSales(sales.id, sales.name)}
-                            className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 transition-colors ${
-                              activeConv.assignedSalesId === sales.id
-                                ? "font-bold text-[#00a884] bg-[#e7fce3]/40"
-                                : "text-slate-700"
-                            }`}
-                          >
-                            <span>{sales.name}</span>
-                            {activeConv.assignedSalesId === sales.id && (
-                              <Check className="w-3.5 h-3.5 text-[#00a884]" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
+                      </>
                     )}
                   </div>
-                ) : (
-                  /* Tampilan Read-Only untuk Sales / Non-Owner */
-                  <div
-                    title="Hanya Owner yang berhak mengatur atau mengubah penugasan kontak"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border bg-white text-slate-700 border-slate-200 select-none shadow-xs"
-                  >
-                    <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>
-                      {activeConv.assignedSalesName
-                        ? `Ditugaskan: ${activeConv.assignedSalesName.replace(/\s*\(.*\)/, "")}`
-                        : "Menunggu Penugasan Owner"}
-                    </span>
-                  </div>
-                )}
-
-                {/* Tombol Tambahkan Proyek ke /projects */}
-                <button
-                  type="button"
-                  onClick={() => setIsCreateProjectModalOpen(true)}
-                  title="Buat Proyek baru untuk prospek ini (data otomatis masuk ke /projects)"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg border border-blue-200 shadow-xs transition-colors"
-                >
-                  <FolderPlus className="w-3.5 h-3.5 text-blue-600" />
-                  <span className="hidden md:inline">Tambah Proyek</span>
-                </button>
-
-                {/* Tombol Task To Do ke /tasks */}
-                <button
-                  type="button"
-                  onClick={() => setIsCreateTaskModalOpen(true)}
-                  title="Buat Task To Do untuk tim (data otomatis masuk ke /tasks)"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg border border-indigo-200 shadow-xs transition-colors"
-                >
-                  <CheckSquare className="w-3.5 h-3.5 text-indigo-600" />
-                  <span className="hidden md:inline">Task To Do</span>
-                </button>
-
-                {/* Tombol Simulasi Balasan Klien */}
-                <button
-                  type="button"
-                  onClick={handleSimulateClientReply}
-                  disabled={isSimulating}
-                  title="Simulasi pesan masuk dari prospek ini untuk memicu status CRM ke RESPONDED & centang biru"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 shadow-sm transition-colors"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                  <span>{isSimulating ? "Menerima..." : "Simulasi Balas"}</span>
-                </button>
-
-                {/* Tombol Simulasi Dibaca (Centang Biru) */}
-                <button
-                  type="button"
-                  onClick={handleSimulateRecipientRead}
-                  title="Simulasikan penerima telah membuka dan membaca pesan (Centang 2 Biru)"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-semibold rounded-lg border border-sky-200 shadow-sm transition-colors"
-                >
-                  <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />
-                  <span className="hidden sm:inline">Simulasi Dibaca</span>
-                </button>
-
-                {/* Tombol Info Kontak & Riset CRM */}
-                <button
-                  type="button"
-                  onClick={() => setIsContactInfoOpen((prev) => !prev)}
-                  title={isContactInfoOpen ? "Tutup Info Kontak & Riset CRM" : "Buka Info Kontak & Riset CRM"}
-                  className={`p-2 rounded-full transition-colors ${
-                    isContactInfoOpen
-                      ? "bg-indigo-100 text-indigo-700 shadow-xs"
-                      : "text-[#54656f] hover:bg-slate-200/60"
-                  }`}
-                >
-                  <Info className="w-4 h-4" />
-                </button>
-
-                <button
-                  type="button"
-                  className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-full transition-colors"
-                >
-                  <Search className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDeleteConversation}
-                  title="Hapus obrolan ini dari Inbox"
-                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-full transition-colors"
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
+                </div>
               </div>
-            </div>
 
             {/* Feedback Notifikasi Sukses Pembuatan Proyek / Task */}
             {actionFeedback && (
