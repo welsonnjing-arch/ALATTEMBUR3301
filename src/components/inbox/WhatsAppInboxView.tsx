@@ -879,10 +879,18 @@ export function WhatsAppInboxView({
                       : "hover:bg-[#f5f6f6] bg-white"
                   }`}
                 >
-                  {/* Round Avatar */}
-                  <div className="w-12 h-12 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-sm flex-shrink-0 shadow-inner">
-                    {c.companyName.substring(0, 2).toUpperCase()}
-                  </div>
+                  {/* Round Avatar Kontak WhatsApp */}
+                  {c.avatarUrl ? (
+                    <img
+                      src={c.avatarUrl}
+                      alt={c.contactName}
+                      className="w-12 h-12 rounded-full object-cover shadow-inner flex-shrink-0 border border-slate-200"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-sm flex-shrink-0 shadow-inner">
+                      {c.companyName.substring(0, 2).toUpperCase()}
+                    </div>
+                  )}
 
                   {/* Konten Chat Item */}
                   <div className="flex-1 min-w-0">
@@ -1007,9 +1015,18 @@ export function WhatsAppInboxView({
                   className="flex items-center gap-3 cursor-pointer p-1 -m-1 rounded-lg hover:bg-slate-200/60 transition-colors group select-none min-w-0"
                   title="Klik untuk membuka Info Kontak, Tags & Riset CRM"
                 >
-                  <div className="w-10 h-10 rounded-full bg-slate-300 group-hover:bg-indigo-200 text-slate-700 group-hover:text-indigo-800 font-bold flex items-center justify-center text-sm shadow-xs flex-shrink-0 transition-colors">
-                    {activeConv.companyName.substring(0, 2).toUpperCase()}
-                  </div>
+                  {/* Round Avatar Header */}
+                  {activeConv.avatarUrl ? (
+                    <img
+                      src={activeConv.avatarUrl}
+                      alt={activeConv.contactName}
+                      className="w-10 h-10 rounded-full object-cover shadow-xs flex-shrink-0 border border-slate-200"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-slate-300 group-hover:bg-indigo-200 text-slate-700 group-hover:text-indigo-800 font-bold flex items-center justify-center text-sm shadow-xs flex-shrink-0 transition-colors">
+                      {activeConv.companyName.substring(0, 2).toUpperCase()}
+                    </div>
+                  )}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-semibold text-[#111b21] group-hover:text-indigo-600 transition-colors truncate max-w-[180px] sm:max-w-[260px]">
@@ -1584,6 +1601,8 @@ export function WhatsAppInboxView({
                         ...c,
                         tags: updated.tags,
                         researchNotes: updated.researchNotes,
+                        avatarUrl: updated.avatarUrl !== undefined ? updated.avatarUrl : c.avatarUrl,
+                        bio: updated.bio !== undefined ? updated.bio : c.bio,
                       }
                     : c
                 )
@@ -1601,6 +1620,8 @@ export function WhatsAppInboxView({
                       industry: updated.industry ?? p.industry,
                       painPoints: updated.painPoints ?? p.painPoints,
                       researchNotes: updated.researchNotes,
+                      avatarUrl: updated.avatarUrl !== undefined ? updated.avatarUrl : p.avatarUrl,
+                      bio: updated.bio !== undefined ? updated.bio : p.bio,
                     };
                   }
                   return p;

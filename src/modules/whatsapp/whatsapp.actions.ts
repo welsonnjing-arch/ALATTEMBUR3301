@@ -132,3 +132,13 @@ export async function updateConversationCRMDetailsAction(
 
   return res;
 }
+
+export async function syncWhatsAppContactProfileAction(conversationId: string) {
+  const { syncConversationWhatsAppProfile } = await import("./whatsapp.service");
+  const res = await syncConversationWhatsAppProfile(conversationId);
+  if (res.success) {
+    revalidatePath("/inbox");
+    revalidatePath("/crm");
+  }
+  return res;
+}

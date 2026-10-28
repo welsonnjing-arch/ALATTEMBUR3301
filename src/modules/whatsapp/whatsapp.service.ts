@@ -569,6 +569,24 @@ export async function startWhatsAppPairing(
               (attachment ? ` [Attachment: ${attachment.fileName}]` : "")
           );
           await handleIncomingWhatsAppMessage(phone, (text || "").trim(), rawJid, attachment);
+
+          // Latar belakang: ambil foto profil dan bio asli dari WhatsApp jika belum ada
+          fetchContactWhatsAppProfile(rawJid)
+            .then(({ avatarUrl, bio }) => {
+              if (avatarUrl || bio) {
+                const thread = conversationsData.find(
+                  (c) =>
+                    c.whatsappNumber.replace(/\D/g, "") === phone.replace(/\D/g, "") ||
+                    c.remoteJid === rawJid
+                );
+                if (thread) {
+                  if (avatarUrl) thread.avatarUrl = avatarUrl;
+                  if (bio) thread.bio = bio;
+                  persistConversations();
+                }
+              }
+            })
+            .catch(() => {});
         }
       }
     });
@@ -1068,4 +1086,120 @@ export async function simulateRecipientReadMessages(
   }
 
   return { success: true, updatedCount: count };
+}
+
+/**
+ * Mengambil foto profil asli dan bio/status dari WhatsApp untuk nomor atau JID tertentu.
+ * Mengunduh foto secara lokal ke data/uploads/whatsapp agar tidak kadaluarsa.
+ */
+export async function fetchContactWhatsAppProfile(
+  phoneOrJid: string
+): Promise<{ avatarUrl?: string; bio?: string }> {
+  const sock = waGlobal.waSocket;
+  if (!sock) {
+    return {};
+  }
+
+  const cleanPhone = phoneOrJid.replace("@s.whatsapp.net", "").replace("@lid", "").replace(/\D/g, "");
+  // Prioritaskan JID jika sudah berformat @s.whatsapp.net atau @lid
+  const jid = phoneOrJid.includes("@") ? phoneOrJid : `${cleanPhone}@s.whatsapp.net`;
+
+  let avatarUrl: string | undefined;
+  let bio: string | undefined;
+
+  // 1. Ambil Foto Profil dari WhatsApp
+  try {
+    const rawPicUrl = await sock.profilePictureUrl(jid, "image");
+    if (rawPicUrl) {
+      try {
+        ensureUploadsDir();
+        const res = await fetch(rawPicUrl);
+        if (res.ok) {
+          const buffer = Buffer.from(await res.arrayBuffer());
+          const filename = `avatar-${cleanPhone}.jpg`;
+          const filePath = path.join(UPLOADS_DIR, filename);
+          fs.writeFileSync(filePath, buffer);
+          avatarUrl = `/api/whatsapp/media/${filename}?t=${Date.now()}`;
+        } else {
+          avatarUrl = rawPicUrl;
+        }
+      } catch {
+        avatarUrl = rawPicUrl;
+      }
+    }
+  } catch (err) {
+    // 404 / privasi terbatas / tidak ada foto profil
+  }
+
+  // 2. Ambil Bio / Status Pribadi
+  try {
+    const statusRes = await sock.fetchStatus(jid);
+    if (statusRes && statusRes.length > 0) {
+      const first = statusRes[0];
+      if (typeof first.status === "string" && first.status.trim()) {
+        bio = first.status.trim();
+      } else if (typeof (first.status as any)?.status === "string") {
+        bio = (first.status as any).status.trim();
+      }
+    }
+  } catch (err) {
+    // Tidak ada status / privasi terbatas
+  }
+
+  // 3. Jika bio kosong, cek apakah akun WhatsApp Business (description)
+  if (!bio) {
+    try {
+      const bizProfile = await sock.getBusinessProfile(jid);
+      if (bizProfile && bizProfile.description && bizProfile.description.trim()) {
+        bio = bizProfile.description.trim();
+      }
+    } catch (err) {
+      // Bukan akun bisnis atau tidak ada deskripsi
+    }
+  }
+
+  return { avatarUrl, bio };
+}
+
+/**
+ * Sinkronkan profil kontak WhatsApp (Avatar dan Bio) ke Percakapan Inbox dan Prospek CRM
+ */
+export async function syncConversationWhatsAppProfile(
+  conversationId: string
+): Promise<{ success: boolean; avatarUrl?: string; bio?: string }> {
+  const conv = conversationsData.find((c) => c.id === conversationId);
+  if (!conv) {
+    return { success: false };
+  }
+
+  const targetJid = conv.remoteJid || `${conv.whatsappNumber.replace(/\D/g, "")}@s.whatsapp.net`;
+  const { avatarUrl, bio } = await fetchContactWhatsAppProfile(targetJid);
+
+  let updated = false;
+  if (avatarUrl && conv.avatarUrl !== avatarUrl) {
+    conv.avatarUrl = avatarUrl;
+    updated = true;
+  }
+  if (bio && conv.bio !== bio) {
+    conv.bio = bio;
+    updated = true;
+  }
+
+  // Sinkronkan ke data Prospek CRM jika ada
+  const cleanPhone = conv.whatsappNumber.replace(/\D/g, "");
+  const prospect = prospectsData.find(
+    (p) =>
+      (conv.prospectId && p.id === conv.prospectId) ||
+      p.whatsappNumber.replace(/\D/g, "") === cleanPhone
+  );
+  if (prospect) {
+    if (avatarUrl) prospect.avatarUrl = avatarUrl;
+    if (bio) prospect.bio = bio;
+  }
+
+  if (updated) {
+    persistConversations();
+  }
+
+  return { success: true, avatarUrl: conv.avatarUrl, bio: conv.bio };
 }

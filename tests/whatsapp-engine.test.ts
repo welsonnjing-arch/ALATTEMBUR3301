@@ -8,7 +8,7 @@ import {
   handleIncomingWhatsAppMessage,
   getWhatsAppSession,
 } from "../src/modules/whatsapp/whatsapp.service";
-import { createProspect, prospectsData } from "../src/modules/crm/crm.service";
+import { createProspect, prospectsData, getProspectById } from "../src/modules/crm/crm.service";
 import {
   conversationsData,
   getAllConversations,
@@ -441,5 +441,47 @@ describe("Native WhatsApp Web Engine & CRM Synchronization", () => {
       "API Integration",
       "High Priority",
     ]);
+  });
+
+  test("fetches and synchronizes WhatsApp contact avatar picture and bio status with CRM", async () => {
+    const testPhone = "081288899911";
+    const prospectRes = await createProspect(
+      {
+        companyName: "PT Avatar Mandiri",
+        contactName: "Bambang Wijaya",
+        whatsappNumber: testPhone,
+      },
+      "sales-1",
+      "SALES"
+    );
+    assert.equal(prospectRes.success, true);
+    const prospect = prospectRes.prospect!;
+
+    // Buat/ambil thread inbox
+    const thread = await getOrCreateConversationByProspect(prospect);
+    assert.ok(thread);
+
+    // Update avatarUrl & bio pada conversation
+    const mockAvatar = "/api/whatsapp/media/avatar-6281288899911.jpg";
+    const mockBio = "Available | CEO at PT Avatar Mandiri";
+    const updateRes = await updateConversationCRMDetails(
+      thread.id,
+      {
+        avatarUrl: mockAvatar,
+        bio: mockBio,
+      },
+      "sales-1",
+      "Budi Santoso"
+    );
+
+    assert.equal(updateRes.success, true);
+    assert.equal(updateRes.conversation?.avatarUrl, mockAvatar);
+    assert.equal(updateRes.conversation?.bio, mockBio);
+
+    // Verifikasi sync ke prospek CRM
+    const updatedProspect = await getProspectById(prospect.id);
+    assert.ok(updatedProspect);
+    assert.equal(updatedProspect?.avatarUrl, mockAvatar);
+    assert.equal(updatedProspect?.bio, mockBio);
   });
 });

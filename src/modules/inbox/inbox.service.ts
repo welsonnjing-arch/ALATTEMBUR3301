@@ -255,6 +255,12 @@ export function syncConversationsWithProspects(): void {
         ) {
           conv.tags = [...matchedProspect.tags];
         }
+        if (matchedProspect.avatarUrl && conv.avatarUrl !== matchedProspect.avatarUrl) {
+          conv.avatarUrl = matchedProspect.avatarUrl;
+        }
+        if (matchedProspect.bio && conv.bio !== matchedProspect.bio) {
+          conv.bio = matchedProspect.bio;
+        }
         changed = true;
       }
     }
@@ -319,6 +325,8 @@ export async function getOrCreateConversationByProspect(prospect: {
   assignedSalesId?: string;
   assignedSalesName?: string;
   tags?: string[];
+  avatarUrl?: string;
+  bio?: string;
 }): Promise<ConversationThread> {
   const cleanPhone = prospect.whatsappNumber.replace(/\D/g, "");
   const existing = conversationsData.find(
@@ -343,6 +351,12 @@ export async function getOrCreateConversationByProspect(prospect: {
     if (prospect.tags) {
       existing.tags = [...prospect.tags];
     }
+    if (prospect.avatarUrl) {
+      existing.avatarUrl = prospect.avatarUrl;
+    }
+    if (prospect.bio) {
+      existing.bio = prospect.bio;
+    }
     persistConversations();
     return existing;
   }
@@ -361,6 +375,8 @@ export async function getOrCreateConversationByProspect(prospect: {
     lastMessageAt: new Date().toISOString(),
     researchNotes: prospect.researchNotes || "Belum ada catatan riset",
     tags: prospect.tags ? [...prospect.tags] : [],
+    avatarUrl: prospect.avatarUrl,
+    bio: prospect.bio,
     messages: [],
   };
 
@@ -658,6 +674,8 @@ export async function updateConversationCRMDetails(
     industry?: string;
     contactName?: string;
     companyName?: string;
+    avatarUrl?: string;
+    bio?: string;
   },
   actorUserId?: string,
   actorUserName?: string
@@ -671,6 +689,8 @@ export async function updateConversationCRMDetails(
   if (data.researchNotes !== undefined) conv.researchNotes = data.researchNotes;
   if (data.companyName !== undefined) conv.companyName = data.companyName;
   if (data.contactName !== undefined) conv.contactName = data.contactName;
+  if (data.avatarUrl !== undefined) conv.avatarUrl = data.avatarUrl;
+  if (data.bio !== undefined) conv.bio = data.bio;
 
   persistConversations();
 
@@ -693,6 +713,8 @@ export async function updateConversationCRMDetails(
         tags: data.tags,
         companyName: data.companyName,
         contactName: data.contactName,
+        avatarUrl: data.avatarUrl,
+        bio: data.bio,
       },
       actorUserId,
       actorUserName

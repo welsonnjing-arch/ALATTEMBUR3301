@@ -23,11 +23,16 @@ import {
   Sparkles,
   User,
   Clock,
+  RefreshCw,
+  MessageSquare,
 } from "lucide-react";
 import { ConversationThread } from "@/modules/inbox/types";
 import { Prospect } from "@/modules/crm/types";
 import { UserSessionData } from "@/modules/auth/types";
-import { updateConversationCRMDetailsAction } from "@/modules/whatsapp/whatsapp.actions";
+import {
+  updateConversationCRMDetailsAction,
+  syncWhatsAppContactProfileAction,
+} from "@/modules/whatsapp/whatsapp.actions";
 
 interface WhatsAppContactDetailsDrawerProps {
   isOpen: boolean;
@@ -42,6 +47,8 @@ interface WhatsAppContactDetailsDrawerProps {
     researchNotes: string;
     painPoints?: string;
     industry?: string;
+    avatarUrl?: string;
+    bio?: string;
   }) => void;
 }
 
@@ -70,6 +77,7 @@ export function WhatsAppContactDetailsDrawer({
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
+  const [isSyncingProfile, setIsSyncingProfile] = useState(false);
 
   // Form states
   const [tags, setTags] = useState<string[]>([]);
@@ -77,6 +85,29 @@ export function WhatsAppContactDetailsDrawer({
   const [industry, setIndustry] = useState("");
   const [painPoints, setPainPoints] = useState("");
   const [researchNotes, setResearchNotes] = useState("");
+
+  const handleSyncWhatsAppProfile = async () => {
+    setIsSyncingProfile(true);
+    try {
+      const res = await syncWhatsAppContactProfileAction(conversation.id);
+      if (res.success && (res.avatarUrl || res.bio)) {
+        if (onUpdated) {
+          onUpdated({
+            tags,
+            researchNotes: researchNotes.trim(),
+            painPoints: painPoints.trim(),
+            industry: industry.trim(),
+            avatarUrl: res.avatarUrl,
+            bio: res.bio,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Gagal menyinkronkan profil WhatsApp:", err);
+    } finally {
+      setIsSyncingProfile(false);
+    }
+  };
 
   // Sinkronkan data saat drawer dibuka atau conversation/prospect berganti
   useEffect(() => {
@@ -215,9 +246,18 @@ export function WhatsAppContactDetailsDrawer({
 
         {/* 1. Header Profil Kontak */}
         <div className="p-5 flex flex-col items-center text-center bg-gradient-to-b from-slate-50 to-white">
-          <div className="w-16 h-16 rounded-full bg-slate-200 text-slate-700 font-bold text-xl flex items-center justify-center shadow-inner mb-3 border-2 border-white">
-            {conversation.companyName.substring(0, 2).toUpperCase()}
-          </div>
+          {/* Round Avatar Profil Kontak */}
+          {conversation.avatarUrl ? (
+            <img
+              src={conversation.avatarUrl}
+              alt={conversation.contactName}
+              className="w-20 h-20 rounded-full object-cover shadow-md mb-3 border-2 border-white ring-2 ring-slate-100 flex-shrink-0"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-slate-200 text-slate-700 font-bold text-xl flex items-center justify-center shadow-inner mb-3 border-2 border-white flex-shrink-0">
+              {conversation.companyName.substring(0, 2).toUpperCase()}
+            </div>
+          )}
           <h4 className="font-bold text-sm text-slate-900">
             {conversation.contactName}
           </h4>
@@ -254,12 +294,43 @@ export function WhatsAppContactDetailsDrawer({
                   prospect.stage
                 )}`}
               >
-                Panggung: {prospect.stage}
+                CRM: {prospect.stage}
               </span>
             )}
             <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-medium">
               Sales: {conversation.assignedSalesName || "Belum Ditugaskan"}
             </span>
+          </div>
+        </div>
+
+        {/* BIO / STATUS WHATSAPP ASLI */}
+        <div className="p-4 bg-slate-50 border-y border-slate-200/80">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+              Bio / Info WhatsApp
+            </span>
+            <button
+              type="button"
+              onClick={handleSyncWhatsAppProfile}
+              disabled={isSyncingProfile}
+              title="Ambil foto profil dan bio terbaru langsung dari WhatsApp"
+              className="text-[10px] text-emerald-700 hover:text-emerald-800 font-semibold hover:underline flex items-center gap-1"
+            >
+              <RefreshCw className={`w-3 h-3 ${isSyncingProfile ? "animate-spin text-emerald-600" : ""}`} />
+              <span>{isSyncingProfile ? "Menyinkronkan..." : "Sinkronkan WA"}</span>
+            </button>
+          </div>
+          <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-2xs">
+            <p className="text-xs text-slate-700 leading-relaxed">
+              {conversation.bio || prospect?.bio ? (
+                <span className="italic font-medium">&ldquo;{conversation.bio || prospect?.bio}&rdquo;</span>
+              ) : (
+                <span className="text-slate-400 italic">
+                  Belum ada bio/status WhatsApp (atau disembunyikan oleh setelan privasi kontak).
+                </span>
+              )}
+            </p>
           </div>
         </div>
 

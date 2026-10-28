@@ -35,6 +35,8 @@ export interface Prospect {
   isArchived?: boolean;
   followUpLogs?: FollowUpLogItem[];
   tags?: string[];
+  avatarUrl?: string;
+  bio?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -53,6 +55,8 @@ export interface CreateProspectInput {
   potentialServices?: string;
   assignedSalesId?: string;
   tags?: string[];
+  avatarUrl?: string;
+  bio?: string;
 }
 
 export interface NormalizePhoneResult {

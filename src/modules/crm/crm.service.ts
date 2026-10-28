@@ -290,6 +290,8 @@ export async function createProspect(
     isArchived: false,
     followUpLogs: [],
     tags: input.tags || [],
+    avatarUrl: input.avatarUrl,
+    bio: input.bio,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -453,6 +455,8 @@ export async function updateProspectDetails(
     email?: string;
     website?: string;
     location?: string;
+    avatarUrl?: string;
+    bio?: string;
   },
   actorUserId?: string,
   actorUserName?: string
@@ -471,6 +475,8 @@ export async function updateProspectDetails(
   if (input.email !== undefined) prospect.email = input.email;
   if (input.website !== undefined) prospect.website = input.website;
   if (input.location !== undefined) prospect.location = input.location;
+  if (input.avatarUrl !== undefined) prospect.avatarUrl = input.avatarUrl;
+  if (input.bio !== undefined) prospect.bio = input.bio;
   prospect.updatedAt = new Date().toISOString();
 
   persistProspects();
