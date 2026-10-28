@@ -111,6 +111,7 @@ export const SALES_TEAM = [
   { id: "55555555-5555-5555-5555-555555555555", name: "Dimas Anggara (Sales 3)" },
   { id: "66666666-6666-6666-6666-666666666666", name: "Anisa Putri (Sales 4)" },
   { id: "77777777-7777-7777-7777-777777777777", name: "Rian Hidayat (Sales 5)" },
+  { id: "33333333-3333-3333-3333-333333333333", name: "Eko Pratama (Developer)" },
 ];
 
 interface WhatsAppInboxViewProps {
@@ -159,11 +160,11 @@ export function WhatsAppInboxView({
   const [session, setSession] = useState<WhatsAppSessionInfo>(initialSession);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Default: Jika ada initialMatchedConv, buka 'ALL'. Jika login sebagai SALES, buka 'MY_CHATS'
+  // Default: Jika ada initialMatchedConv, buka 'ALL'. Jika login sebagai SALES / DEVELOPER, buka 'MY_CHATS'
   const [filterTab, setFilterTab] = useState<"MY_CHATS" | "ALL" | "UNASSIGNED" | "CRM">(
     initialMatchedConv
       ? "ALL"
-      : currentUser?.role === "SALES"
+      : currentUser?.role === "SALES" || currentUser?.role === "DEVELOPER"
       ? "MY_CHATS"
       : "ALL"
   );
@@ -460,8 +461,10 @@ export function WhatsAppInboxView({
     setPendingAttachment(null);
     setIsSending(true);
 
-    const senderName = currentUser?.fullName || "Sales Operator";
-    const senderId = currentUser?.id || "sales-operator";
+    const senderName =
+      currentUser?.fullName ||
+      (currentUser?.role === "DEVELOPER" ? "Eko Pratama (Developer)" : "Sales Operator");
+    const senderId = currentUser?.id || "team-operator";
 
     const attachmentPayload = attachmentToSend
       ? {
@@ -672,9 +675,9 @@ export function WhatsAppInboxView({
     }
   };
 
-  // Cek apakah ada potensi collision (Sales sedang membuka chat yang ditugaskan ke sales lain)
+  // Cek apakah ada potensi collision (Sales / Developer sedang membuka chat yang ditugaskan ke anggota tim lain)
   const isAssignedToOther =
-    currentUser?.role === "SALES" &&
+    (currentUser?.role === "SALES" || currentUser?.role === "DEVELOPER") &&
     activeConv?.assignedSalesId &&
     currentUser?.id &&
     activeConv.assignedSalesId !== currentUser.id;
@@ -1280,7 +1283,7 @@ export function WhatsAppInboxView({
                   <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0" />
                   <span>
                     Perhatian: Percakapan ini ditugaskan kepada{" "}
-                    <strong>{activeConv.assignedSalesName || "Sales Lain"}</strong>.
+                    <strong>{activeConv.assignedSalesName || "Anggota Tim Lain"}</strong>.
                     Anda sedang melihat dalam mode kolaborasi tim (hanya Owner yang berhak memindahkan penugasan kontak).
                   </span>
                 </div>

@@ -1,6 +1,44 @@
 [
   {
-    "id": "p-1793194412306-29uf",
+    "id": "p-1793196193548-3exg",
+    "companyName": "PT Global Tech Solusindo",
+    "contactName": "Pak Agus",
+    "whatsappNumber": "6281299900099",
+    "industry": "IT & Software Services",
+    "source": "Riset Internal Fynux",
+    "researchNotes": "Spesifikasi arsitektur API telah disepakati",
+    "painPoints": "Butuh bantuan integrasi custom API",
+    "potentialServices": "Basic Website Development",
+    "assignedSalesId": "33333333-3333-3333-3333-333333333333",
+    "assignedSalesName": "Eko Pratama (Developer)",
+    "stage": "CONTACTED",
+    "nextAction": "WAITING_FOR_RESPONSE",
+    "followUpStep": "FU1",
+    "isArchived": false,
+    "followUpLogs": [
+      {
+        "id": "fu-1793196193549",
+        "prospectId": "p-1793196193548-3exg",
+        "step": "INITIAL",
+        "channel": "WHATSAPP",
+        "sentByUserId": "33333333-3333-3333-3333-333333333333",
+        "sentByUserName": "Eko Pratama (Developer)",
+        "confirmedSentAt": "2026-10-28T14:03:13.549Z",
+        "notes": "Outreach pertama dikirim via Native WhatsApp Web Engine."
+      }
+    ],
+    "tags": [
+      "Technical Lead",
+      "API Integration",
+      "High Priority"
+    ],
+    "createdAt": "2026-10-28T14:03:13.548Z",
+    "updatedAt": "2026-10-28T14:03:13.550Z",
+    "lastReachAt": "2026-10-28T14:03:13.549Z",
+    "nextFollowUpDate": "2026-10-29"
+  },
+  {
+    "id": "p-1793196193545-tfx9",
     "companyName": "PT Sinar Baja Mandiri",
     "contactName": "Ibu Ratna",
     "whatsappNumber": "6281299900088",
@@ -21,8 +59,102 @@
       "Website Demo",
       "Prioritas"
     ],
+    "createdAt": "2026-10-28T14:03:13.545Z",
+    "updatedAt": "2026-10-28T14:03:13.548Z"
+  },
+  {
+    "id": "p-1793196193525-pb81",
+    "companyName": "PT Bintang Abadi Konstruksi",
+    "contactName": "Bapak Hendra",
+    "whatsappNumber": "6281299900011",
+    "source": "Riset Internal Fynux",
+    "researchNotes": "Kontraktor baru belum punya company profile",
+    "potentialServices": "Basic Website Development",
+    "assignedSalesId": "sales-1",
+    "assignedSalesName": "Budi Santoso (Sales)",
+    "stage": "RESPONDED",
+    "nextAction": "REPLY_TO_CLIENT",
+    "followUpStep": "FU1",
+    "isArchived": false,
+    "followUpLogs": [
+      {
+        "id": "fu-1793196193527",
+        "prospectId": "p-1793196193525-pb81",
+        "step": "INITIAL",
+        "channel": "WHATSAPP",
+        "sentByUserId": "sales-1",
+        "sentByUserName": "Budi Santoso",
+        "confirmedSentAt": "2026-10-28T14:03:13.527Z",
+        "notes": "Outreach pertama dikirim via Native WhatsApp Web Engine."
+      }
+    ],
+    "tags": [],
+    "createdAt": "2026-10-28T14:03:13.525Z",
+    "updatedAt": "2026-10-28T14:03:13.534Z",
+    "lastReachAt": "2026-10-28T14:03:13.533Z"
+  },
+  {
+    "id": "p-1793196192087-uk5w",
+    "companyName": "PT Maju Terus Konstruksi",
+    "contactName": "Ir. Hendro",
+    "whatsappNumber": "6281999888777",
+    "source": "Riset Internal Fynux",
+    "researchNotes": "Website lama lambat dan belum mobile responsive, butuh web profil modern.",
+    "potentialServices": "Basic Website Development",
+    "assignedSalesId": "sales-user-id",
+    "assignedSalesName": "Budi Santoso (Sales)",
+    "stage": "NEW",
+    "nextAction": "REACH_NOW",
+    "followUpStep": "INITIAL",
+    "isArchived": false,
+    "followUpLogs": [],
+    "tags": [],
+    "createdAt": "2026-10-28T14:03:12.087Z",
+    "updatedAt": "2026-10-28T14:03:12.087Z"
+  },
+  {
+    "id": "p-1793196192086-2iit",
+    "companyName": "PT Test Tanpa Riset Wajib",
+    "contactName": "Budi",
+    "whatsappNumber": "6281234567899",
+    "source": "Riset Internal Fynux",
+    "researchNotes": "Belum ada catatan riset",
+    "potentialServices": "Basic Website Development",
+    "assignedSalesId": "sales-user-id",
+    "assignedSalesName": "Budi Santoso (Sales)",
+    "stage": "NEW",
+    "nextAction": "REACH_NOW",
+    "followUpStep": "INITIAL",
+    "isArchived": false,
+    "followUpLogs": [],
+    "tags": [],
+    "createdAt": "2026-10-28T14:03:12.086Z",
+    "updatedAt": "2026-10-28T14:03:12.086Z"
+  },
+  {
+    "id": "p-1793194412306-29uf",
+    "companyName": "PT Sinar Baja Mandiri",
+    "contactName": "Ibu Ratna",
+    "whatsappNumber": "6281299900088",
+    "industry": "Manufaktur & Fabrikasi Baja",
+    "source": "Riset Internal Fynux",
+    "researchNotes": "DILXO",
+    "painPoints": "Katalog manual, sering terlambat respon harga tender",
+    "potentialServices": "Basic Website Development",
+    "assignedSalesId": "77777777-7777-7777-7777-777777777777",
+    "assignedSalesName": "Rian Hidayat (Sales 5)",
+    "stage": "NEW",
+    "nextAction": "REACH_NOW",
+    "followUpStep": "INITIAL",
+    "isArchived": false,
+    "followUpLogs": [],
+    "tags": [
+      "Hot Lead",
+      "Website Demo",
+      "Prioritas"
+    ],
     "createdAt": "2026-10-28T13:33:32.306Z",
-    "updatedAt": "2026-10-28T13:33:32.308Z"
+    "updatedAt": "2026-10-28T14:03:13.532Z"
   },
   {
     "id": "p-1793194412287-xj3i",
@@ -762,7 +894,12 @@
       }
     ],
     "createdAt": "2026-10-26T09:24:49.891Z",
-    "updatedAt": "2026-10-28T13:07:59.432Z",
-    "lastReachAt": "2026-10-28T13:05:39.108Z"
+    "updatedAt": "2026-10-28T13:37:27.427Z",
+    "lastReachAt": "2026-10-28T13:05:39.108Z",
+    "painPoints": "",
+    "tags": [
+      "Hot Lead",
+      "PENTING!"
+    ]
   }
 ]

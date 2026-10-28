@@ -379,4 +379,67 @@ describe("Native WhatsApp Web Engine & CRM Synchronization", () => {
       "Ibu Ratna setuju dibuatkan demo prototipe web dalam 2 hari"
     );
   });
+
+  test("allows DEVELOPER role full functional and feature access to WhatsApp inbox", async () => {
+    const devUserId = "33333333-3333-3333-3333-333333333333";
+    const devName = "Eko Pratama (Developer)";
+
+    // 1. Buat prospek oleh Developer
+    const testPhone = "081299900099";
+    const createRes = await createProspect(
+      {
+        companyName: "PT Global Tech Solusindo",
+        contactName: "Pak Agus",
+        whatsappNumber: testPhone,
+        industry: "IT & Software Services",
+        painPoints: "Butuh bantuan integrasi custom API",
+        researchNotes: "Developer handling technical discovery",
+        tags: ["Technical Lead"],
+      },
+      devUserId,
+      "DEVELOPER"
+    );
+
+    assert.equal(createRes.success, true);
+    assert.ok(createRes.prospect);
+    assert.equal(createRes.prospect.assignedSalesId, devUserId);
+    assert.equal(createRes.prospect.assignedSalesName, devName);
+
+    // 2. Buka obrolan di Inbox sebagai Developer
+    const thread = await getOrCreateConversationByProspect(createRes.prospect!);
+    assert.ok(thread);
+    assert.equal(thread.assignedSalesId, devUserId);
+    assert.equal(thread.assignedSalesName, devName);
+
+    // 3. Developer dapat mengirim pesan di obrolan
+    const sendRes = await sendWhatsAppMessage({
+      whatsappNumber: testPhone,
+      text: "Halo Pak Agus, saya Eko dari tim technical dev Fynux. Kami siap bantu integrasi API.",
+      actorUserId: devUserId,
+      actorUserName: devName,
+    });
+    assert.equal(sendRes.success, true);
+
+    const updatedConvs = await getAllConversations();
+    const myDevChats = updatedConvs.filter((c) => c.assignedSalesId === devUserId);
+    assert.ok(myDevChats.length > 0);
+    assert.ok(myDevChats.some((c) => c.id === thread.id));
+
+    // 4. Developer dapat mengupdate tags dan riset bisnis CRM dari Inbox
+    const updateRes = await updateConversationCRMDetails(
+      thread.id,
+      {
+        tags: ["Technical Lead", "API Integration", "High Priority"],
+        researchNotes: "Spesifikasi arsitektur API telah disepakati",
+      },
+      devUserId,
+      devName
+    );
+    assert.equal(updateRes.success, true);
+    assert.deepEqual(updateRes.conversation?.tags, [
+      "Technical Lead",
+      "API Integration",
+      "High Priority",
+    ]);
+  });
 });

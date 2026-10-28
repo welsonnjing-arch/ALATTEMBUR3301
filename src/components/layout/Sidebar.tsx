@@ -59,7 +59,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "WhatsApp Inbox",
     href: "/inbox",
     icon: MessageSquare,
-    allowedRoles: ["SALES", "OWNER"],
+    allowedRoles: ["SALES", "DEVELOPER", "OWNER"],
   },
   {
     label: "Katalog Layanan",

@@ -1,7 +1,7 @@
 [
   {
-    "id": "task-1793194412301",
-    "projectId": "proj-1793194412301",
+    "id": "task-1793196193541",
+    "projectId": "proj-1793196193540",
     "projectName": "Website Demo - PT Demo Klien",
     "title": "Buat demo website untuk PT Demo Klien",
     "description": "Permintaan dari prospek via WhatsApp. Segera siapkan wireframe.",
@@ -11,8 +11,38 @@
     "status": "TODO",
     "priority": "HIGH",
     "deadline": "2026-10-30",
+    "createdAt": "2026-10-28T14:03:13.541Z",
+    "updatedAt": "2026-10-28T14:03:13.541Z"
+  },
+  {
+    "id": "task-1793195102516",
+    "projectId": "proj-1793195102515",
+    "projectName": "Website Demo - PT Demo Klien",
+    "title": "Buat demo website untuk PT Demo Klien",
+    "description": "Permintaan dari prospek via WhatsApp. Segera siapkan wireframe.",
+    "primaryPicId": "33333333-3333-3333-3333-333333333333",
+    "primaryPicName": "Eko Pratama (Developer)",
+    "collaboratorIds": [],
+    "status": "TODO",
+    "priority": "HIGH",
+    "deadline": "2026-10-30",
+    "createdAt": "2026-10-28T13:45:02.516Z",
+    "updatedAt": "2026-10-28T13:45:02.516Z"
+  },
+  {
+    "id": "task-1793194412301",
+    "projectId": "proj-1793194412301",
+    "projectName": "Website Demo - PT Demo Klien",
+    "title": "Buat demo website untuk PT Demo Klien",
+    "description": "Permintaan dari prospek via WhatsApp. Segera siapkan wireframe.",
+    "primaryPicId": "33333333-3333-3333-3333-333333333333",
+    "primaryPicName": "Eko Pratama (Developer)",
+    "collaboratorIds": [],
+    "status": "IN_PROGRESS",
+    "priority": "HIGH",
+    "deadline": "2026-10-30",
     "createdAt": "2026-10-28T13:33:32.301Z",
-    "updatedAt": "2026-10-28T13:33:32.301Z"
+    "updatedAt": "2026-10-28T13:53:41.461Z"
   },
   {
     "id": "task-1793194389171",

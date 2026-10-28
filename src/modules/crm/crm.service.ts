@@ -275,11 +275,15 @@ export async function createProspect(
     painPoints: input.painPoints?.trim() || undefined,
     potentialServices: input.potentialServices?.trim() || "Basic Website Development",
     assignedSalesId:
-      actorRole === "SALES"
+      actorRole === "SALES" || actorRole === "DEVELOPER"
         ? actorUserId
         : input.assignedSalesId || actorUserId,
     assignedSalesName:
-      actorRole === "SALES" ? "Budi Santoso (Sales)" : "Faiz Aditama (Owner)",
+      actorRole === "DEVELOPER"
+        ? "Eko Pratama (Developer)"
+        : actorRole === "SALES"
+        ? "Budi Santoso (Sales)"
+        : "Faiz Aditama (Owner)",
     stage: "NEW",
     nextAction: "REACH_NOW",
     followUpStep: "INITIAL",
