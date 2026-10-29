@@ -337,7 +337,8 @@
         "isDraft": false,
         "timestamp": "2026-10-28T14:21:22.141Z"
       }
-    ]
+    ],
+    "avatarUrl": "/api/whatsapp/media/avatar-6281255566677.jpg?t=1793197773231"
   },
   {
     "id": "conv-1793096425952-8jeo",
@@ -597,13 +598,14 @@
         "sentByUserName": "Budi Santoso (Sales 1)",
         "status": "DELIVERED",
         "externalMessageId": "3EB066D35439FE770C31AD",
-        "statusUpdatedAt": "2026-10-28T14:01:19.320Z"
+        "statusUpdatedAt": "2026-10-28T14:34:53.272Z"
       }
     ],
     "tags": [
       "Hot Lead",
       "PENTING!"
-    ]
+    ],
+    "avatarUrl": "/api/whatsapp/media/avatar-51372120633567.jpg?t=1793197594158"
   },
   {
     "id": "conv-1792939805354-zztf",
@@ -613,7 +615,7 @@
     "whatsappNumber": "6281299900011",
     "assignedSalesId": "sales-1",
     "assignedSalesName": "Budi Santoso (Sales)",
-    "unreadCount": 6,
+    "unreadCount": 0,
     "lastMessageSnippet": "Ini contoh logo perusahaan kami",
     "lastMessageAt": "2026-10-28T14:21:22.130Z",
     "researchNotes": "Kontraktor baru belum punya company profile",
