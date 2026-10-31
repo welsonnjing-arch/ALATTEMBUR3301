@@ -18,6 +18,7 @@ export interface Invoice {
   paymentMethod?: PaymentMethod | "Cash";
   issuedDate: string; // Tanggal Terbit
   paymentDate?: string; // Tanggal Pembayaran
+  keterangan?: string; // misal: "Rincian nota pembayaran proyek web app presensi"
   items: InvoiceItem[];
   subtotal: number;
   discount: number;
@@ -39,6 +40,7 @@ export interface CreateInvoiceInput {
   dealId?: string;
   clientId?: string;
   dueDate: string;
+  keterangan?: string;
   items: Array<{
     description: string;
     durationInfo?: string;
