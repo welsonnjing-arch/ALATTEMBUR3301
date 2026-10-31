@@ -74,6 +74,18 @@ const TEST_ENV_FALLBACK_SALES: UserAccount[] = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
+  {
+    id: "33333333-3333-3333-3333-333333333333",
+    email: "test.dev@fynux.co",
+    passwordHash: "",
+    salt: "",
+    fullName: "Eko Pratama (Developer)",
+    role: "DEVELOPER",
+    status: "ACTIVE",
+    permissions: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
 ];
 
 function ensureStorage(): void {

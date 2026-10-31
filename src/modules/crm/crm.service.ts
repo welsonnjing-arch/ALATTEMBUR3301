@@ -199,11 +199,12 @@ export async function createProspect(
         ? actorUserId
         : input.assignedSalesId || actorUserId,
     assignedSalesName:
-      actorRole === "DEVELOPER"
-        ? "Eko Pratama (Developer)"
+      getInternalUserById(actorUserId)?.fullName ||
+      (actorRole === "DEVELOPER"
+        ? "Developer"
         : actorRole === "SALES"
-        ? "Budi Santoso (Sales)"
-        : "Faiz Aditama (Owner)",
+        ? "Sales"
+        : "Owner"),
     stage: "NEW",
     nextAction: "REACH_NOW",
     followUpStep: "INITIAL",
@@ -356,8 +357,8 @@ export async function bulkCreateProspects(
       assignedSalesName = targetUser
         ? targetUser.fullName
         : actorRole === "SALES"
-        ? "Budi Santoso (Sales 1)"
-        : "Faiz Aditama (Owner)";
+        ? "Sales"
+        : "Owner";
     }
 
     const newProspect: Prospect = {

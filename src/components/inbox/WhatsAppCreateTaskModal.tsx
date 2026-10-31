@@ -1,45 +1,57 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { X, CheckSquare, Calendar, User, AlertCircle, Layers } from "lucide-react";
 import { ConversationThread } from "@/modules/inbox/types";
 import { UserSessionData } from "@/modules/auth/types";
 import { createTaskAction, fetchProjectsAction } from "@/modules/projects/projects.actions";
 import { addConversationNoteAction } from "@/modules/whatsapp/whatsapp.actions";
+import { ModalPortal } from "@/components/common/ModalPortal";
 import { CreateTaskInput, Task } from "@/modules/projects/types";
 import { TaskPriority } from "@/types/enums";
+import { useToast } from "@/components/common/Toast";
+
+export interface TaskTeamMember {
+  id: string;
+  name: string;
+  role?: string;
+}
 
 interface WhatsAppCreateTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   conversation: ConversationThread;
   currentUser?: UserSessionData | null;
+  teamMembers?: TaskTeamMember[];
   onSuccess: (task: Task, noteText: string) => void;
 }
-
-const TEAM_MEMBERS = [
-  { id: "33333333-3333-3333-3333-333333333333", name: "Eko Pratama (Developer)", role: "DEVELOPER" },
-  { id: "11111111-1111-1111-1111-111111111111", name: "Faiz Aditama (Owner)", role: "OWNER" },
-  { id: "22222222-2222-2222-2222-222222222222", name: "Budi Santoso (Sales 1)", role: "SALES" },
-  { id: "44444444-4444-4444-4444-444444444444", name: "Siti Rahma (Sales 2)", role: "SALES" },
-  { id: "55555555-5555-5555-5555-555555555555", name: "Dimas Anggara (Sales 3)", role: "SALES" },
-  { id: "66666666-6666-6666-6666-666666666666", name: "Anisa Putri (Sales 4)", role: "SALES" },
-  { id: "77777777-7777-7777-7777-777777777777", name: "Rian Hidayat (Sales 5)", role: "SALES" },
-];
 
 export function WhatsAppCreateTaskModal({
   isOpen,
   onClose,
   conversation,
   currentUser,
+  teamMembers = [],
   onSuccess,
 }: WhatsAppCreateTaskModalProps) {
+  const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [projectId, setProjectId] = useState<string>("");
   const [projectsList, setProjectsList] = useState<Array<{ id: string; name: string }>>([]);
+
+  const availableMembers = useMemo(() => {
+    if (teamMembers && teamMembers.length > 0) {
+      return teamMembers;
+    }
+    if (currentUser) {
+      return [{ id: currentUser.id, name: currentUser.fullName, role: currentUser.role }];
+    }
+    return [];
+  }, [teamMembers, currentUser]);
+
   const [primaryPicId, setPrimaryPicId] = useState<string>(
-    "33333333-3333-3333-3333-333333333333" // Default Developer
+    currentUser?.id || (availableMembers[0]?.id || "")
   );
   const [priority, setPriority] = useState<TaskPriority>("HIGH");
   const [deadline, setDeadline] = useState("");
@@ -106,7 +118,7 @@ export function WhatsAppCreateTaskModal({
       );
 
       if (res.success && res.task) {
-        const noteText = `📌 [TASK TO DO DIBUAT]\n• Judul: ${res.task.title}\n• PIC Utama: ${res.task.primaryPicName}\n• Prioritas: ${res.task.priority}\n• Deadline: ${res.task.deadline || "-"}\nTask telah terdaftar di menu /tasks.`;
+        const noteText = `[TASK TO DO DIBUAT]\n• Judul: ${res.task.title}\n• PIC Utama: ${res.task.primaryPicName}\n• Prioritas: ${res.task.priority}\n• Deadline: ${res.task.deadline || "-"}\nTask telah terdaftar di menu /tasks.`;
 
         await addConversationNoteAction(
           conversation.id,
@@ -116,6 +128,7 @@ export function WhatsAppCreateTaskModal({
         );
 
         setIsSubmitting(false);
+        toast.success(`Task "${res.task.title}" berhasil dibuat`);
         onSuccess(res.task, noteText);
         onClose();
       } else {
@@ -130,19 +143,20 @@ export function WhatsAppCreateTaskModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden my-6 animate-in zoom-in-95 duration-150">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] modal-backdrop-clean flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs animate-ios-fade">
+        <div className="bg-white rounded-xl shadow-xl border border-slate-200/90 w-full max-w-lg max-h-[88vh] flex flex-col overflow-hidden animate-ios-scale relative">
         {/* Header Modal */}
-        <div className="px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white flex items-center justify-between">
+        <div className="shrink-0 bg-white px-6 py-4 border-b border-slate-200/80 flex items-center justify-between text-slate-900">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-white/20 rounded-lg">
-              <CheckSquare className="w-5 h-5 text-white" />
+            <div className="p-2 bg-slate-100 text-slate-700 border border-slate-200 rounded-md">
+              <CheckSquare className="w-5 h-5 shrink-0" />
             </div>
             <div>
-              <h3 className="text-sm font-bold">
+              <h3 className="text-sm font-semibold text-slate-900">
                 Tambah Task To Do ke /tasks
               </h3>
-              <p className="text-[11px] text-indigo-100">
+              <p className="text-[11px] text-slate-500">
                 Pekerjaan langsung terdaftar pada papan Task Management tim
               </p>
             </div>
@@ -150,129 +164,155 @@ export function WhatsAppCreateTaskModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 hover:bg-white/20 rounded-full transition-colors text-white"
+            className="p-1 text-slate-400 hover:text-slate-600 rounded-md transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {errorMsg && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-center gap-2 text-rose-700 text-xs">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
+        {/* Form wrapping body and sticky footer */}
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+          {/* Scrollable Body */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+            {errorMsg && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-md flex items-center gap-2 text-rose-700 text-xs">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Judul Task To Do <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Contoh: Buat demo website untuk PT Rudal Ajaib"
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                PIC Utama (Penanggung Jawab) <span className="text-rose-500">*</span>
-              </label>
-              <select
-                value={primaryPicId}
-                onChange={(e) => setPrimaryPicId(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
-              >
-                {TEAM_MEMBERS.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
+            {/* Info Badge Prospek */}
+            <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-3 flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                  Sumber Percakapan WhatsApp:
+                </div>
+                <div className="text-xs font-semibold text-slate-900 mt-0.5 truncate whitespace-nowrap min-w-0">
+                  {conversation.companyName}
+                </div>
+                <div className="text-[11px] text-slate-500 truncate whitespace-nowrap mt-0.5 font-mono min-w-0 flex items-center gap-1.5">
+                  <span className="shrink-0">PIC:</span>
+                  <span className="font-medium text-slate-700 truncate max-w-[150px]">
+                    {conversation.contactName || conversation.companyName}
+                  </span>
+                  <span className="text-slate-300 shrink-0">·</span>
+                  <span className="shrink-0">+{conversation.whatsappNumber}</span>
+                </div>
+              </div>
+              <span className="text-[10px] font-semibold px-2 py-0.5 bg-white text-slate-700 border border-slate-200 rounded-md shrink-0 shadow-2xs font-mono">
+                WhatsApp Active
+              </span>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Prioritas Task
-              </label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white font-semibold"
-              >
-                <option value="URGENT" className="text-rose-600 font-bold">URGENT (Mendesak)</option>
-                <option value="HIGH" className="text-amber-600 font-bold">HIGH (Tinggi - Demo)</option>
-                <option value="MEDIUM" className="text-indigo-600">MEDIUM (Standar)</option>
-                <option value="LOW" className="text-slate-600">LOW (Rendah)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Tautkan ke Proyek (Opsional)
-              </label>
-              <select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
-              >
-                <option value="">-- Tanpa Proyek Khusus --</option>
-                {projectsList.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Batas Waktu (Deadline)
+                Judul Task To Do <span className="text-rose-500">*</span>
               </label>
               <input
-                type="date"
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                type="text"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Contoh: Buat demo website untuk PT Rudal Ajaib"
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 shadow-2xs"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  PIC Utama (Penanggung Jawab) <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={primaryPicId}
+                  onChange={(e) => setPrimaryPicId(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 bg-white shadow-2xs"
+                >
+                  {availableMembers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Prioritas Task
+                </label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value as TaskPriority)}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 bg-white font-semibold shadow-2xs"
+                >
+                  <option value="URGENT" className="text-rose-600 font-bold">URGENT (Mendesak)</option>
+                  <option value="HIGH" className="text-amber-600 font-bold">HIGH (Tinggi - Demo)</option>
+                  <option value="MEDIUM" className="text-slate-800">MEDIUM (Standar)</option>
+                  <option value="LOW" className="text-slate-500">LOW (Rendah)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Tautkan ke Proyek (Opsional)
+                </label>
+                <select
+                  value={projectId}
+                  onChange={(e) => setProjectId(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 bg-white shadow-2xs"
+                >
+                  <option value="">-- Tanpa Proyek Khusus --</option>
+                  {projectsList.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Batas Waktu (Deadline)
+                </label>
+                <input
+                  type="date"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 shadow-2xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Deskripsi & Catatan Pekerjaan
+              </label>
+              <textarea
+                rows={3}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Instruksi pengerjaan demo, link referensi, dll..."
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 resize-none leading-relaxed shadow-2xs"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Deskripsi & Catatan Pekerjaan
-            </label>
-            <textarea
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Instruksi pengerjaan demo, link referensi, dll..."
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none leading-relaxed"
-            />
-          </div>
-
-          {/* Action Footer */}
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+          {/* Sticky Action Footer */}
+          <div className="shrink-0 px-6 py-4 border-t border-slate-200/80 bg-slate-50/90 rounded-b-xl flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className="px-4 py-2 border border-slate-200 text-slate-700 text-xs font-semibold rounded-md bg-white hover:bg-slate-100 transition-colors"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-md transition-colors shadow-2xs disabled:opacity-50 flex items-center gap-1.5"
             >
               <CheckSquare className="w-4 h-4" />
               <span>{isSubmitting ? "Menyimpan..." : "Simpan Task To Do"}</span>
@@ -281,5 +321,6 @@ export function WhatsAppCreateTaskModal({
         </form>
       </div>
     </div>
+    </ModalPortal>
   );
 }

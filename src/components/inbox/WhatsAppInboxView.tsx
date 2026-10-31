@@ -127,14 +127,12 @@ export function MessageStatusTick({
   }
 }
 
-export const SALES_TEAM = [
-  { id: "22222222-2222-2222-2222-222222222222", name: "Budi Santoso (Sales 1)" },
-  { id: "44444444-4444-4444-4444-444444444444", name: "Siti Rahma (Sales 2)" },
-  { id: "55555555-5555-5555-5555-555555555555", name: "Dimas Anggara (Sales 3)" },
-  { id: "66666666-6666-6666-6666-666666666666", name: "Anisa Putri (Sales 4)" },
-  { id: "77777777-7777-7777-7777-777777777777", name: "Rian Hidayat (Sales 5)" },
-  { id: "33333333-3333-3333-3333-333333333333", name: "Eko Pratama (Developer)" },
-];
+export interface TeamMemberOption {
+  id: string;
+  name: string;
+  role: string;
+  email?: string;
+}
 
 interface WhatsAppInboxViewProps {
   initialConversations: ConversationThread[];
@@ -143,6 +141,7 @@ interface WhatsAppInboxViewProps {
   currentUser?: UserSessionData | null;
   initialProspectId?: string;
   initialPhone?: string;
+  teamMembers?: TeamMemberOption[];
 }
 
 export function WhatsAppInboxView({
@@ -152,7 +151,28 @@ export function WhatsAppInboxView({
   currentUser,
   initialProspectId,
   initialPhone,
+  teamMembers = [],
 }: WhatsAppInboxViewProps) {
+  // Daftar anggota tim dinamis dari database (tanpa hardcoded dummy)
+  const availableSalesTeam = useMemo(() => {
+    if (teamMembers && teamMembers.length > 0) {
+      return teamMembers.map((m) => ({
+        id: m.id,
+        name: `${m.name} (${m.role})`,
+        role: m.role,
+      }));
+    }
+    if (currentUser) {
+      return [
+        {
+          id: currentUser.id,
+          name: `${currentUser.fullName} (${currentUser.role})`,
+          role: currentUser.role,
+        },
+      ];
+    }
+    return [];
+  }, [teamMembers, currentUser]);
   // Jika diarahkan langsung dari URL / CRM (?prospectId=xxx atau ?phone=xxx)
   const initialMatchedConv = useMemo(() => {
     if (initialProspectId) {
@@ -554,7 +574,11 @@ export function WhatsAppInboxView({
 
     const senderName =
       currentUser?.fullName ||
-      (currentUser?.role === "DEVELOPER" ? "Eko Pratama (Developer)" : "Sales Operator");
+      (currentUser?.role === "DEVELOPER"
+        ? "Developer"
+        : currentUser?.role === "OWNER"
+        ? "Owner"
+        : "Sales Operator");
     const senderId = currentUser?.id || "team-operator";
 
     const attachmentPayload = attachmentToSend
@@ -957,7 +981,7 @@ export function WhatsAppInboxView({
                 className="bg-white border border-slate-200 rounded px-2 py-0.5 text-[11px] font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               >
                 <option value="ALL">Semua Anggota Sales</option>
-                {SALES_TEAM.map((s) => (
+                {availableSalesTeam.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name} ({conversations.filter((c) => c.assignedSalesId === s.id).length})
                   </option>
@@ -1266,26 +1290,32 @@ export function WhatsAppInboxView({
                               Tugaskan Kontak Ini Ke:
                             </div>
                             <div className="max-h-56 overflow-y-auto">
-                              {SALES_TEAM.map((sales) => (
-                                <button
-                                  key={sales.id}
-                                  type="button"
-                                  onClick={() => {
-                                    handleAssignSales(sales.id, sales.name);
-                                    setIsAssignDropdownOpen(false);
-                                  }}
-                                  className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 transition-colors ${
-                                    activeConv.assignedSalesId === sales.id
-                                      ? "font-bold text-[#00a884] bg-[#e7fce3]/40"
-                                      : "text-slate-700"
-                                  }`}
-                                >
-                                  <span>{sales.name}</span>
-                                  {activeConv.assignedSalesId === sales.id && (
-                                    <Check className="w-3.5 h-3.5 text-[#00a884]" />
-                                  )}
-                                </button>
-                              ))}
+                              {availableSalesTeam.length === 0 ? (
+                                <div className="px-3 py-3 text-[11px] text-slate-400 italic text-center">
+                                  Belum ada anggota tim terdaftar. Tambahkan tim di Pengaturan.
+                                </div>
+                              ) : (
+                                availableSalesTeam.map((sales) => (
+                                  <button
+                                    key={sales.id}
+                                    type="button"
+                                    onClick={() => {
+                                      handleAssignSales(sales.id, sales.name);
+                                      setIsAssignDropdownOpen(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 transition-colors ${
+                                      activeConv.assignedSalesId === sales.id
+                                        ? "font-bold text-[#00a884] bg-[#e7fce3]/40"
+                                        : "text-slate-700"
+                                    }`}
+                                  >
+                                    <span>{sales.name}</span>
+                                    {activeConv.assignedSalesId === sales.id && (
+                                      <Check className="w-3.5 h-3.5 text-[#00a884]" />
+                                    )}
+                                  </button>
+                                ))
+                              )}
                             </div>
                           </div>
                         </>
@@ -1996,6 +2026,7 @@ export function WhatsAppInboxView({
           onClose={() => setIsCreateTaskModalOpen(false)}
           conversation={activeConv}
           currentUser={currentUser}
+          teamMembers={availableSalesTeam}
           onSuccess={(task, noteText) => {
             const newChatMsg: ChatMessage = {
               id: `msg-sys-${Date.now()}`,

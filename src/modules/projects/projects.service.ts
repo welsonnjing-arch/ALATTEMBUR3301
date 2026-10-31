@@ -13,215 +13,11 @@ import {
 import { ProjectStatus, TaskPriority, TaskStatus } from "@/types/enums";
 import { logActivity } from "@/lib/logger";
 
-const INITIAL_PROJECTS_DATA: Project[] = [
-  {
-    id: "proj-002",
-    name: "Business Website & Company Profile PT Padma Widya Setiajaya",
-    clientId: "p-002",
-    clientName: "PT Padma Widya Setiajaya",
-    dealId: "deal-002",
-    status: "ACTIVE",
-    progressPercent: 35,
-    scopeDescription:
-      "Pembuatan website profil perusahaan konstruksi B2B dengan CMS kustom untuk galeri tender LPSE, domain .com 1 tahun, hosting NVMe, dan garansi teknis 6 bulan.",
-    startDate: "2026-10-25",
-    deadline: "2026-11-10",
-    externalLinks: [
-      {
-        id: "link-01",
-        title: "Google Drive: Aset Logo & Legalitas Perusahaan",
-        url: "https://drive.google.com/drive/folders/example-padma-assets",
-        category: "DOCUMENT",
-      },
-      {
-        id: "link-02",
-        title: "Figma: Mockup UI Company Profile",
-        url: "https://figma.com/design/example-padma-ui",
-        category: "DESIGN",
-      },
-    ],
-    assignedMemberIds: [
-      "33333333-3333-3333-3333-333333333333", // Eko (Dev)
-      "11111111-1111-1111-1111-111111111111", // Faiz (Owner/Lead)
-    ],
-    assignedMemberNames: ["Eko Pratama (Developer)", "Faiz Aditama (Lead)"],
-    chatMessages: [
-      {
-        id: "pchat-01",
-        projectId: "proj-002",
-        senderUserId: "11111111-1111-1111-1111-111111111111",
-        senderName: "Faiz Aditama",
-        text: "Mas Eko, tolong prioritaskan modul galeri proyek konstruksinya ya, klien butuh tautan portofolio untuk upload tender tanggal 12 November.",
-        timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
-      },
-      {
-        id: "pchat-02",
-        projectId: "proj-002",
-        senderUserId: "33333333-3333-3333-3333-333333333333",
-        senderName: "Eko Pratama",
-        text: "Siap Mas Faiz, saat ini slicing landing page sudah 80%, sore ini saya lanjutkan integrasi upload foto proyek dan sertifikat ISO.",
-        timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-      },
-    ],
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "proj-001",
-    name: "SIM-Presensi Digital Web App v1.0 SMAN 2 Ngaglik",
-    clientId: "p-001",
-    clientName: "SMAN 2 NGAGLIK",
-    dealId: "deal-001",
-    status: "COMPLETED",
-    progressPercent: 100,
-    scopeDescription:
-      "Aplikasi presensi digital web-based multi-device support, kiosk absensi siswa/guru, anti brute-force, dan rekap otomatis laporan Excel multi-sheet.",
-    startDate: "2026-02-01",
-    deadline: "2026-02-12",
-    externalLinks: [
-      {
-        id: "link-03",
-        title: "Google Drive: Dokumentasi API Kiosk & Manual Book",
-        url: "https://drive.google.com/drive/folders/example-sman2-docs",
-        category: "DOCUMENT",
-      },
-    ],
-    assignedMemberIds: [
-      "11111111-1111-1111-1111-111111111111",
-      "33333333-3333-3333-3333-333333333333",
-    ],
-    assignedMemberNames: ["Faiz Aditama", "Eko Pratama"],
-    chatMessages: [],
-    createdAt: "2026-02-01T08:00:00Z",
-    updatedAt: "2026-02-12T10:00:00Z",
-  },
-];
+const INITIAL_PROJECTS_DATA: Project[] = [];
 
-const INITIAL_TASKS_DATA: Task[] = [
-  {
-    id: "task-001",
-    projectId: "proj-002",
-    projectName: "Business Website PT Padma",
-    title: "Slicing Landing Page & Galeri Proyek Konstruksi",
-    description: "Implementasi desain responsif mobile & desktop menggunakan Tailwind CSS.",
-    primaryPicId: "33333333-3333-3333-3333-333333333333",
-    primaryPicName: "Eko Pratama (Developer)",
-    collaboratorIds: [],
-    status: "IN_PROGRESS",
-    priority: "HIGH",
-    deadline: "2026-11-02",
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "task-002",
-    projectId: "proj-002",
-    projectName: "Business Website PT Padma",
-    title: "Integrasi CMS Kustom Portofolio Tender",
-    description: "Sistem upload foto proyek, deskripsi tender, dan filter kategori konstruksi.",
-    primaryPicId: "33333333-3333-3333-3333-333333333333",
-    primaryPicName: "Eko Pratama (Developer)",
-    collaboratorIds: ["11111111-1111-1111-1111-111111111111"],
-    collaboratorNames: ["Faiz Aditama"],
-    status: "TODO",
-    priority: "HIGH",
-    deadline: "2026-11-05",
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "task-003",
-    projectId: "proj-002",
-    projectName: "Business Website PT Padma",
-    title: "Menunggu Konten Sertifikat ISO & Foto High-Res Klien",
-    description: "Koordinasi dengan Bu Rina terkait kelengkapan scan sertifikat akreditasi.",
-    primaryPicId: "22222222-2222-2222-2222-222222222222",
-    primaryPicName: "Budi Santoso (Sales)",
-    collaboratorIds: [],
-    status: "BLOCKED",
-    blockedReason: "Klien belum mengirimkan foto resolusi tinggi sertifikat ISO perusahaan untuk galeri akreditasi tender.",
-    priority: "MEDIUM",
-    deadline: "2026-10-30",
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "task-004",
-    projectId: "proj-001",
-    projectName: "SIM-Presensi SMAN 2 Ngaglik",
-    title: "Setup Server Cloud NVMe & SSL Presensi",
-    description: "Konfigurasi server Ubuntu, SSL Let's Encrypt, dan firewall anti brute-force.",
-    primaryPicId: "11111111-1111-1111-1111-111111111111",
-    primaryPicName: "Faiz Aditama",
-    collaboratorIds: [],
-    status: "DONE",
-    priority: "MEDIUM",
-    createdAt: "2026-02-05T08:00:00Z",
-    updatedAt: "2026-02-10T10:00:00Z",
-  },
-];
+const INITIAL_TASKS_DATA: Task[] = [];
 
-const INITIAL_TEAM_BOARD_DATA: TeamBoardItem[] = [
-  {
-    id: "tb-01",
-    category: "TARGET",
-    title: "Target Operasional Q4 2026",
-    subtitle: "10 Website Baru & Peningkatan Retensi Maintenance",
-    content:
-      "Fokus kuartal ini adalah penyelesaian tepat waktu proyek aktif PT Padma, ekspansi outreach ke 50 prospek baru teriset, dan pengawalan renewal kontrak maintenance.",
-    authorId: "11111111-1111-1111-1111-111111111111",
-    authorName: "Faiz Aditama (Owner)",
-    x: 60,
-    y: 60,
-    width: 380,
-    height: 250,
-    colorTheme: "emerald",
-    attachments: [
-      {
-        id: "att-01",
-        name: "Target_Q4_Roadmap.pdf",
-        size: "1.2 MB",
-        type: "application/pdf",
-        url: "https://drive.google.com/example-target-q4",
-      },
-    ],
-    createdAt: "2026-10-20T08:00:00Z",
-  },
-  {
-    id: "tb-02",
-    category: "SOP",
-    title: "SOP Handoff Deal ke Proyek Delivery",
-    subtitle: "Standar Operasional Penyerahan Dokumen Sales ke Developer",
-    content:
-      "1. Deal wajib accepted dan invoice resmi berformat FYN telah terbit.\n2. Sales wajib mengisi checklist ruang lingkup dan link Google Drive aset klien.\n3. Jika data wajib (logo/materi inti) belum lengkap, proyek tetap dapat dibuat namun status task ditandai BLOCKED.",
-    authorId: "11111111-1111-1111-1111-111111111111",
-    authorName: "Faiz Aditama (Owner)",
-    x: 480,
-    y: 60,
-    width: 420,
-    height: 300,
-    colorTheme: "indigo",
-    attachments: [],
-    createdAt: "2026-10-21T09:00:00Z",
-  },
-  {
-    id: "tb-03",
-    category: "ANNOUNCEMENT",
-    title: "Update Standar Invoice & Pembayaran Gateway",
-    subtitle: "Ketentuan Format FYN-YYYYMM-XXXX & Duitku PG",
-    content:
-      "Sistem sekarang telah mendukung pembayaran otomatis via Duitku PG (QRIS & Virtual Account) serta konfirmasi manual transfer Bank BCA.",
-    authorId: "11111111-1111-1111-1111-111111111111",
-    authorName: "Faiz Aditama (Owner)",
-    x: 940,
-    y: 60,
-    width: 400,
-    height: 240,
-    colorTheme: "amber",
-    attachments: [],
-    createdAt: "2026-10-24T10:00:00Z",
-  },
-];
+const INITIAL_TEAM_BOARD_DATA: TeamBoardItem[] = [];
 
 const INITIAL_CANVAS_VIEWPORT: CanvasViewportState = {
   panX: 40,
@@ -247,7 +43,7 @@ function loadPersistedProjects(): Project[] {
     if (fs.existsSync(PROJECTS_FILE)) {
       const content = fs.readFileSync(PROJECTS_FILE, "utf-8");
       const parsed = JSON.parse(content);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
@@ -287,7 +83,7 @@ function loadPersistedTasks(): Task[] {
     if (fs.existsSync(TASKS_FILE)) {
       const content = fs.readFileSync(TASKS_FILE, "utf-8");
       const parsed = JSON.parse(content);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
@@ -538,7 +334,10 @@ export async function createTask(
     title: input.title.trim(),
     description: input.description?.trim(),
     primaryPicId: input.primaryPicId || actorUserId,
-    primaryPicName: input.primaryPicId === actorUserId ? actorName : "Eko Pratama (Developer)",
+    primaryPicName:
+      input.primaryPicId === actorUserId
+        ? actorName
+        : (input as { primaryPicName?: string }).primaryPicName || actorName || "PIC Tim",
     collaboratorIds: input.collaboratorIds || [],
     status: "TODO",
     priority: input.priority || "MEDIUM",
@@ -769,4 +568,11 @@ export async function updateCanvasViewport(
     updatedAt: new Date().toISOString(),
   };
   return { success: true, viewport: { ...projectsGlobal.sharedCanvasViewportData } };
+}
+
+export function resetProjectsAndTasksForTesting(): void {
+  if (projectsGlobal.projectsData) projectsGlobal.projectsData.length = 0;
+  if (projectsGlobal.tasksData) projectsGlobal.tasksData.length = 0;
+  persistProjects();
+  persistTasks();
 }

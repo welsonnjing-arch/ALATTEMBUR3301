@@ -899,7 +899,7 @@ export async function sendWhatsAppMessage(
 
   if (matchedProspect) {
     const actorId = input.actorUserId || "current-sales-id";
-    const actorName = input.actorUserName || "Budi Santoso (Sales)";
+    const actorName = input.actorUserName || "Operator Tim Sales";
 
     // Jika prospek masih baru (NEW), pindahkan ke CONTACTED dan jadwalkan follow-up
     if (matchedProspect.stage === "NEW") {
