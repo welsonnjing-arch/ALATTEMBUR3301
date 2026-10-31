@@ -1,1 +1,24 @@
-[]
+[
+  {
+    "id": "ff3348a5-ed68-4551-899c-1a7120a87f60",
+    "email": "raja@raja.com",
+    "passwordHash": "ba8c43ef1d200dba9164fa911375b4d82001102a96cc4c1addd0b88c6d123fa8cfe385548c3575ca2dad571bf4c3d9ba491da617b65ff86ada8a740544bf9027",
+    "salt": "eababfd59307fee5f853ac99cd623e5c",
+    "fullName": "FAIZ ADITAMA",
+    "role": "OWNER",
+    "status": "ACTIVE",
+    "permissions": [
+      "crm.view_all",
+      "crm.edit_all",
+      "finance.view_costs_margins",
+      "finance.create_invoice",
+      "finance.confirm_payment",
+      "projects.edit_all",
+      "projects.cancel",
+      "settings.manage",
+      "approval.manage"
+    ],
+    "createdAt": "2026-10-31T08:27:45.632Z",
+    "updatedAt": "2026-10-31T08:27:45.632Z"
+  }
+]

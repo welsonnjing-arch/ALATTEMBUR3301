@@ -15,8 +15,8 @@
       "Template",
       "HQ"
     ],
-    "createdAt": "2026-10-31T08:04:19.228Z",
-    "updatedAt": "2026-10-31T08:04:19.228Z"
+    "createdAt": "2026-10-31T10:19:17.997Z",
+    "updatedAt": "2026-10-31T10:19:17.997Z"
   },
   {
     "id": "folder-branding-asset",
@@ -34,8 +34,8 @@
       "Asset",
       "Design"
     ],
-    "createdAt": "2026-10-31T08:04:19.228Z",
-    "updatedAt": "2026-10-31T08:04:19.228Z"
+    "createdAt": "2026-10-31T10:19:17.997Z",
+    "updatedAt": "2026-10-31T10:19:17.997Z"
   },
   {
     "id": "folder-sop-internal",
@@ -52,8 +52,8 @@
       "SOP",
       "Internal"
     ],
-    "createdAt": "2026-10-31T08:04:19.228Z",
-    "updatedAt": "2026-10-31T08:04:19.228Z"
+    "createdAt": "2026-10-31T10:19:17.997Z",
+    "updatedAt": "2026-10-31T10:19:17.997Z"
   },
   {
     "id": "folder-client-project",
@@ -70,8 +70,8 @@
       "Projects",
       "Clients"
     ],
-    "createdAt": "2026-10-31T08:04:19.228Z",
-    "updatedAt": "2026-10-31T08:04:19.228Z"
+    "createdAt": "2026-10-31T10:19:17.997Z",
+    "updatedAt": "2026-10-31T10:19:17.997Z"
   },
   {
     "id": "file-seed-terms-pdf",
@@ -91,8 +91,8 @@
       "Legal",
       "Website"
     ],
-    "createdAt": "2026-10-31T08:04:19.228Z",
-    "updatedAt": "2026-10-31T08:04:19.228Z"
+    "createdAt": "2026-10-31T10:19:17.997Z",
+    "updatedAt": "2026-10-31T10:19:17.997Z"
   },
   {
     "id": "file-seed-invoice-pdf",
@@ -111,8 +111,8 @@
       "Finance",
       "Invoice"
     ],
-    "createdAt": "2026-10-31T08:04:19.228Z",
-    "updatedAt": "2026-10-31T08:04:19.228Z"
+    "createdAt": "2026-10-31T10:19:17.997Z",
+    "updatedAt": "2026-10-31T10:19:17.997Z"
   },
   {
     "id": "file-seed-logo-png",
@@ -132,8 +132,8 @@
       "Asset",
       "PNG"
     ],
-    "createdAt": "2026-10-31T08:04:19.228Z",
-    "updatedAt": "2026-10-31T08:04:19.228Z"
+    "createdAt": "2026-10-31T10:19:17.997Z",
+    "updatedAt": "2026-10-31T10:19:17.997Z"
   },
   {
     "id": "file-seed-sop-md",
@@ -153,7 +153,7 @@
       "Development",
       "Documentation"
     ],
-    "createdAt": "2026-10-31T08:04:19.228Z",
-    "updatedAt": "2026-10-31T08:04:19.228Z"
+    "createdAt": "2026-10-31T10:19:17.997Z",
+    "updatedAt": "2026-10-31T10:19:17.997Z"
   }
 ]
