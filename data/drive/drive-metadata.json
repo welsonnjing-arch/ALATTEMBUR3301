@@ -1,0 +1,159 @@
+[
+  {
+    "id": "folder-legal-template",
+    "name": "Template & Dokumen Legal",
+    "type": "FOLDER",
+    "parentId": null,
+    "size": 0,
+    "uploadedByUserId": "11111111-1111-1111-1111-111111111111",
+    "uploadedByUserName": "Faiz Aditama (Owner)",
+    "uploadedByRole": "OWNER",
+    "isStarred": true,
+    "color": "blue",
+    "tags": [
+      "Legal",
+      "Template",
+      "HQ"
+    ],
+    "createdAt": "2026-10-31T08:04:19.228Z",
+    "updatedAt": "2026-10-31T08:04:19.228Z"
+  },
+  {
+    "id": "folder-branding-asset",
+    "name": "Aset Branding & Identitas Visual",
+    "type": "FOLDER",
+    "parentId": null,
+    "size": 0,
+    "uploadedByUserId": "11111111-1111-1111-1111-111111111111",
+    "uploadedByUserName": "Faiz Aditama (Owner)",
+    "uploadedByRole": "OWNER",
+    "isStarred": true,
+    "color": "emerald",
+    "tags": [
+      "Branding",
+      "Asset",
+      "Design"
+    ],
+    "createdAt": "2026-10-31T08:04:19.228Z",
+    "updatedAt": "2026-10-31T08:04:19.228Z"
+  },
+  {
+    "id": "folder-sop-internal",
+    "name": "SOP & Panduan Operasional Tim",
+    "type": "FOLDER",
+    "parentId": null,
+    "size": 0,
+    "uploadedByUserId": "11111111-1111-1111-1111-111111111111",
+    "uploadedByUserName": "Faiz Aditama (Owner)",
+    "uploadedByRole": "OWNER",
+    "isStarred": false,
+    "color": "amber",
+    "tags": [
+      "SOP",
+      "Internal"
+    ],
+    "createdAt": "2026-10-31T08:04:19.228Z",
+    "updatedAt": "2026-10-31T08:04:19.228Z"
+  },
+  {
+    "id": "folder-client-project",
+    "name": "Arsip Project & Handover Klien",
+    "type": "FOLDER",
+    "parentId": null,
+    "size": 0,
+    "uploadedByUserId": "11111111-1111-1111-1111-111111111111",
+    "uploadedByUserName": "Faiz Aditama (Owner)",
+    "uploadedByRole": "OWNER",
+    "isStarred": false,
+    "color": "slate",
+    "tags": [
+      "Projects",
+      "Clients"
+    ],
+    "createdAt": "2026-10-31T08:04:19.228Z",
+    "updatedAt": "2026-10-31T08:04:19.228Z"
+  },
+  {
+    "id": "file-seed-terms-pdf",
+    "name": "Cover Terms & Services – Fynux Basic Website.pdf",
+    "type": "FILE",
+    "parentId": "folder-legal-template",
+    "extension": "pdf",
+    "mimeType": "application/pdf",
+    "size": 351667,
+    "storagePath": "seed-terms-of-service.pdf",
+    "uploadedByUserId": "11111111-1111-1111-1111-111111111111",
+    "uploadedByUserName": "Faiz Aditama (Owner)",
+    "uploadedByRole": "OWNER",
+    "isStarred": true,
+    "tags": [
+      "Terms",
+      "Legal",
+      "Website"
+    ],
+    "createdAt": "2026-10-31T08:04:19.228Z",
+    "updatedAt": "2026-10-31T08:04:19.228Z"
+  },
+  {
+    "id": "file-seed-invoice-pdf",
+    "name": "Contoh Invoice Standar WebDev FYNUX.pdf",
+    "type": "FILE",
+    "parentId": "folder-legal-template",
+    "extension": "pdf",
+    "mimeType": "application/pdf",
+    "size": 60054,
+    "storagePath": "seed-invoice-template.pdf",
+    "uploadedByUserId": "11111111-1111-1111-1111-111111111111",
+    "uploadedByUserName": "Faiz Aditama (Owner)",
+    "uploadedByRole": "OWNER",
+    "isStarred": false,
+    "tags": [
+      "Finance",
+      "Invoice"
+    ],
+    "createdAt": "2026-10-31T08:04:19.228Z",
+    "updatedAt": "2026-10-31T08:04:19.228Z"
+  },
+  {
+    "id": "file-seed-logo-png",
+    "name": "Logo Resmi FYNUX OS (High Resolution).png",
+    "type": "FILE",
+    "parentId": "folder-branding-asset",
+    "extension": "png",
+    "mimeType": "image/png",
+    "size": 31472,
+    "storagePath": "seed-logo-fynux.png",
+    "uploadedByUserId": "11111111-1111-1111-1111-111111111111",
+    "uploadedByUserName": "Faiz Aditama (Owner)",
+    "uploadedByRole": "OWNER",
+    "isStarred": true,
+    "tags": [
+      "Logo",
+      "Asset",
+      "PNG"
+    ],
+    "createdAt": "2026-10-31T08:04:19.228Z",
+    "updatedAt": "2026-10-31T08:04:19.228Z"
+  },
+  {
+    "id": "file-seed-sop-md",
+    "name": "SOP-Development-QA-Standar.md",
+    "type": "FILE",
+    "parentId": "folder-sop-internal",
+    "extension": "md",
+    "mimeType": "text/markdown",
+    "size": 535,
+    "storagePath": "seed-sop-dev.md",
+    "uploadedByUserId": "11111111-1111-1111-1111-111111111111",
+    "uploadedByUserName": "Faiz Aditama (Owner)",
+    "uploadedByRole": "OWNER",
+    "isStarred": true,
+    "tags": [
+      "SOP",
+      "Development",
+      "Documentation"
+    ],
+    "createdAt": "2026-10-31T08:04:19.228Z",
+    "updatedAt": "2026-10-31T08:04:19.228Z"
+  }
+]
