@@ -5,6 +5,8 @@ import { getSessionCookie } from "../auth/session";
 import {
   bulkCreateProspects,
   bulkDeleteProspects,
+  bulkDistributeProspects,
+  getAvailableSalesUsers,
   checkDuplicateWhatsApp,
   confirmOutreachSent,
   createProspect,
@@ -16,7 +18,13 @@ import {
   updateProspectStage,
   updateProspectDetails,
 } from "./crm.service";
-import { CreateProspectInput, Prospect } from "./types";
+import {
+  BulkDistributeResult,
+  BulkDistributionConfig,
+  CreateProspectInput,
+  Prospect,
+  SalesUserOption,
+} from "./types";
 import { FailedReason, NextAction, PipelineStage } from "@/types/enums";
 
 export async function fetchProspectsAction(filter?: {
@@ -56,7 +64,14 @@ export async function createProspectAction(input: CreateProspectInput) {
   return res;
 }
 
-export async function bulkCreateProspectsAction(inputs: CreateProspectInput[]) {
+export async function fetchAvailableSalesAction(): Promise<SalesUserOption[]> {
+  return getAvailableSalesUsers();
+}
+
+export async function bulkCreateProspectsAction(
+  inputs: CreateProspectInput[],
+  distributionConfig?: BulkDistributionConfig
+) {
   const session = await getSessionCookie();
   if (!session) {
     return {
@@ -68,11 +83,46 @@ export async function bulkCreateProspectsAction(inputs: CreateProspectInput[]) {
     };
   }
 
-  const res = await bulkCreateProspects(inputs, session.id, session.role);
+  const res = await bulkCreateProspects(inputs, session.id, session.role, distributionConfig);
   if (res.success) {
     revalidatePath("/crm");
     revalidatePath("/sales-workspace");
+    revalidatePath("/inbox");
   }
+  return res;
+}
+
+export async function bulkDistributeProspectsAction(
+  prospectIds: string[],
+  targetSalesIds: string[]
+): Promise<BulkDistributeResult> {
+  const session = await getSessionCookie();
+  if (!session) {
+    return { success: false, updatedCount: 0, message: "Sesi telah berakhir. Silakan login kembali." };
+  }
+
+  // Hanya OWNER atau user dengan izin crm.edit_all yang berhak membagikan prospek secara massal
+  if (session.role !== "OWNER" && !session.permissions?.includes("crm.edit_all")) {
+    return {
+      success: false,
+      updatedCount: 0,
+      message: "Hanya akun Owner yang memiliki wewenang membagikan prospek tim sales.",
+    };
+  }
+
+  const res = await bulkDistributeProspects(
+    prospectIds,
+    targetSalesIds,
+    session.id,
+    session.role
+  );
+
+  if (res.success) {
+    revalidatePath("/crm");
+    revalidatePath("/sales-workspace");
+    revalidatePath("/inbox");
+  }
+
   return res;
 }
 

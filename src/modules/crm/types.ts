@@ -64,6 +64,27 @@ export interface NormalizePhoneResult {
   isValid: boolean;
 }
 
+export type LeadDistributionMode = "OWNER" | "SINGLE_SALES" | "ROUND_ROBIN";
+
+export interface BulkDistributionConfig {
+  mode: LeadDistributionMode;
+  targetSalesIds?: string[];
+  singleSalesId?: string;
+}
+
+export interface BulkDistributeResult {
+  success: boolean;
+  updatedCount: number;
+  message?: string;
+  distributionSummary?: Record<string, number>;
+}
+
+export interface SalesUserOption {
+  id: string;
+  fullName: string;
+  email: string;
+}
+
 /**
  * Normalisasi nomor WhatsApp ke format internasional (default 628xxx untuk nomor lokal Indonesia)
  * Mendukung nomor Indonesia, nomor internasional, serta WhatsApp Linked ID (LID)

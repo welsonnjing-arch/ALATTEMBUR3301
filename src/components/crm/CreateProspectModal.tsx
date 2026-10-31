@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { X, AlertTriangle, Check, Sparkles, Building2, User, Phone, Globe, Tag } from "lucide-react";
-import { CreateProspectInput, normalizeWhatsAppNumber } from "@/modules/crm/types";
+import { CreateProspectInput, Prospect, normalizeWhatsAppNumber } from "@/modules/crm/types";
 import { checkDuplicateAction, createProspectAction } from "@/modules/crm/crm.actions";
+import { ModalPortal } from "@/components/common/ModalPortal";
+import { useToast } from "@/components/common/Toast";
 
 interface CreateProspectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (newProspect?: Prospect) => void;
 }
 
 export function CreateProspectModal({
@@ -16,6 +18,7 @@ export function CreateProspectModal({
   onClose,
   onSuccess,
 }: CreateProspectModalProps) {
+  const { toast } = useToast();
   const [formData, setFormData] = useState<CreateProspectInput>({
     companyName: "",
     contactName: "",
@@ -62,7 +65,8 @@ export function CreateProspectModal({
 
     if (res.success) {
       setIsSubmitting(false);
-      onSuccess();
+      toast.success(`Prospek ${formData.companyName} berhasil disimpan`);
+      onSuccess(res.prospect);
       onClose();
     } else {
       setErrorMsg(res.error || "Gagal menyimpan data prospek.");
@@ -71,12 +75,13 @@ export function CreateProspectModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] modal-backdrop-clean flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs animate-ios-fade">
+        <div className="w-full max-w-2xl max-h-[88vh] flex flex-col bg-white border border-slate-200/90 rounded-2xl shadow-2xl overflow-hidden animate-ios-scale relative">
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-indigo-100 text-indigo-700 rounded-lg">
+        <div className="px-6 py-4 border-b border-slate-200/80 flex items-center justify-between shrink-0 bg-white">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg">
               <Building2 className="w-5 h-5" />
             </div>
             <div>
@@ -91,49 +96,51 @@ export function CreateProspectModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-          {errorMsg && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs">
-              {errorMsg}
-            </div>
-          )}
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+          {/* Scrollable Form Body */}
+          <div className="px-6 py-5 overflow-y-auto flex-1 space-y-4">
+            {errorMsg && (
+              <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+                {errorMsg}
+              </div>
+            )}
 
-          {duplicateWarning && (
-            <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            {duplicateWarning && (
+              <div className="p-3 rounded-lg bg-slate-100 border border-slate-300 text-slate-800 text-xs flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold">Peringatan Duplikasi:</span> {duplicateWarning}
+                </div>
+              </div>
+            )}
+
+            {/* Baris 1: Nama Bisnis & Nama Kontak */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <span className="font-semibold">Peringatan Duplikasi:</span> {duplicateWarning}
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Nama Perusahaan / Bisnis <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: PT Padma Widya Setiajaya"
+                    value={formData.companyName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, companyName: e.target.value })
+                    }
+                    className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* Baris 1: Nama Bisnis & Nama Kontak */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Nama Perusahaan / Bisnis <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: PT Padma Widya Setiajaya"
-                  value={formData.companyName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, companyName: e.target.value })
-                  }
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
-              </div>
-            </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -148,7 +155,7 @@ export function CreateProspectModal({
                   onChange={(e) =>
                     setFormData({ ...formData, contactName: e.target.value })
                   }
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 />
               </div>
             </div>
@@ -168,7 +175,7 @@ export function CreateProspectModal({
                   placeholder="08123456789 atau 628..."
                   value={formData.whatsappNumber}
                   onChange={(e) => handlePhoneChange(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 />
               </div>
               <p className="text-[10px] text-slate-400 mt-1">
@@ -189,7 +196,7 @@ export function CreateProspectModal({
                   onChange={(e) =>
                     setFormData({ ...formData, website: e.target.value })
                   }
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 />
               </div>
             </div>
@@ -208,7 +215,7 @@ export function CreateProspectModal({
                 onChange={(e) =>
                   setFormData({ ...formData, industry: e.target.value })
                 }
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
             </div>
 
@@ -221,7 +228,7 @@ export function CreateProspectModal({
                 onChange={(e) =>
                   setFormData({ ...formData, potentialServices: e.target.value })
                 }
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
               >
                 <option value="Basic Website Development">Basic Website (Rp 1.500.000)</option>
                 <option value="Business Website Development">Business Website (Rp 3.500.000+)</option>
@@ -245,7 +252,7 @@ export function CreateProspectModal({
               onChange={(e) =>
                 setFormData({ ...formData, researchNotes: e.target.value })
               }
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
           </div>
 
@@ -261,23 +268,24 @@ export function CreateProspectModal({
               onChange={(e) =>
                 setFormData({ ...formData, painPoints: e.target.value })
               }
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
           </div>
+        </div>
 
-          {/* Modal Footer */}
-          <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+        {/* Sticky Modal Footer */}
+          <div className="px-6 py-4 border-t border-slate-200/80 flex items-center justify-end gap-3 shrink-0 bg-slate-50/90 rounded-b-2xl">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200/90 rounded-lg transition-colors"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-xs font-semibold rounded-lg shadow-sm shadow-blue-500/20 transition-colors disabled:opacity-50"
             >
               {isSubmitting ? "Menyimpan Prospek..." : "Simpan Prospek Riset"}
             </button>
@@ -285,5 +293,6 @@ export function CreateProspectModal({
         </form>
       </div>
     </div>
+    </ModalPortal>
   );
 }

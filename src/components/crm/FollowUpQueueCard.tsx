@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Calendar, ExternalLink, CheckCircle2, ChevronRight, Phone, MessageSquare } from "lucide-react";
+import { Clock, Calendar, ExternalLink, CheckCircle2, ChevronRight, Phone, MessageSquare, X } from "lucide-react";
 import { Prospect } from "@/modules/crm/types";
 import { isFollowUpDueTodayOrOverdue, isFollowUpOverdue } from "@/modules/follow-up/follow-up.service";
 import { confirmOutreachSentAction } from "@/modules/crm/crm.actions";
 import { formatDateWIB } from "@/lib/date";
+import { ModalPortal } from "@/components/common/ModalPortal";
 
 interface FollowUpQueueCardProps {
   prospects: Prospect[];
@@ -42,15 +43,15 @@ export function FollowUpQueueCard({ prospects, onRefresh }: FollowUpQueueCardPro
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+    <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs p-6 space-y-4 card-hover-lift">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-indigo-600" />
+          <Calendar className="w-5 h-5 text-blue-600" />
           <h2 className="text-sm font-bold text-slate-900">
             Antrean Follow-Up Kalender Hari Ini
           </h2>
         </div>
-        <span className="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-full border border-indigo-100">
+        <span className="text-xs bg-blue-50 text-blue-700 font-semibold px-2.5 py-0.5 rounded-md font-mono border border-blue-200">
           {dueProspects.length} Menunggu Tindakan
         </span>
       </div>
@@ -74,7 +75,7 @@ export function FollowUpQueueCard({ prospects, onRefresh }: FollowUpQueueCardPro
                       {p.followUpStep || "FU"}
                     </span>
                     {isOverdue && (
-                      <span className="text-[9px] bg-rose-100 text-rose-700 font-bold px-1 rounded">
+                      <span className="text-[9px] bg-slate-200 text-slate-800 font-bold px-1.5 py-0.5 rounded border border-slate-300">
                         Terlambat
                       </span>
                     )}
@@ -91,7 +92,7 @@ export function FollowUpQueueCard({ prospects, onRefresh }: FollowUpQueueCardPro
                   <button
                     type="button"
                     onClick={() => router.push(`/inbox?prospectId=${p.id}`)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold rounded-lg shadow-sm transition-all active-press"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
                     Chat di Inbox
@@ -100,7 +101,7 @@ export function FollowUpQueueCard({ prospects, onRefresh }: FollowUpQueueCardPro
                     type="button"
                     onClick={() => handleReachNow(p)}
                     title="Buka WhatsApp Web eksternal (wa.me)"
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg border border-slate-300 transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg border border-slate-300 transition-all active-press"
                   >
                     <ExternalLink className="w-3 h-3 text-slate-500" />
                     WA Eksternal
@@ -112,40 +113,71 @@ export function FollowUpQueueCard({ prospects, onRefresh }: FollowUpQueueCardPro
         </div>
       ) : (
         <div className="text-center py-8 text-xs text-slate-500 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
-          <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
+          <CheckCircle2 className="w-6 h-6 text-blue-600 mx-auto mb-1.5" />
           <span>Tidak ada follow-up jatuh tempo untuk hari ini. Seluruh jadwal aman.</span>
         </div>
       )}
 
       {/* Confirmation Modal when Reach Now is clicked */}
       {selectedProspect && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4">
-            <h3 className="text-base font-bold text-slate-900">
-              Konfirmasi Kirim: {selectedProspect.companyName}
-            </h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              WhatsApp Web dibuka menuju nomor +{selectedProspect.whatsappNumber}. Apakah Anda telah mengirimkan pesan tersebut?
-            </p>
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setSelectedProspect(null)}
-                className="px-3 py-1.5 border border-slate-300 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-50"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => handleConfirmSent(selectedProspect.id)}
-                disabled={isProcessing}
-                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm"
-              >
-                Mark as Sent
-              </button>
+        <ModalPortal>
+          <div className="fixed inset-0 z-[9999] modal-backdrop-clean flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs animate-ios-fade">
+            <div className="w-full max-w-md max-h-[88vh] flex flex-col bg-white border border-slate-200/90 rounded-2xl shadow-2xl overflow-hidden animate-ios-scale relative">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-slate-200/80 flex items-center justify-between shrink-0 bg-white">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg">
+                    <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Konfirmasi Pengiriman Pesan
+                    </h3>
+                    <p className="text-xs text-slate-500 line-clamp-1">
+                      {selectedProspect.companyName}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedProspect(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Scrollable Body */}
+              <div className="px-6 py-5 overflow-y-auto flex-1 space-y-3 text-xs">
+                <p className="text-slate-600 leading-relaxed">
+                  WhatsApp Web dibuka menuju nomor <span className="font-mono font-semibold text-slate-800">+{selectedProspect.whatsappNumber}</span>. Apakah Anda telah mengirimkan pesan tersebut?
+                </p>
+                <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-slate-700 leading-relaxed">
+                  Menandai terkirim akan mencatat log outreach dan memperbarui siklus jadwal follow-up otomatis.
+                </div>
+              </div>
+
+              {/* Sticky Action Footer */}
+              <div className="px-6 py-4 border-t border-slate-200/80 bg-slate-50/90 rounded-b-2xl flex items-center justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSelectedProspect(null)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200/90 rounded-lg transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleConfirmSent(selectedProspect.id)}
+                  disabled={isProcessing}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-xs font-semibold rounded-lg shadow-sm shadow-blue-500/20 transition-colors disabled:opacity-50"
+                >
+                  {isProcessing ? "Menyimpan..." : "Mark as Sent"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   );

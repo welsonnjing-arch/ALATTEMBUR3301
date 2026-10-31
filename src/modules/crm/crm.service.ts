@@ -1,132 +1,21 @@
 import fs from "node:fs";
 import path from "node:path";
-import { CreateProspectInput, FollowUpLogItem, normalizeWhatsAppNumber, Prospect } from "./types";
+import {
+  BulkDistributeResult,
+  BulkDistributionConfig,
+  CreateProspectInput,
+  FollowUpLogItem,
+  normalizeWhatsAppNumber,
+  Prospect,
+  SalesUserOption,
+} from "./types";
 import { FailedReason, NextAction, PipelineStage } from "@/types/enums";
 import { calculateNextFollowUp } from "../follow-up/follow-up.service";
 import { logActivity } from "@/lib/logger";
+import { INITIAL_INTERNAL_USERS } from "@/modules/auth/session";
 
 // In-Memory Database Store dengan globalThis agar konsisten di Server Action, Server Component, & HMR
-const INITIAL_PROSPECTS_DATA: Prospect[] = [
-  {
-    id: "p-001",
-    companyName: "SMAN 2 Ngaglik",
-    contactName: "Bambang Sudarsono (Wakasek Kurikulum)",
-    whatsappNumber: "62895324069850",
-    email: "info@sman2ngaglik.sch.id",
-    website: "sman2ngaglik.sch.id",
-    industry: "Pendidikan & Sekolah",
-    location: "Sleman, D.I. Yogyakarta",
-    source: "Riset Direktori Sekolah",
-    researchNotes:
-      "Sekolah negeri dengan 900+ siswa. Presensi harian masih mengandalkan kertas dan fingerprint fisik yang sering antre. Membutuhkan sistem web presensi digital multi-device + kiosk mode dengan rekapitulasi excel otomatis.",
-    painPoints: "Antrean absensi pagi hari dan rekap data manual butuh 3 hari tiap akhir bulan.",
-    potentialServices: "Web App Development - Presensi Digital Basic",
-    assignedSalesId: "22222222-2222-2222-2222-222222222222",
-    assignedSalesName: "Budi Santoso (Sales)",
-    stage: "CLOSED_WON",
-    nextAction: "NO_ACTION_REQUIRED",
-    followUpStep: "INITIAL",
-    lastReachAt: "2026-02-11T09:00:00Z",
-    isArchived: false,
-    followUpLogs: [
-      {
-        id: "fu-001",
-        prospectId: "p-001",
-        step: "INITIAL",
-        channel: "WHATSAPP",
-        sentByUserId: "22222222-2222-2222-2222-222222222222",
-        sentByUserName: "Budi Santoso",
-        confirmedSentAt: "2026-02-11T09:00:00Z",
-        notes: "Initial outreach proposal SIM-Presensi.",
-      },
-    ],
-    createdAt: "2026-02-10T08:00:00Z",
-    updatedAt: "2026-02-12T10:00:00Z",
-  },
-  {
-    id: "p-002",
-    companyName: "PT Padma Widya Setiajaya",
-    contactName: "Ibu Rina Wulandari (Direktur)",
-    whatsappNumber: "6281298765432",
-    email: "contact@padmawidyasetiajaya.com",
-    website: "padmawidyasetiajaya.com",
-    industry: "Kontraktor & Konstruksi",
-    location: "Semarang, Jawa Tengah",
-    source: "Riset LPSE & Rekanan B2B",
-    researchNotes:
-      "Perusahaan kontraktor sipil dan pengadaan. Sudah memiliki domain .com tetapi belum ada website aktif. Sangat membutuhkan website profil perusahaan kredibel untuk keperluan tender proyek pemerintah & swasta.",
-    painPoints: "Tender mensyaratkan company profile online terverifikasi.",
-    potentialServices: "Basic Website Development + Hosting Tahunan",
-    assignedSalesId: "22222222-2222-2222-2222-222222222222",
-    assignedSalesName: "Budi Santoso (Sales)",
-    stage: "NEGOTIATION",
-    nextAction: "PREPARE_PROPOSAL",
-    nextFollowUpDate: new Date().toISOString().split("T")[0],
-    followUpStep: "FU2",
-    lastReachAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-    isArchived: false,
-    followUpLogs: [
-      {
-        id: "fu-002-1",
-        prospectId: "p-002",
-        step: "INITIAL",
-        channel: "WHATSAPP",
-        sentByUserId: "22222222-2222-2222-2222-222222222222",
-        sentByUserName: "Budi Santoso",
-        confirmedSentAt: new Date(Date.now() - 4 * 86400000).toISOString(),
-        notes: "Perkenalan Fynux & audit status website mereka.",
-      },
-      {
-        id: "fu-002-2",
-        prospectId: "p-002",
-        step: "FU1",
-        channel: "WHATSAPP",
-        sentByUserId: "22222222-2222-2222-2222-222222222222",
-        sentByUserName: "Budi Santoso",
-        confirmedSentAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-        notes: "Kirim ringkasan portofolio kontraktor.",
-      },
-    ],
-    createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-  },
-  {
-    id: "p-003",
-    companyName: "Kopi Nusantara Roastery",
-    contactName: "Aditya Pratama (Founder)",
-    whatsappNumber: "6285712345678",
-    email: "aditya@kopinusantara.id",
-    industry: "F&B / Coffee Roastery",
-    location: "Yogyakarta",
-    source: "Instagram Business Audit",
-    researchNotes:
-      "Roastery kopi spesialti dengan 15k followers di IG. Transaksi grosir ke kafe-kafe masih via chat manual yang sering tercecer. Berpotensi butuh Business Website dengan katalog beans dan form pemesanan grosir B2B.",
-    painPoints: "Admin kewalahan membalas chat pesanan biji kopi kiloan.",
-    potentialServices: "Business Website Development",
-    assignedSalesId: "22222222-2222-2222-2222-222222222222",
-    assignedSalesName: "Budi Santoso (Sales)",
-    stage: "CONTACTED",
-    nextAction: "WAITING_FOR_RESPONSE",
-    nextFollowUpDate: new Date().toISOString().split("T")[0],
-    followUpStep: "INITIAL",
-    lastReachAt: new Date(Date.now() - 1 * 86400000).toISOString(),
-    isArchived: false,
-    followUpLogs: [
-      {
-        id: "fu-003-1",
-        prospectId: "p-003",
-        step: "INITIAL",
-        channel: "WHATSAPP",
-        sentByUserId: "22222222-2222-2222-2222-222222222222",
-        sentByUserName: "Budi Santoso",
-        confirmedSentAt: new Date(Date.now() - 1 * 86400000).toISOString(),
-        notes: "Reach now via WhatsApp Web.",
-      },
-    ],
-    createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 1 * 86400000).toISOString(),
-  },
-];
+const INITIAL_PROSPECTS_DATA: Prospect[] = [];
 
 interface CRMGlobalStore {
   prospectsData?: Prospect[];
@@ -147,7 +36,7 @@ function loadPersistedProspects(): Prospect[] {
     if (fs.existsSync(PROSPECTS_FILE)) {
       const content = fs.readFileSync(PROSPECTS_FILE, "utf-8");
       const parsed = JSON.parse(content);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
@@ -323,14 +212,42 @@ export interface BulkImportResult {
   errors: Array<{ row: number; companyName: string; reason: string }>;
 }
 
+/**
+ * Mengambil daftar sales user internal yang aktif
+ */
+export function getAvailableSalesUsers(): SalesUserOption[] {
+  const seen = new Set<string>();
+  const list: SalesUserOption[] = [];
+  for (const u of INITIAL_INTERNAL_USERS) {
+    if (u.role === "SALES" && u.status === "ACTIVE" && !seen.has(u.id)) {
+      seen.add(u.id);
+      list.push({ id: u.id, fullName: u.fullName, email: u.email });
+    }
+  }
+  return list;
+}
+
+export function getInternalUserById(userId: string) {
+  return INITIAL_INTERNAL_USERS.find((u) => u.id === userId);
+}
+
 export async function bulkCreateProspects(
   inputs: CreateProspectInput[],
   actorUserId: string,
-  actorRole: string
+  actorRole: string,
+  distributionConfig?: BulkDistributionConfig
 ): Promise<BulkImportResult> {
   const store = crmGlobal.prospectsData || prospectsData;
   const created: Prospect[] = [];
   const errors: Array<{ row: number; companyName: string; reason: string }> = [];
+
+  // Konfigurasi target tim sales jika mode ROUND_ROBIN aktif
+  const targetSalesIds =
+    distributionConfig?.mode === "ROUND_ROBIN" &&
+    distributionConfig.targetSalesIds &&
+    distributionConfig.targetSalesIds.length > 0
+      ? distributionConfig.targetSalesIds
+      : null;
 
   for (let i = 0; i < inputs.length; i++) {
     const input = inputs[i];
@@ -383,6 +300,35 @@ export async function bulkCreateProspects(
 
     const safeNotes = input.researchNotes?.trim() || "Di-import dari Excel/CSV";
 
+    // Hitung penugasan sales (Bagi Rata Round-Robin, Single Sales, atau Default Akun Pembuat)
+    let assignedSalesId: string;
+    let assignedSalesName: string;
+
+    if (targetSalesIds && targetSalesIds.length > 0) {
+      // Rotasi proporsional Round-Robin ke tim sales terpilih
+      assignedSalesId = targetSalesIds[created.length % targetSalesIds.length];
+      const targetUser = getInternalUserById(assignedSalesId);
+      assignedSalesName = targetUser ? targetUser.fullName : "Tim Sales Fynux";
+    } else if (
+      distributionConfig?.mode === "SINGLE_SALES" &&
+      distributionConfig.singleSalesId
+    ) {
+      assignedSalesId = distributionConfig.singleSalesId;
+      const targetUser = getInternalUserById(assignedSalesId);
+      assignedSalesName = targetUser ? targetUser.fullName : "Tim Sales Fynux";
+    } else {
+      assignedSalesId =
+        actorRole === "SALES"
+          ? actorUserId
+          : input.assignedSalesId || actorUserId;
+      const targetUser = getInternalUserById(assignedSalesId);
+      assignedSalesName = targetUser
+        ? targetUser.fullName
+        : actorRole === "SALES"
+        ? "Budi Santoso (Sales 1)"
+        : "Faiz Aditama (Owner)";
+    }
+
     const newProspect: Prospect = {
       id: `p-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       companyName: input.companyName.trim(),
@@ -397,12 +343,8 @@ export async function bulkCreateProspects(
       painPoints: input.painPoints?.trim() || undefined,
       potentialServices:
         input.potentialServices?.trim() || "Basic Website Development",
-      assignedSalesId:
-        actorRole === "SALES"
-          ? actorUserId
-          : input.assignedSalesId || actorUserId,
-      assignedSalesName:
-        actorRole === "SALES" ? "Budi Santoso (Sales)" : "Faiz Aditama (Owner)",
+      assignedSalesId,
+      assignedSalesName,
       stage: "NEW",
       nextAction: "REACH_NOW",
       followUpStep: "INITIAL",
@@ -427,6 +369,8 @@ export async function bulkCreateProspects(
       metadata: {
         totalImported: created.length,
         totalSkipped: errors.length,
+        distributionMode: distributionConfig?.mode || "DEFAULT",
+        targetSalesCount: targetSalesIds ? targetSalesIds.length : 1,
       },
     });
   }
@@ -437,6 +381,78 @@ export async function bulkCreateProspects(
     skippedCount: errors.length,
     prospects: created,
     errors,
+  };
+}
+
+/**
+ * Membagi rata sejumlah prospek terpilih ke tim sales secara Round-Robin (Bulk Re-distribute)
+ */
+export async function bulkDistributeProspects(
+  prospectIds: string[],
+  targetSalesIds: string[],
+  actorUserId: string,
+  actorRole: string
+): Promise<BulkDistributeResult> {
+  if (!prospectIds || prospectIds.length === 0) {
+    return { success: false, updatedCount: 0, message: "Tidak ada prospek yang dipilih." };
+  }
+  if (!targetSalesIds || targetSalesIds.length === 0) {
+    return { success: false, updatedCount: 0, message: "Pilih minimal 1 akun sales untuk pembagian." };
+  }
+
+  const store = crmGlobal.prospectsData || prospectsData;
+  const targetProspects = store.filter((p) => prospectIds.includes(p.id) && !p.isArchived);
+
+  if (targetProspects.length === 0) {
+    return { success: false, updatedCount: 0, message: "Prospek terpilih tidak ditemukan atau sudah diarsipkan." };
+  }
+
+  const salesMap = new Map<string, { id: string; fullName: string }>();
+  for (const sId of targetSalesIds) {
+    const u = getInternalUserById(sId);
+    if (u) {
+      salesMap.set(sId, { id: u.id, fullName: u.fullName });
+    }
+  }
+
+  const distributionSummary: Record<string, number> = {};
+  targetSalesIds.forEach((id) => (distributionSummary[id] = 0));
+
+  let assignedIndex = 0;
+  for (const prospect of targetProspects) {
+    const assignedSalesId = targetSalesIds[assignedIndex % targetSalesIds.length];
+    const salesInfo = salesMap.get(assignedSalesId);
+    const assignedSalesName = salesInfo ? salesInfo.fullName : "Tim Sales Fynux";
+
+    prospect.assignedSalesId = assignedSalesId;
+    prospect.assignedSalesName = assignedSalesName;
+    prospect.updatedAt = new Date().toISOString();
+
+    distributionSummary[assignedSalesId] = (distributionSummary[assignedSalesId] || 0) + 1;
+    assignedIndex++;
+  }
+
+  persistProspects();
+
+  logActivity({
+    category: "CRM",
+    action: "PROSPECTS_BULK_DISTRIBUTED",
+    actorId: actorUserId,
+    targetId: `batch-distribute-${Date.now()}`,
+    targetType: "PROSPECT_BATCH",
+    metadata: {
+      requestedCount: prospectIds.length,
+      distributedCount: targetProspects.length,
+      targetSalesCount: targetSalesIds.length,
+      distributionSummary,
+      distributedByRole: actorRole,
+    },
+  });
+
+  return {
+    success: true,
+    updatedCount: targetProspects.length,
+    distributionSummary,
   };
 }
 

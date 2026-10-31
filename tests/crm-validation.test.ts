@@ -1,4 +1,4 @@
-import { test, describe } from "node:test";
+import { test, describe, after } from "node:test";
 import assert from "node:assert/strict";
 import { normalizeWhatsAppNumber } from "../src/modules/crm/types";
 import {
@@ -6,7 +6,11 @@ import {
   bulkCreateProspects,
   deleteProspect,
   bulkDeleteProspects,
+  bulkDistributeProspects,
+  getAvailableSalesUsers,
   getProspectById,
+  prospectsData,
+  persistProspects,
 } from "../src/modules/crm/crm.service";
 
 describe("CRM Data Validation & Normalization Rules", () => {
@@ -191,5 +195,87 @@ describe("CRM Data Validation & Normalization Rules", () => {
     // 3. Verifikasi keduanya sudah terhapus
     assert.equal(await getProspectById(p1.prospect.id), null);
     assert.equal(await getProspectById(p2.prospect.id), null);
+  });
+
+  test("bulkCreateProspects divides imported contacts evenly across selected sales agents in Round-Robin mode", async () => {
+    const salesList = getAvailableSalesUsers();
+    assert.ok(salesList.length >= 2, "Harus ada minimal 2 sales untuk pengujian round-robin");
+
+    // Ambil 3 sales pertama
+    const targetSales = salesList.slice(0, 3);
+    const targetSalesIds = targetSales.map((s) => s.id);
+
+    // Siapkan 6 kontak untuk diimpor
+    const inputs = [
+      { companyName: "Bisnis RR 1", whatsappNumber: "081211110001" },
+      { companyName: "Bisnis RR 2", whatsappNumber: "081211110002" },
+      { companyName: "Bisnis RR 3", whatsappNumber: "081211110003" },
+      { companyName: "Bisnis RR 4", whatsappNumber: "081211110004" },
+      { companyName: "Bisnis RR 5", whatsappNumber: "081211110005" },
+      { companyName: "Bisnis RR 6", whatsappNumber: "081211110006" },
+    ];
+
+    const result = await bulkCreateProspects(
+      inputs,
+      "owner-user-id",
+      "OWNER",
+      {
+        mode: "ROUND_ROBIN",
+        targetSalesIds,
+      }
+    );
+
+    assert.equal(result.success, true);
+    assert.equal(result.importedCount, 6);
+
+    // Hitung perolehan masing-masing sales
+    const countPerSales: Record<string, number> = {};
+    for (const p of result.prospects) {
+      assert.ok(p.assignedSalesId);
+      assert.ok(targetSalesIds.includes(p.assignedSalesId!));
+      countPerSales[p.assignedSalesId!] = (countPerSales[p.assignedSalesId!] || 0) + 1;
+    }
+
+    // 6 kontak dibagi 3 sales = masing-masing tepat 2 kontak
+    for (const sId of targetSalesIds) {
+      assert.equal(countPerSales[sId], 2);
+    }
+  });
+
+  test("bulkDistributeProspects redistributes selected prospects evenly to target sales", async () => {
+    // 1. Buat 4 prospek awal milik Owner
+    const p1 = await createProspect({ companyName: "Dist 1", whatsappNumber: "081222220001" }, "owner-id", "OWNER");
+    const p2 = await createProspect({ companyName: "Dist 2", whatsappNumber: "081222220002" }, "owner-id", "OWNER");
+    const p3 = await createProspect({ companyName: "Dist 3", whatsappNumber: "081222220003" }, "owner-id", "OWNER");
+    const p4 = await createProspect({ companyName: "Dist 4", whatsappNumber: "081222220004" }, "owner-id", "OWNER");
+
+    const prospectIds = [p1.prospect!.id, p2.prospect!.id, p3.prospect!.id, p4.prospect!.id];
+
+    const salesList = getAvailableSalesUsers().slice(0, 2);
+    const targetSalesIds = salesList.map((s) => s.id);
+
+    // 2. Lakukan distribusi massal (4 kontak dibagi 2 sales = masing-masing 2 kontak)
+    const distResult = await bulkDistributeProspects(
+      prospectIds,
+      targetSalesIds,
+      "owner-id",
+      "OWNER"
+    );
+
+    assert.equal(distResult.success, true);
+    assert.equal(distResult.updatedCount, 4);
+    assert.equal(distResult.distributionSummary?.[targetSalesIds[0]], 2);
+    assert.equal(distResult.distributionSummary?.[targetSalesIds[1]], 2);
+
+    // 3. Verifikasi pada data prospek di CRM
+    const updatedP1 = await getProspectById(prospectIds[0]);
+    const updatedP2 = await getProspectById(prospectIds[1]);
+    assert.ok(updatedP1?.assignedSalesId === targetSalesIds[0] || updatedP1?.assignedSalesId === targetSalesIds[1]);
+    assert.ok(updatedP2?.assignedSalesId === targetSalesIds[0] || updatedP2?.assignedSalesId === targetSalesIds[1]);
+  });
+
+  after(() => {
+    prospectsData.length = 0;
+    persistProspects();
   });
 });

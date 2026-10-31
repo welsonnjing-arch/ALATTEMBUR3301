@@ -29,6 +29,8 @@ import {
   updateProspectStatusAction,
 } from "@/modules/crm/crm.actions";
 import { formatDateTimeWIB, formatDateWIB } from "@/lib/date";
+import { ModalPortal } from "@/components/common/ModalPortal";
+import { useToast } from "@/components/common/Toast";
 
 interface ProspectDetailModalProps {
   prospect: Prospect | null;
@@ -46,6 +48,7 @@ export function ProspectDetailModal({
   if (!isOpen || !prospect) return null;
 
   const router = useRouter();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"DETAILS" | "TIMELINE" | "UPDATE">("DETAILS");
   const [selectedStage, setSelectedStage] = useState<PipelineStage>(prospect.stage);
   const [selectedNextAction, setSelectedNextAction] = useState<NextAction>(prospect.nextAction);
@@ -97,6 +100,7 @@ export function ProspectDetailModal({
     await confirmOutreachSentAction(prospect.id, outreachNotes);
     setIsProcessing(false);
     setShowMarkSentDialog(false);
+    toast.success("Outreach berhasil dicatat");
     onRefresh();
   };
 
@@ -109,6 +113,7 @@ export function ProspectDetailModal({
       selectedStage === "FAILED" ? failedReason : undefined
     );
     setIsProcessing(false);
+    toast.success("Status prospek berhasil diperbarui");
     onRefresh();
   };
 
@@ -118,6 +123,7 @@ export function ProspectDetailModal({
     await recordClientReplyAction(prospect.id, replyInput);
     setReplyInput("");
     setIsProcessing(false);
+    toast.success("Balasan klien berhasil dicatat");
     onRefresh();
   };
 
@@ -126,6 +132,7 @@ export function ProspectDetailModal({
     setIsProcessing(true);
     await reactivateProspectAction(prospect.id, "Reaktivasi prospek oleh user");
     setIsProcessing(false);
+    toast.success(`Prospek "${prospect.companyName}" diaktifkan kembali`);
     onRefresh();
   };
 
@@ -138,6 +145,7 @@ export function ProspectDetailModal({
     setIsProcessing(false);
 
     if (res.success) {
+      toast.success(`Prospek "${prospect.companyName}" berhasil dihapus`);
       onRefresh();
     } else {
       alert(res.error || "Gagal menghapus prospek.");
@@ -145,13 +153,14 @@ export function ProspectDetailModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] modal-backdrop-clean flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs animate-ios-fade">
+        <div className="w-full max-w-3xl max-h-[88vh] flex flex-col bg-white border border-slate-200/90 rounded-2xl shadow-2xl overflow-hidden animate-ios-scale relative">
         {/* Header Modal */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div className="px-6 py-4 border-b border-slate-200/80 flex items-center justify-between shrink-0 bg-white">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-800 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
                 Stage: {prospect.stage}
               </span>
               <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
@@ -176,7 +185,7 @@ export function ProspectDetailModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -184,13 +193,13 @@ export function ProspectDetailModal({
         </div>
 
         {/* Tab Switcher */}
-        <div className="px-6 border-b border-slate-200 flex gap-4 text-xs font-semibold">
+        <div className="px-6 border-b border-slate-200/80 flex gap-4 text-xs font-semibold shrink-0 bg-white">
           <button
             type="button"
             onClick={() => setActiveTab("DETAILS")}
             className={`py-3 border-b-2 transition-colors ${
               activeTab === "DETAILS"
-                ? "border-indigo-600 text-indigo-600 font-bold"
+                ? "border-slate-900 text-slate-900 font-bold"
                 : "border-transparent text-slate-500 hover:text-slate-900"
             }`}
           >
@@ -201,7 +210,7 @@ export function ProspectDetailModal({
             onClick={() => setActiveTab("TIMELINE")}
             className={`py-3 border-b-2 transition-colors ${
               activeTab === "TIMELINE"
-                ? "border-indigo-600 text-indigo-600 font-bold"
+                ? "border-slate-900 text-slate-900 font-bold"
                 : "border-transparent text-slate-500 hover:text-slate-900"
             }`}
           >
@@ -212,7 +221,7 @@ export function ProspectDetailModal({
             onClick={() => setActiveTab("UPDATE")}
             className={`py-3 border-b-2 transition-colors ${
               activeTab === "UPDATE"
-                ? "border-indigo-600 text-indigo-600 font-bold"
+                ? "border-slate-900 text-slate-900 font-bold"
                 : "border-transparent text-slate-500 hover:text-slate-900"
             }`}
           >
@@ -221,7 +230,7 @@ export function ProspectDetailModal({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto space-y-5">
+        <div className="px-6 py-5 overflow-y-auto flex-1 min-h-0 space-y-5">
           {/* TAB 1: DETAILS */}
           {activeTab === "DETAILS" && (
             <div className="space-y-4">
@@ -260,8 +269,8 @@ export function ProspectDetailModal({
 
               {/* Research Notes Box */}
               <div className="bg-white p-4 rounded-xl border border-slate-200">
-                <div className="flex items-center gap-2 text-indigo-700 font-semibold text-xs mb-2">
-                  <Sparkles className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-slate-900 font-semibold text-xs mb-2">
+                  <Sparkles className="w-4 h-4 text-blue-600" />
                   Catatan Riset Bebas (Konteks Peluang Bisnis)
                 </div>
                 <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">
@@ -302,15 +311,15 @@ export function ProspectDetailModal({
           {/* TAB 2: TIMELINE */}
           {activeTab === "TIMELINE" && (
             <div className="space-y-4">
-              <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-lg text-xs text-indigo-900">
-                <span className="font-semibold">Aturan Mesin Follow-Up:</span> Menggunakan interval kalender (Hari 0 $\rightarrow$ +1 $\rightarrow$ +3 $\rightarrow$ +5 $\rightarrow$ +10 Hari Failed jika tanpa respon).
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700">
+                <span className="font-semibold text-slate-900">Aturan Mesin Follow-Up:</span> Menggunakan interval kalender (Hari 0 $\rightarrow$ +1 $\rightarrow$ +3 $\rightarrow$ +5 $\rightarrow$ +10 Hari Failed jika tanpa respon).
               </div>
 
               {prospect.followUpLogs && prospect.followUpLogs.length > 0 ? (
                 <div className="space-y-3 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-slate-200">
                   {prospect.followUpLogs.map((log) => (
                     <div key={log.id} className="relative flex items-start gap-4 pl-8">
-                      <span className="absolute left-2 top-1.5 w-3.5 h-3.5 rounded-full bg-indigo-600 border-2 border-white" />
+                      <span className="absolute left-2.5 top-2 w-2.5 h-2.5 rounded-sm bg-slate-900 border border-slate-700 shadow-2xs" />
                       <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex-1">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-bold text-slate-800">
@@ -340,12 +349,12 @@ export function ProspectDetailModal({
           {activeTab === "UPDATE" && (
             <div className="space-y-6">
               {/* Box 1: Catat Balasan Prospek */}
-              <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-200 space-y-3">
-                <div className="flex items-center gap-2 text-emerald-900 font-semibold text-xs">
-                  <MessageSquare className="w-4 h-4 text-emerald-700" />
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                <div className="flex items-center gap-2 text-slate-900 font-semibold text-xs">
+                  <MessageSquare className="w-4 h-4 text-emerald-600" />
                   Catat Balasan / Respon Masuk dari Prospek
                 </div>
-                <p className="text-[11px] text-slate-600">
+                <p className="text-[11px] text-slate-500">
                   Memasukkan balasan prospek akan menghentikan siklus no-response secara otomatis dan mengubah stage ke Responded.
                 </p>
                 <div className="flex gap-2">
@@ -354,13 +363,13 @@ export function ProspectDetailModal({
                     placeholder="Contoh: Halo mas, boleh kirimkan proposal dan rincian portofolionya?"
                     value={replyInput}
                     onChange={(e) => setReplyInput(e.target.value)}
-                    className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
+                    className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
                   />
                   <button
                     type="button"
                     onClick={handleRecordReply}
                     disabled={isProcessing || !replyInput.trim()}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
                   >
                     Simpan Respon
                   </button>
@@ -381,7 +390,7 @@ export function ProspectDetailModal({
                     <select
                       value={selectedStage}
                       onChange={(e) => setSelectedStage(e.target.value as PipelineStage)}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
                     >
                       <option value="NEW">New (Baru)</option>
                       <option value="CONTACTED">Contacted (Sudah Dihubungi)</option>
@@ -402,7 +411,7 @@ export function ProspectDetailModal({
                     <select
                       value={selectedNextAction}
                       onChange={(e) => setSelectedNextAction(e.target.value as NextAction)}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
                     >
                       <option value="REACH_NOW">Reach Now</option>
                       <option value="WAITING_FOR_RESPONSE">Waiting for Response</option>
@@ -423,7 +432,7 @@ export function ProspectDetailModal({
                     <select
                       value={failedReason}
                       onChange={(e) => setFailedReason(e.target.value as FailedReason)}
-                      className="w-full px-3 py-2 text-xs border border-rose-300 rounded-lg bg-rose-50 text-rose-900 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     >
                       <option value="NO_RESPONSE">No Response (Tidak Membalas)</option>
                       <option value="REJECTED">Rejected (Menolak Penawaran)</option>
@@ -442,7 +451,7 @@ export function ProspectDetailModal({
                     <button
                       type="button"
                       onClick={handleReactivate}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                       Reaktivasi Prospek
@@ -463,7 +472,7 @@ export function ProspectDetailModal({
                     type="button"
                     onClick={handleUpdateStatus}
                     disabled={isProcessing}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 shadow-sm"
                   >
                     Simpan Perubahan
                   </button>
@@ -472,41 +481,101 @@ export function ProspectDetailModal({
             </div>
           )}
         </div>
+
+        {/* Fixed Sticky Footer */}
+        <div className="px-6 py-3.5 border-t border-slate-200/80 flex items-center justify-between shrink-0 bg-slate-50/90 rounded-b-2xl">
+          <div className="text-xs text-slate-500 font-medium">
+            PIC: <span className="text-slate-800 font-semibold">{prospect.assignedSalesName || "Belum ditugaskan"}</span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200/90 rounded-lg transition-colors"
+            >
+              Tutup
+            </button>
+            {activeTab === "UPDATE" && (
+              <button
+                type="button"
+                onClick={handleUpdateStatus}
+                disabled={isProcessing}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-50"
+              >
+                {isProcessing ? "Menyimpan..." : "Simpan Perubahan"}
+              </button>
+            )}
+            {activeTab === "DETAILS" && (
+              <button
+                type="button"
+                onClick={handleOpenInDashboardInbox}
+                disabled={isProcessing}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-50"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Buka Chat WA</span>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* DIALOG KONFIRMASI PENGIRIMAN OUTREACH (MARK AS SENT) */}
       {showMarkSentDialog && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4">
-            <div className="flex items-center gap-2 text-emerald-600">
-              <CheckCircle2 className="w-6 h-6" />
-              <h3 className="text-base font-bold text-slate-900">
-                Konfirmasi Pengiriman Pesan
-              </h3>
-            </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              WhatsApp Web telah dibuka. Apakah pesan outreach telah benar-benar Anda kirimkan kepada kontak?
-            </p>
-            <p className="text-[11px] text-indigo-700 bg-indigo-50 p-2.5 rounded-lg border border-indigo-100">
-              Mengklik <strong>&quot;Mark as Sent&quot;</strong> akan mencatat riwayat terverifikasi dan menjadwalkan interval follow-up berikutnya.
-            </p>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Catatan Outreach (Opsional)
-              </label>
-              <input
-                type="text"
-                placeholder="Misal: Dikirim ke Pak Bambang pukul 14:30"
-                value={outreachNotes}
-                onChange={(e) => setOutreachNotes(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
-              />
-            </div>
-            <div className="flex items-center justify-end gap-2 pt-2">
+        <div className="fixed inset-0 z-[10000] modal-backdrop-clean flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs animate-ios-fade">
+          <div className="w-full max-w-md max-h-[88vh] flex flex-col bg-white border border-slate-200/90 rounded-2xl shadow-2xl overflow-hidden animate-ios-scale relative">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-200/80 flex items-center justify-between shrink-0 bg-white">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg">
+                  <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Konfirmasi Pengiriman Pesan
+                  </h3>
+                  <p className="text-xs text-slate-500 line-clamp-1">
+                    {prospect.companyName}
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowMarkSentDialog(false)}
-                className="px-3 py-1.5 border border-slate-300 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-50"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Body */}
+            <div className="px-6 py-5 overflow-y-auto flex-1 space-y-3 text-xs">
+              <p className="text-slate-600 leading-relaxed">
+                WhatsApp Web telah dibuka. Apakah pesan outreach telah benar-benar Anda kirimkan kepada kontak?
+              </p>
+              <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-slate-700 leading-relaxed">
+                Mengklik <strong>&quot;Mark as Sent&quot;</strong> akan mencatat riwayat terverifikasi dan menjadwalkan interval follow-up berikutnya.
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Catatan Outreach (Opsional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Misal: Dikirim ke Pak Bambang pukul 14:30"
+                  value={outreachNotes}
+                  onChange={(e) => setOutreachNotes(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Sticky Action Footer */}
+            <div className="px-6 py-4 border-t border-slate-200/80 bg-slate-50/90 rounded-b-2xl flex items-center justify-end gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowMarkSentDialog(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200/90 rounded-lg transition-colors"
               >
                 Belum Terkirim
               </button>
@@ -514,14 +583,15 @@ export function ProspectDetailModal({
                 type="button"
                 onClick={handleConfirmSent}
                 disabled={isProcessing}
-                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm"
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-50"
               >
-                Mark as Sent
+                {isProcessing ? "Menyimpan..." : "Mark as Sent"}
               </button>
             </div>
           </div>
         </div>
       )}
     </div>
+    </ModalPortal>
   );
 }
