@@ -17,7 +17,7 @@ import {
   loginAction,
   registerInitialOwnerAction,
 } from "@/modules/auth/auth.actions";
-import { FynuxLogo } from "@/components/brand/FynuxLogo";
+import Image from "next/image";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -117,14 +117,15 @@ export default function LoginPage() {
         <div className="bg-white border border-slate-200/90 rounded-lg p-6 sm:p-8 shadow-xs animate-ios-fade">
           {/* Brand Header */}
           <div className="flex flex-col items-center text-center mb-6">
-            <div className="w-14 h-14 rounded-xl bg-slate-50 border border-slate-200/90 shadow-2xs flex items-center justify-center mb-3.5">
-              <FynuxLogo size={38} showGlow={false} />
-            </div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200/80 text-slate-600 font-mono text-[10px] tracking-wider uppercase font-medium mb-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-              <span>
-                {isInitialSetup ? "Inisialisasi Sistem Baru" : "Fynux OS • Internal Access"}
-              </span>
+            <div className="flex items-center justify-center mb-4">
+              <Image
+                src="/logo-fynux.png"
+                alt="Fynux"
+                width={371}
+                height={101}
+                priority
+                className="h-10 sm:h-11 w-auto object-contain"
+              />
             </div>
             <h1 className="text-xl font-bold tracking-tight text-slate-900">
               {isInitialSetup ? "Buat Akun Owner Utama" : "Masuk ke Sistem"}
