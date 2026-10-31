@@ -1,19 +1,64 @@
 "use client";
 
-import { useState } from "react";
-import { Lock, Mail, ShieldAlert, ArrowRight, UserCheck } from "lucide-react";
-import { loginAction } from "@/modules/auth/auth.actions";
+import { useEffect, useState } from "react";
+import {
+  Lock,
+  Mail,
+  ShieldAlert,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Loader2,
+  User,
+  ShieldCheck,
+} from "lucide-react";
+import {
+  checkSystemUsersStatusAction,
+  loginAction,
+  registerInitialOwnerAction,
+} from "@/modules/auth/auth.actions";
+import { FynuxLogo } from "@/components/brand/FynuxLogo";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  // Status apakah sistem baru pertama kali dijalankan (belum ada akun Owner)
+  const [hasOwner, setHasOwner] = useState<boolean | null>(null);
+  const [isLoadingStatus, setIsLoadingStatus] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function checkStatus() {
+      try {
+        const res = await checkSystemUsersStatusAction();
+        if (isMounted) {
+          setHasOwner(res.hasOwner);
+        }
+      } catch {
+        if (isMounted) {
+          setHasOwner(true); // Default ke form login biasa jika gagal mengecek
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingStatus(false);
+        }
+      }
+    }
+    checkStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(null);
-    setIsLoading(true);
+    setErrorMessage(null);
+    setIsSubmitting(true);
 
     const formData = new FormData();
     formData.append("email", email);
@@ -22,148 +67,295 @@ export default function LoginPage() {
     try {
       const res = await loginAction(null, formData);
       if (res && !res.success) {
-        setError(res.error || "Gagal masuk ke sistem.");
-        setIsLoading(false);
+        setErrorMessage(res.error || "Gagal masuk ke sistem.");
+        setIsSubmitting(false);
       }
-    } catch {
-      // Next.js redirect melemparkan exception yang sengaja ditangkap oleh router Next.js
+    } catch (err: unknown) {
+      const isRedirect =
+        (err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT") ||
+        (err as Error)?.message === "NEXT_REDIRECT";
+      if (!isRedirect) {
+        setErrorMessage("Terjadi kendala saat menghubungi server. Silakan coba lagi.");
+        setIsSubmitting(false);
+      }
     }
   };
 
-  const handleQuickLogin = (targetEmail: string) => {
-    setEmail(targetEmail);
-    setPassword("password123");
+  const handleRegisterOwnerSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setIsSubmitting(true);
+
+    const formData = new FormData();
+    formData.append("fullName", fullName);
+    formData.append("email", email);
+    formData.append("password", password);
+
+    try {
+      const res = await registerInitialOwnerAction(null, formData);
+      if (res && !res.success) {
+        setErrorMessage(res.error || "Gagal membuat akun Owner.");
+        setIsSubmitting(false);
+      }
+    } catch (err: unknown) {
+      const isRedirect =
+        (err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT") ||
+        (err as Error)?.message === "NEXT_REDIRECT";
+      if (!isRedirect) {
+        setErrorMessage("Terjadi kendala saat menghubungi server. Silakan periksa kembali.");
+        setIsSubmitting(false);
+      }
+    }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-900 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="w-12 h-12 rounded-xl bg-indigo-600 mx-auto flex items-center justify-center text-white font-extrabold text-2xl shadow-lg shadow-indigo-500/30">
-          F
-        </div>
-        <h1 className="mt-4 text-2xl font-bold tracking-tight text-white">
-          FYNUX OS
-        </h1>
-        <p className="mt-1 text-xs text-slate-400">
-          Internal Business Operating System — Fynux Digital Solutions
-        </p>
-      </div>
+  const isInitialSetup = hasOwner === false;
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-slate-800/90 backdrop-blur-md border border-slate-700/80 py-8 px-6 shadow-2xl rounded-2xl sm:px-10">
-          {error && (
+  return (
+    <div className="min-h-screen w-full bg-slate-50 flex flex-col justify-center items-center px-4 py-12 sm:px-6 relative selection:bg-blue-100 selection:text-blue-950">
+      <div className="w-full sm:max-w-md">
+        {/* Main Authentication Card */}
+        <div className="bg-white border border-slate-200/90 rounded-lg p-6 sm:p-8 shadow-xs animate-ios-fade">
+          {/* Brand Header */}
+          <div className="flex flex-col items-center text-center mb-6">
+            <div className="w-14 h-14 rounded-xl bg-slate-50 border border-slate-200/90 shadow-2xs flex items-center justify-center mb-3.5">
+              <FynuxLogo size={38} showGlow={false} />
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200/80 text-slate-600 font-mono text-[10px] tracking-wider uppercase font-medium mb-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+              <span>
+                {isInitialSetup ? "Inisialisasi Sistem Baru" : "Fynux OS • Internal Access"}
+              </span>
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+              {isInitialSetup ? "Buat Akun Owner Utama" : "Masuk ke Sistem"}
+            </h1>
+            <p className="mt-1 text-xs text-slate-500 max-w-sm leading-relaxed">
+              {isInitialSetup
+                ? "Sistem siap digunakan. Daftarkan akun Owner pertama untuk mengelola seluruh operasional."
+                : "Internal Business Operating System — Fynux Digital Solutions"}
+            </p>
+          </div>
+
+          {/* Error Alert Box */}
+          {errorMessage && (
             <div
               role="alert"
-              className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2"
+              aria-live="polite"
+              className="mb-5 p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2.5 animate-ios-fade"
             >
-              <ShieldAlert className="w-4 h-4 flex-shrink-0 text-rose-400" />
-              <span>{error}</span>
+              <ShieldAlert className="w-4 h-4 flex-shrink-0 text-rose-500 mt-0.5" />
+              <span className="leading-relaxed font-medium">{errorMessage}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-xs font-medium text-slate-300"
-              >
-                Email Perusahaan
-              </label>
-              <div className="mt-1 relative rounded-lg shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <Mail className="h-4 w-4" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="faiz@fynux.co"
-                  className="block w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
+          {/* Initial Setup Notification */}
+          {isInitialSetup && !isLoadingStatus && (
+            <div className="mb-5 p-3 rounded-md bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-start gap-2.5 animate-ios-fade">
+              <ShieldCheck className="w-4 h-4 flex-shrink-0 text-blue-600 mt-0.5" />
+              <div className="leading-relaxed font-medium">
+                Sistem mendeteksi instalasi bersih tanpa akun dummy. Buat akun Owner Anda di bawah ini untuk memulai.
               </div>
             </div>
+          )}
 
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-xs font-medium text-slate-300"
-              >
-                Password
-              </label>
-              <div className="mt-1 relative rounded-lg shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <Lock className="h-4 w-4" />
+          {isLoadingStatus ? (
+            <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-400">
+              <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+              <span className="text-xs">Menyiapkan autentikasi...</span>
+            </div>
+          ) : isInitialSetup ? (
+            /* FORM SETUP OWNER PERTAMA */
+            <form onSubmit={handleRegisterOwnerSubmit} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="fullName"
+                  className="block text-xs font-semibold text-slate-700 mb-1.5"
+                >
+                  Nama Lengkap Owner
+                </label>
+                <div className="relative rounded-md shadow-2xs">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <input
+                    id="fullName"
+                    name="fullName"
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Nama Lengkap Anda"
+                    className="block w-full rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5 pl-9 text-sm text-slate-900 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/15 transition-all"
+                  />
                 </div>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="block w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
               </div>
-            </div>
 
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors"
-              >
-                {isLoading ? (
-                  "Memverifikasi Sesi..."
-                ) : (
-                  <>
-                    <span>Masuk ke Sistem</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+              <div>
+                <label
+                  htmlFor="email"
+                  className="block text-xs font-semibold text-slate-700 mb-1.5"
+                >
+                  Email Kantor / Resmi
+                </label>
+                <div className="relative rounded-md shadow-2xs">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="owner@domain-anda.com"
+                    className="block w-full rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5 pl-9 text-sm text-slate-900 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/15 transition-all"
+                  />
+                </div>
+              </div>
 
-          {/* Quick Switcher untuk Development & Testing Role */}
-          <div className="mt-6 pt-5 border-t border-slate-700/80">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
-              Pilih Akun Cepat (Dev Mode)
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("faiz@fynux.co")}
-                className="p-2 rounded bg-slate-700/60 hover:bg-slate-700 text-[11px] text-slate-200 font-medium transition-colors text-center border border-slate-600/50"
-              >
-                <div className="text-purple-400 font-bold">Owner</div>
-                <div className="text-[9px] text-slate-400 truncate">faiz@fynux.co</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("sales@fynux.co")}
-                className="p-2 rounded bg-slate-700/60 hover:bg-slate-700 text-[11px] text-slate-200 font-medium transition-colors text-center border border-slate-600/50"
-              >
-                <div className="text-amber-400 font-bold">Sales</div>
-                <div className="text-[9px] text-slate-400 truncate">sales@fynux.co</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("dev@fynux.co")}
-                className="p-2 rounded bg-slate-700/60 hover:bg-slate-700 text-[11px] text-slate-200 font-medium transition-colors text-center border border-slate-600/50"
-              >
-                <div className="text-blue-400 font-bold">Developer</div>
-                <div className="text-[9px] text-slate-400 truncate">dev@fynux.co</div>
-              </button>
-            </div>
-          </div>
+              <div>
+                <label
+                  htmlFor="password"
+                  className="block text-xs font-semibold text-slate-700 mb-1.5"
+                >
+                  Kata Sandi Utama (Min. 6 Karakter)
+                </label>
+                <div className="relative rounded-md shadow-2xs">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <Lock className="h-4 w-4" />
+                  </div>
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Buat kata sandi kuat"
+                    className="block w-full rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5 pl-9 pr-10 text-sm text-slate-900 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/15 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-xs active-press"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Membuat Akun Owner...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Buat Akun Owner & Masuk</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          ) : (
+            /* FORM LOGIN NORMAL */
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="email"
+                  className="block text-xs font-semibold text-slate-700 mb-1.5"
+                >
+                  Email Perusahaan
+                </label>
+                <div className="relative rounded-md shadow-2xs">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="email@fynux.co"
+                    className="block w-full rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5 pl-9 text-sm text-slate-900 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/15 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="password"
+                  className="block text-xs font-semibold text-slate-700 mb-1.5"
+                >
+                  Kata Sandi
+                </label>
+                <div className="relative rounded-md shadow-2xs">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <Lock className="h-4 w-4" />
+                  </div>
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="block w-full rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5 pl-9 pr-10 text-sm text-slate-900 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/15 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-xs active-press"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Memverifikasi Sesi...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Masuk ke Sistem</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
+
+        {/* Minimal Footer */}
+        <p className="mt-6 text-center text-xs text-slate-400">
+          © 2026 Fynux Digital Solutions. Seluruh hak cipta dilindungi.
+        </p>
       </div>
     </div>
   );

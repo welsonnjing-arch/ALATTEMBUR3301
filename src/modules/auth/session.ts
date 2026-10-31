@@ -1,88 +1,39 @@
 import { cookies } from "next/headers";
 import { UserSessionData } from "./types";
 import { UserRole } from "@/types/roles";
+import { getAllUsers, toSessionData } from "./user.service";
 
 const SESSION_COOKIE_NAME = "fynux_session";
 
-// Demo/Seed internal accounts untuk verifikasi cepat & pengujian offline
-export const INITIAL_INTERNAL_USERS: UserSessionData[] = [
+/**
+ * Mengambil seluruh data sesi pengguna yang terdaftar di database
+ */
+export function getInternalUsers(): UserSessionData[] {
+  return getAllUsers().map(toSessionData);
+}
+
+/**
+ * Proxy dinamis kompatibilitas untuk INITIAL_INTERNAL_USERS
+ * Mengarah langsung ke data persisten data/users.json tanpa akun hardcoded dummy
+ */
+export const INITIAL_INTERNAL_USERS: UserSessionData[] = new Proxy(
+  [] as UserSessionData[],
   {
-    id: "11111111-1111-1111-1111-111111111111",
-    email: "faiz@fynux.co",
-    fullName: "Faiz Aditama (Owner)",
-    role: "OWNER",
-    status: "ACTIVE",
-    permissions: [
-      "crm.view_all",
-      "crm.edit_all",
-      "finance.view_costs_margins",
-      "finance.create_invoice",
-      "finance.confirm_payment",
-      "projects.edit_all",
-      "projects.cancel",
-      "settings.manage",
-      "approval.manage",
-    ],
-  },
-  {
-    id: "22222222-2222-2222-2222-222222222222",
-    email: "sales1@fynux.co",
-    fullName: "Budi Santoso (Sales 1)",
-    role: "SALES",
-    status: "ACTIVE",
-    permissions: ["finance.create_invoice"],
-  },
-  {
-    id: "44444444-4444-4444-4444-444444444444",
-    email: "sales2@fynux.co",
-    fullName: "Siti Rahma (Sales 2)",
-    role: "SALES",
-    status: "ACTIVE",
-    permissions: ["finance.create_invoice"],
-  },
-  {
-    id: "55555555-5555-5555-5555-555555555555",
-    email: "sales3@fynux.co",
-    fullName: "Dimas Anggara (Sales 3)",
-    role: "SALES",
-    status: "ACTIVE",
-    permissions: ["finance.create_invoice"],
-  },
-  {
-    id: "66666666-6666-6666-6666-666666666666",
-    email: "sales4@fynux.co",
-    fullName: "Anisa Putri (Sales 4)",
-    role: "SALES",
-    status: "ACTIVE",
-    permissions: ["finance.create_invoice"],
-  },
-  {
-    id: "77777777-7777-7777-7777-777777777777",
-    email: "sales5@fynux.co",
-    fullName: "Rian Hidayat (Sales 5)",
-    role: "SALES",
-    status: "ACTIVE",
-    permissions: ["finance.create_invoice"],
-  },
-  {
-    id: "22222222-2222-2222-2222-222222222222",
-    email: "sales@fynux.co",
-    fullName: "Budi Santoso (Sales 1)",
-    role: "SALES",
-    status: "ACTIVE",
-    permissions: [
-      "finance.create_invoice",
-    ],
-  },
-  {
-    id: "33333333-3333-3333-3333-333333333333",
-    email: "dev@fynux.co",
-    fullName: "Eko Pratama (Developer)",
-    role: "DEVELOPER",
-    status: "ACTIVE",
-    permissions: [],
-  },
-];
+    get(target, prop, receiver) {
+      const users = getAllUsers().map(toSessionData);
+      if (prop === "length") return users.length;
+      if (prop === Symbol.iterator) return users[Symbol.iterator].bind(users);
+      if (typeof prop === "string" && !isNaN(Number(prop))) {
+        return users[Number(prop)];
+      }
+      const val = Reflect.get(users, prop, receiver);
+      if (typeof val === "function") {
+        return val.bind(users);
+      }
+      return val;
+    },
+  }
+);
 
 export async function getSessionCookie(): Promise<UserSessionData | null> {
   const cookieStore = await cookies();
