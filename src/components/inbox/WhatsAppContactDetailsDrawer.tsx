@@ -33,6 +33,7 @@ import {
   updateConversationCRMDetailsAction,
   syncWhatsAppContactProfileAction,
 } from "@/modules/whatsapp/whatsapp.actions";
+import { useToast } from "@/components/common/Toast";
 
 interface WhatsAppContactDetailsDrawerProps {
   isOpen: boolean;
@@ -73,6 +74,7 @@ export function WhatsAppContactDetailsDrawer({
   onOpenCreateTask,
   onUpdated,
 }: WhatsAppContactDetailsDrawerProps) {
+  const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -126,6 +128,11 @@ export function WhatsAppContactDetailsDrawer({
       );
       setIsEditing(false);
       setSaveSuccess(false);
+
+      // Otomatis tarik foto profil dan bio dari WhatsApp saat drawer dibuka jika belum lengkap
+      if (!conversation.avatarUrl || !conversation.bio) {
+        handleSyncWhatsAppProfile();
+      }
     }
   }, [isOpen, conversation, prospect]);
 
@@ -134,6 +141,7 @@ export function WhatsAppContactDetailsDrawer({
   const handleCopyPhone = () => {
     navigator.clipboard.writeText(conversation.whatsappNumber);
     setCopiedPhone(true);
+    toast.success("Disalin ke clipboard");
     setTimeout(() => setCopiedPhone(false), 2000);
   };
 
@@ -207,15 +215,15 @@ export function WhatsAppContactDetailsDrawer({
   return (
     <div className="w-80 md:w-96 bg-white border-l border-slate-200 flex flex-col h-full shadow-lg z-20 animate-in slide-in-from-right duration-200 overflow-hidden flex-shrink-0">
       {/* Top Header Drawer */}
-      <div className="h-16 px-4 py-3 bg-[#f0f2f5] border-b border-[#d1d7db] flex items-center justify-between flex-shrink-0">
+      <div className="h-16 px-4 py-3 bg-[#f0f2f5] border-b border-[#d1d7db] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-full transition-colors"
+            className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-200/70 rounded-md transition-colors"
             title="Tutup info kontak"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
           <h3 className="font-semibold text-xs text-slate-800">
             Info Kontak & Riset CRM
@@ -226,7 +234,7 @@ export function WhatsAppContactDetailsDrawer({
           <a
             href={`/crm?search=${conversation.whatsappNumber}`}
             title="Buka profil lengkap di menu /crm"
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors"
           >
             <span>Buka di CRM</span>
             <ExternalLink className="w-3 h-3" />
@@ -244,38 +252,46 @@ export function WhatsAppContactDetailsDrawer({
           </div>
         )}
 
-        {/* 1. Header Profil Kontak */}
-        <div className="p-5 flex flex-col items-center text-center bg-gradient-to-b from-slate-50 to-white">
+        {/* 1. Header Profil Kontak (Single-Line Guaranteed, Clean Monochromatic) */}
+        <div className="p-5 flex flex-col items-center text-center bg-slate-50/60 border-b border-slate-100">
           {/* Round Avatar Profil Kontak */}
           {conversation.avatarUrl ? (
             <img
               src={conversation.avatarUrl}
               alt={conversation.contactName}
-              className="w-20 h-20 rounded-full object-cover shadow-md mb-3 border-2 border-white ring-2 ring-slate-100 flex-shrink-0"
+              className="w-16 h-16 rounded-full object-cover shadow-2xs mb-2.5 border-2 border-white ring-1 ring-slate-200 shrink-0"
             />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-slate-200 text-slate-700 font-bold text-xl flex items-center justify-center shadow-inner mb-3 border-2 border-white flex-shrink-0">
+            <div className="w-16 h-16 rounded-full bg-slate-200 text-slate-700 font-bold text-lg flex items-center justify-center shadow-2xs mb-2.5 border-2 border-white shrink-0">
               {conversation.companyName.substring(0, 2).toUpperCase()}
             </div>
           )}
-          <h4 className="font-bold text-sm text-slate-900">
-            {conversation.contactName}
+          <h4
+            className="font-bold text-sm text-slate-900 truncate max-w-full px-3 whitespace-nowrap"
+            title={conversation.contactName || conversation.companyName}
+          >
+            {conversation.contactName || conversation.companyName}
           </h4>
-          <p className="text-xs text-slate-600 mt-0.5 flex items-center gap-1">
-            <Building2 className="w-3.5 h-3.5 text-indigo-600" />
-            <span className="font-semibold text-slate-800">
-              {conversation.companyName}
-            </span>
-          </p>
+          {conversation.companyName && conversation.companyName !== conversation.contactName && (
+            <p
+              className="text-xs text-slate-600 mt-1 flex items-center justify-center gap-1.5 max-w-full px-3 truncate whitespace-nowrap"
+              title={conversation.companyName}
+            >
+              <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+              <span className="font-medium text-slate-700 truncate">
+                {conversation.companyName}
+              </span>
+            </p>
+          )}
 
           {/* Nomor WhatsApp */}
-          <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 rounded-full text-xs text-slate-700 font-mono">
-            <Phone className="w-3 h-3 text-emerald-600" />
+          <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200/90 rounded-full text-xs text-slate-700 font-mono shadow-2xs">
+            <Phone className="w-3 h-3 text-emerald-600 shrink-0" />
             <span>+{conversation.whatsappNumber}</span>
             <button
               type="button"
               onClick={handleCopyPhone}
-              className="text-slate-400 hover:text-slate-600 ml-0.5"
+              className="text-slate-400 hover:text-slate-600 ml-0.5 p-0.5 rounded transition-colors"
               title="Salin nomor WhatsApp"
             >
               {copiedPhone ? (
@@ -290,15 +306,15 @@ export function WhatsAppContactDetailsDrawer({
           <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
             {prospect && (
               <span
-                className={`text-[10px] px-2.5 py-0.5 rounded-full border font-bold ${getStageBadgeColor(
+                className={`text-[10px] px-2.5 py-0.5 rounded-md font-mono border font-semibold ${getStageBadgeColor(
                   prospect.stage
                 )}`}
               >
                 CRM: {prospect.stage}
               </span>
             )}
-            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-medium">
-              Sales: {conversation.assignedSalesName || "Belum Ditugaskan"}
+            <span className="text-[10px] px-2.5 py-0.5 rounded-md font-mono bg-white text-slate-700 border border-slate-200 font-medium shadow-2xs">
+              Sales: {conversation.assignedSalesName ? conversation.assignedSalesName.replace(/\s*\(.*\)/, "") : "Belum Ditugaskan"}
             </span>
           </div>
         </div>
@@ -321,7 +337,7 @@ export function WhatsAppContactDetailsDrawer({
               <span>{isSyncingProfile ? "Menyinkronkan..." : "Sinkronkan WA"}</span>
             </button>
           </div>
-          <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-2xs">
+          <div className="bg-white p-2.5 rounded-md border border-slate-200 shadow-2xs">
             <p className="text-xs text-slate-700 leading-relaxed">
               {conversation.bio || prospect?.bio ? (
                 <span className="italic font-medium">&ldquo;{conversation.bio || prospect?.bio}&rdquo;</span>
@@ -349,7 +365,7 @@ export function WhatsAppContactDetailsDrawer({
               tags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-mono text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs"
                 >
                   <span>{tag}</span>
                   <button
@@ -382,12 +398,12 @@ export function WhatsAppContactDetailsDrawer({
                 }
               }}
               placeholder="Ketik nama tag baru..."
-              className="flex-1 px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="flex-1 px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900"
             />
             <button
               type="button"
               onClick={() => handleAddTag(newTagInput)}
-              className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1 transition-colors shadow-xs"
+              className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-md flex items-center gap-1 transition-colors shadow-2xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Tambah</span>
@@ -397,7 +413,7 @@ export function WhatsAppContactDetailsDrawer({
           {/* Saran Tag Cepat (Preset Tags) */}
           <div>
             <span className="text-[10px] font-medium text-slate-400 block mb-1">
-              Pilihan Cepat (Klik untuk menambah):
+              Pilihan Cepat:
             </span>
             <div className="flex flex-wrap gap-1">
               {PRESET_TAGS.map((pTag) => {
@@ -409,10 +425,10 @@ export function WhatsAppContactDetailsDrawer({
                     onClick={() =>
                       isSelected ? handleRemoveTag(pTag) : handleAddTag(pTag)
                     }
-                    className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
+                    className={`text-[10px] px-2 py-0.5 rounded-md border font-mono transition-all ${
                       isSelected
-                        ? "bg-indigo-600 text-white border-indigo-600 font-bold"
-                        : "bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200"
+                        ? "bg-slate-900 text-white border-slate-900 font-bold"
+                        : "bg-slate-100 hover:bg-slate-200/80 text-slate-700 border-slate-200/70"
                     }`}
                   >
                     {isSelected ? `✓ ${pTag}` : `+ ${pTag}`}
@@ -452,10 +468,10 @@ export function WhatsAppContactDetailsDrawer({
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
                 placeholder="Contoh: Konstruksi, Pendidikan, F&B, dsb."
-                className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             ) : (
-              <div className="px-3 py-2 bg-blue-50/60 border border-blue-100 rounded-lg text-xs font-medium text-slate-800">
+              <div className="px-3 py-2 bg-blue-50/60 border border-blue-100 rounded-md text-xs font-medium text-slate-800">
                 {industry || (
                   <span className="text-slate-400 italic">
                     Belum ditentukan di CRM. Klik &quot;Edit Riset&quot; untuk mengisi.
@@ -477,10 +493,10 @@ export function WhatsAppContactDetailsDrawer({
                 value={painPoints}
                 onChange={(e) => setPainPoints(e.target.value)}
                 placeholder="Jelaskan kebutuhan, masalah, atau peluang spesifik klien..."
-                className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 leading-relaxed"
+                className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500 leading-relaxed"
               />
             ) : (
-              <div className="px-3 py-2 bg-amber-50/60 border border-amber-200/70 rounded-lg text-xs text-slate-800 leading-relaxed">
+              <div className="px-3 py-2 bg-amber-50/60 border border-amber-200/70 rounded-md text-xs text-slate-800 leading-relaxed">
                 {painPoints ? (
                   <p className="whitespace-pre-wrap">{painPoints}</p>
                 ) : (
@@ -504,10 +520,10 @@ export function WhatsAppContactDetailsDrawer({
                 value={researchNotes}
                 onChange={(e) => setResearchNotes(e.target.value)}
                 placeholder="Catatan bebas hasil riset prospek, profil, persyaratan tender, dsb."
-                className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed"
+                className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed"
               />
             ) : (
-              <div className="px-3 py-2 bg-emerald-50/40 border border-emerald-100 rounded-lg text-xs text-slate-800 leading-relaxed">
+              <div className="px-3 py-2 bg-emerald-50/40 border border-emerald-100 rounded-md text-xs text-slate-800 leading-relaxed">
                 {researchNotes ? (
                   <p className="whitespace-pre-wrap">{researchNotes}</p>
                 ) : (
@@ -525,7 +541,7 @@ export function WhatsAppContactDetailsDrawer({
               type="button"
               onClick={handleSave}
               disabled={isSaving}
-              className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
+              className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 shadow-2xs transition-colors disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5" />
               <span>
@@ -588,25 +604,25 @@ export function WhatsAppContactDetailsDrawer({
         )}
 
         {/* 5. AKSI CEPAT PROYEK & TASK */}
-        <div className="p-4 space-y-2 bg-slate-50">
-          <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+        <div className="p-4 space-y-2 bg-slate-50 border-t border-slate-100">
+          <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 font-mono">
             Aksi Terintegrasi
           </h4>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={onOpenCreateProject}
-              className="p-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold flex flex-col items-center justify-center gap-1 transition-colors text-center"
+              className="p-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 rounded-md text-xs font-semibold flex flex-col items-center justify-center gap-1 transition-colors text-center shadow-2xs"
             >
-              <FolderPlus className="w-4 h-4 text-blue-600" />
+              <FolderPlus className="w-4 h-4 text-slate-700" />
               <span>Tambah Proyek</span>
             </button>
             <button
               type="button"
               onClick={onOpenCreateTask}
-              className="p-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold flex flex-col items-center justify-center gap-1 transition-colors text-center"
+              className="p-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 rounded-md text-xs font-semibold flex flex-col items-center justify-center gap-1 transition-colors text-center shadow-2xs"
             >
-              <CheckSquare className="w-4 h-4 text-indigo-600" />
+              <CheckSquare className="w-4 h-4 text-slate-700" />
               <span>Task To Do</span>
             </button>
           </div>

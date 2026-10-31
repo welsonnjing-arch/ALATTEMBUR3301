@@ -42,6 +42,7 @@ import {
   markConversationAsReadAction,
   simulateRecipientReadMessagesAction,
   updateMessageStatusAction,
+  syncWhatsAppContactProfileAction,
 } from "@/modules/whatsapp/whatsapp.actions";
 import { WhatsAppPairingModal } from "@/components/whatsapp/WhatsAppPairingModal";
 import { WhatsAppCreateProjectModal } from "./WhatsAppCreateProjectModal";
@@ -49,6 +50,27 @@ import { WhatsAppCreateTaskModal } from "./WhatsAppCreateTaskModal";
 import { WhatsAppEmojiPicker } from "./WhatsAppEmojiPicker";
 import { WhatsAppContactDetailsDrawer } from "./WhatsAppContactDetailsDrawer";
 import { formatDateTimeWIB } from "@/lib/date";
+import { ModalPortal } from "@/components/common/ModalPortal";
+
+export function formatChatTimestamp(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    if (isToday) {
+      return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+    }
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) {
+      return "Kemarin";
+    }
+    return d.toLocaleDateString("id-ID", { day: "numeric", month: "numeric", year: "2-digit" });
+  } catch {
+    return "";
+  }
+}
 
 export function MessageStatusTick({
   status,
@@ -63,7 +85,7 @@ export function MessageStatusTick({
     case "PENDING":
       return (
         <span title="Menunggu pengiriman...">
-          <Clock className={`${iconClass} animate-pulse`} style={{ color: "#8696a0" }} />
+          <Clock className={iconClass} style={{ color: "#8696a0" }} />
         </span>
       );
     case "SENT":
@@ -284,6 +306,74 @@ export function WhatsAppInboxView({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeConv?.messages]);
 
+  // Otomatis memuat foto profil dan bio asli dari WhatsApp saat user membuka ruang percakapan (roomchat)
+  const syncedConvTimestampsRef = useRef<Map<string, number>>(new Map());
+
+  useEffect(() => {
+    if (!activeConvId) return;
+
+    const targetConv = conversations.find((c) => c.id === activeConvId);
+    if (!targetConv) return;
+
+    const targetPhone = targetConv.whatsappNumber.replace(/\D/g, "");
+    const targetProspectId = targetConv.prospectId;
+
+    const now = Date.now();
+    const lastSynced = syncedConvTimestampsRef.current.get(activeConvId) || 0;
+    const hasFullProfile = Boolean(targetConv.avatarUrl && targetConv.bio);
+    const isWithinCooldown = now - lastSynced < 120_000; // 2 menit cooldown jika data sudah terisi penuh
+
+    if (hasFullProfile && isWithinCooldown) {
+      return;
+    }
+
+    syncedConvTimestampsRef.current.set(activeConvId, now);
+
+    let isMounted = true;
+    async function autoLoadWhatsAppProfile() {
+      try {
+        const res = await syncWhatsAppContactProfileAction(activeConvId);
+        if (isMounted && res.success && (res.avatarUrl || res.bio)) {
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.id === activeConvId
+                ? {
+                    ...c,
+                    avatarUrl: res.avatarUrl || c.avatarUrl,
+                    bio: res.bio || c.bio,
+                  }
+                : c
+            )
+          );
+
+          setLocalProspects((prev) =>
+            prev.map((p) => {
+              const isMatch =
+                (targetProspectId && p.id === targetProspectId) ||
+                p.whatsappNumber.replace(/\D/g, "") === targetPhone;
+              if (isMatch) {
+                return {
+                  ...p,
+                  avatarUrl: res.avatarUrl || p.avatarUrl,
+                  bio: res.bio || p.bio,
+                };
+              }
+              return p;
+            })
+          );
+        }
+      } catch (err) {
+        // Silent fail jika koneksi WhatsApp offline
+      }
+    }
+
+    autoLoadWhatsAppProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeConvId]);
+
   // Real-time auto-sync percakapan dan status koneksi WhatsApp dari server setiap 1.2 detik
   useEffect(() => {
     const syncInterval = setInterval(async () => {
@@ -350,6 +440,7 @@ export function WhatsAppInboxView({
     (c) => c.assignedSalesId === currentUser?.id
   ).length;
   const unassignedCount = conversations.filter((c) => !c.assignedSalesId).length;
+  const crmCount = conversations.filter((c) => Boolean(c.prospectId)).length;
 
   // Menghapus percakapan dari Inbox
   const handleDeleteConversation = async () => {
@@ -501,7 +592,7 @@ export function WhatsAppInboxView({
         if (c.id === activeConv.id) {
           const snippet =
             textToSend.slice(0, 80) ||
-            (attachmentToSend ? `📎 ${attachmentToSend.fileName}` : "Pesan terkirim");
+            (attachmentToSend ? `[Lampiran] ${attachmentToSend.fileName}` : "Pesan terkirim");
           return {
             ...c,
             lastMessageSnippet: snippet,
@@ -683,70 +774,100 @@ export function WhatsAppInboxView({
     activeConv.assignedSalesId !== currentUser.id;
 
   return (
-    <div className="flex h-full w-full bg-[#f0f2f5] overflow-hidden rounded-xl border border-slate-300/80 shadow-md">
+    <div className="flex h-full w-full bg-[#f0f2f5] overflow-hidden rounded-none border-0 shadow-none">
       {/* ======================================================== */}
       {/* 1. SIDEBAR DAFTAR CHAT (1:1 WHATSAPP WEB LEFT PANEL)     */}
       {/* ======================================================== */}
-      <div className="w-80 md:w-96 flex flex-col h-full bg-white border-r border-[#d1d7db] flex-shrink-0">
+      <div
+        className={`${
+          activeConvId ? "hidden md:flex" : "flex"
+        } w-full md:w-80 lg:w-96 flex-col h-full bg-white border-r border-[#d1d7db] flex-shrink-0`}
+      >
         {/* Header Profil WhatsApp Web & Status Sesi */}
         <div className="h-16 bg-[#f0f2f5] px-4 py-2.5 flex items-center justify-between border-b border-[#d1d7db]">
-          <div className="flex items-center gap-2.5">
-            <div className="relative">
-              <div className="w-10 h-10 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="relative shrink-0">
+              <div className="w-9 h-9 rounded-md bg-emerald-700 text-white font-bold flex items-center justify-center text-xs shadow-2xs border border-emerald-600/50">
                 F
               </div>
               <span
-                className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
+                className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#f0f2f5] ${
                   session.status === "CONNECTED"
-                    ? "bg-[#25d366]"
-                    : "bg-amber-400 animate-pulse"
+                    ? "bg-emerald-500"
+                    : session.status === "CONNECTING" || session.status === "SCANNING_QR"
+                    ? "bg-amber-500"
+                    : "bg-slate-400"
                 }`}
+                title={
+                  session.status === "CONNECTED"
+                    ? "Status: Terhubung (Online)"
+                    : session.status === "CONNECTING" || session.status === "SCANNING_QR"
+                    ? "Status: Sedang Menghubungkan..."
+                    : "Status: Belum Tertaut"
+                }
               />
             </div>
-            <div>
-              <div className="text-xs font-bold text-[#111b21] leading-tight">
-                Fynux Shared WhatsApp
-              </div>
-              <div className="text-[11px] text-[#667781] leading-tight">
+            <div className="min-w-0">
+              <span className="text-sm font-semibold text-[#111b21] leading-tight block truncate">
+                WhatsApp
+              </span>
+              <span className="text-[11px] text-[#667781] leading-tight block mt-0.5 font-mono truncate">
                 {session.status === "CONNECTED"
-                  ? `+${session.phoneNumber} · 1 Nomor (5 Sales)`
+                  ? session.phoneNumber
+                    ? session.phoneNumber.startsWith("+")
+                      ? session.phoneNumber
+                      : `+${session.phoneNumber}`
+                    : "Terhubung"
+                  : session.status === "CONNECTING" || session.status === "SCANNING_QR"
+                  ? "Menghubungkan..."
                   : "Sesi Belum Tertaut"}
-              </div>
+              </span>
             </div>
           </div>
 
           {/* Action Icons: Pairing & New Chat */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
               onClick={() => setIsPairingModalOpen(true)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+              title={
                 session.status === "CONNECTED"
-                  ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
-                  : "bg-[#00a884] text-white hover:bg-[#008f6f] shadow-sm animate-pulse"
-              }`}
+                  ? `Kelola Sesi WhatsApp (${session.phoneNumber ? (session.phoneNumber.startsWith("+") ? session.phoneNumber : `+${session.phoneNumber}`) : "Aktif"})`
+                  : session.status === "CONNECTING" || session.status === "SCANNING_QR"
+                  ? "Sedang Menghubungkan WhatsApp (Klik untuk kelola / pindai QR)"
+                  : "Tautkan Akun WhatsApp (Pindai QR)"
+              }
+              aria-label="Kelola Sesi WhatsApp"
+              className="relative w-8 h-8 rounded-md flex items-center justify-center text-[#54656f] hover:text-[#111b21] hover:bg-slate-200/70 transition-colors"
             >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>
-                {session.status === "CONNECTED" ? "Terhubung" : "Tautkan WA"}
-              </span>
+              <Smartphone className="w-4 h-4" />
+              {session.status !== "CONNECTED" && (
+                <span
+                  className={`absolute top-1 right-1 w-2 h-2 rounded-full ring-2 ring-[#f0f2f5] ${
+                    session.status === "CONNECTING" || session.status === "SCANNING_QR"
+                      ? "bg-amber-500 animate-pulse"
+                      : "bg-rose-500"
+                  }`}
+                />
+              )}
             </button>
 
             <button
               type="button"
               onClick={() => setIsNewChatModalOpen(true)}
               title="Mulai Chat Prospek Baru"
-              className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-full transition-colors"
+              aria-label="Mulai Chat Prospek Baru"
+              className="w-8 h-8 rounded-md flex items-center justify-center text-[#54656f] hover:text-[#111b21] hover:bg-slate-200/70 transition-colors"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4" />
             </button>
           </div>
         </div>
 
         {/* Kolom Pencarian WhatsApp Web */}
         <div className="p-2 border-b border-[#f0f2f5] bg-white">
-          <div className="relative flex items-center bg-[#f0f2f5] rounded-lg px-3 py-1.5 focus-within:bg-white focus-within:ring-1 focus-within:ring-[#00a884] transition-all">
-            <Search className="w-4 h-4 text-[#54656f] mr-2 flex-shrink-0" />
+          <div className="relative flex items-center bg-[#f0f2f5] rounded-md px-3 py-1.5 focus-within:bg-white focus-within:ring-1 focus-within:ring-emerald-600 border border-transparent focus-within:border-emerald-600 transition-all">
+            <Search className="w-4 h-4 text-[#54656f] mr-2 shrink-0" />
             <input
               type="text"
               placeholder="Cari atau mulai chat baru"
@@ -758,7 +879,7 @@ export function WhatsAppInboxView({
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-slate-600 p-0.5"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -770,41 +891,41 @@ export function WhatsAppInboxView({
             <button
               type="button"
               onClick={() => setFilterTab("MY_CHATS")}
-              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors flex items-center gap-1 whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 filterTab === "MY_CHATS"
-                  ? "bg-[#e7fce3] text-[#008069] font-bold shadow-xs"
+                  ? "bg-[#e7fce3] text-[#008069] font-bold border border-emerald-200/80"
                   : "bg-[#f0f2f5] text-[#54656f] hover:bg-slate-200/60"
               }`}
             >
               <span>Chat Saya</span>
-              <span className="text-[10px] opacity-80">({myChatsCount})</span>
+              <span className="text-[10px] font-mono opacity-80">({myChatsCount})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setFilterTab("ALL")}
-              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors flex items-center gap-1 whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 filterTab === "ALL"
-                  ? "bg-[#e7fce3] text-[#008069] font-bold shadow-xs"
+                  ? "bg-[#e7fce3] text-[#008069] font-bold border border-emerald-200/80"
                   : "bg-[#f0f2f5] text-[#54656f] hover:bg-slate-200/60"
               }`}
             >
               <span>Semua Tim</span>
-              <span className="text-[10px] opacity-80">({conversations.length})</span>
+              <span className="text-[10px] font-mono opacity-80">({conversations.length})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setFilterTab("UNASSIGNED")}
-              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors flex items-center gap-1 whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 filterTab === "UNASSIGNED"
-                  ? "bg-amber-100 text-amber-900 font-bold shadow-xs"
+                  ? "bg-amber-100 text-amber-900 font-bold border border-amber-200/80"
                   : "bg-[#f0f2f5] text-[#54656f] hover:bg-slate-200/60"
               }`}
             >
               <span>Belum Ditugaskan</span>
               {unassignedCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[9px] font-bold">
+                <span className="px-1.5 py-0.5 rounded-md bg-amber-500 text-white text-[9px] font-bold font-mono">
                   {unassignedCount}
                 </span>
               )}
@@ -813,21 +934,22 @@ export function WhatsAppInboxView({
             <button
               type="button"
               onClick={() => setFilterTab("CRM")}
-              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 filterTab === "CRM"
-                  ? "bg-[#e7fce3] text-[#008069] font-bold shadow-xs"
+                  ? "bg-[#e7fce3] text-[#008069] font-bold border border-emerald-200/80"
                   : "bg-[#f0f2f5] text-[#54656f] hover:bg-slate-200/60"
               }`}
             >
-              Prospek CRM
+              <span>Prospek CRM</span>
+              <span className="text-[10px] font-mono opacity-80">({crmCount})</span>
             </button>
           </div>
 
           {/* Supervisor / Owner Dropdown: Filter Khusus per Sales (Hanya Akses Owner) */}
           {isOwner && (
-            <div className="mt-2 px-1 flex items-center justify-between text-[11px] text-slate-500 bg-slate-50 p-1.5 rounded-lg border border-slate-200/70">
+            <div className="mt-2 px-1 flex items-center justify-between text-[11px] text-slate-500 bg-slate-50 p-1.5 rounded-md border border-slate-200/70">
               <span className="flex items-center gap-1 text-slate-600 font-medium">
-                <Users className="w-3.5 h-3.5 text-indigo-600" /> Filter Agen (Owner):
+                <Users className="w-3.5 h-3.5 text-slate-600" /> Filter Agen:
               </span>
               <select
                 value={selectedSalesAgent}
@@ -873,7 +995,7 @@ export function WhatsAppInboxView({
                       markConversationAsReadAction(c.id).catch(console.error);
                     }
                   }}
-                  className={`px-4 py-3 flex items-center gap-3 cursor-pointer transition-colors ${
+                  className={`px-3.5 py-3 flex items-start gap-3 cursor-pointer transition-colors ${
                     isSelected
                       ? "bg-[#f0f2f5]"
                       : "hover:bg-[#f5f6f6] bg-white"
@@ -884,110 +1006,111 @@ export function WhatsAppInboxView({
                     <img
                       src={c.avatarUrl}
                       alt={c.contactName}
-                      className="w-12 h-12 rounded-full object-cover shadow-inner flex-shrink-0 border border-slate-200"
+                      className="w-11 h-11 rounded-full object-cover shrink-0 border border-slate-200/90 shadow-2xs mt-0.5"
                     />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-sm flex-shrink-0 shadow-inner">
+                    <div className="w-11 h-11 rounded-full bg-slate-200 text-slate-700 font-semibold flex items-center justify-center text-xs shrink-0 shadow-2xs mt-0.5 border border-slate-300/50">
                       {c.companyName.substring(0, 2).toUpperCase()}
                     </div>
                   )}
 
-                  {/* Konten Chat Item */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-semibold text-[#111b21] truncate">
-                        {c.contactName}
-                      </h4>
-                      <span className="text-[10px] text-[#667781] flex-shrink-0">
-                        {c.lastMessageAt
-                          ? new Date(c.lastMessageAt).toLocaleTimeString("id-ID", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : ""}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] text-indigo-700 font-medium truncate max-w-[130px]">
-                        {c.companyName}
-                      </span>
-
-                      {/* Tag Kepemilikan Sales */}
-                      {c.assignedSalesName ? (
-                        <span
-                          className={`text-[9px] px-1.5 py-0.2 rounded font-medium flex items-center gap-0.5 ${
-                            isMine
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold"
-                              : "bg-slate-100 text-slate-600 border border-slate-200"
-                          }`}
-                        >
-                          <UserCheck className="w-2.5 h-2.5" />
-                          <span>
-                            {isMine
-                              ? "Chat Saya"
-                              : c.assignedSalesName.replace(/\s*\(.*\)/, "")}
-                          </span>
-                        </span>
-                      ) : (
-                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 font-semibold">
-                          ⚠️ Belum Ada Sales
-                        </span>
-                      )}
-
-                      {prospect && (
-                        <span
-                          className={`text-[9px] px-1.5 py-0.2 rounded border font-semibold ${getStageBadge(
-                            prospect.stage
-                          )}`}
-                        >
-                          {prospect.stage}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Tags List */}
-                    {c.tags && c.tags.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1 mt-1">
-                        {c.tags.slice(0, 3).map((tag) => (
-                          <span
-                            key={tag}
-                            className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 font-medium border border-indigo-200"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                        {c.tags.length > 3 && (
-                          <span className="text-[9px] text-slate-400 font-medium">
-                            +{c.tags.length - 3}
+                  {/* Konten Chat Item (Single-Line Guaranteed, No Multi-line Stacking) */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    {/* Baris 1: Nama Kontak & Perusahaan + Waktu */}
+                    <div className="flex items-center justify-between gap-2 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden flex-nowrap">
+                        <h4 className="text-xs font-semibold text-slate-900 truncate whitespace-nowrap min-w-0 shrink">
+                          {c.contactName || c.companyName || "Kontak WhatsApp"}
+                        </h4>
+                        {c.companyName && c.companyName !== c.contactName && (
+                          <span className="text-[11px] text-slate-500 font-normal truncate whitespace-nowrap min-w-0 shrink max-w-[55%]">
+                            · {c.companyName}
                           </span>
                         )}
                       </div>
-                    )}
+                      <span className="text-[10px] text-slate-400 font-medium shrink-0 whitespace-nowrap tabular-nums ml-1">
+                        {formatChatTimestamp(c.lastMessageAt)}
+                      </span>
+                    </div>
 
-                    {/* Snippet Pesan & Check Ticks */}
+                    {/* Baris 2: Snippet Pesan & Indikator Centang / Unread */}
                     {(() => {
                       const lastMsg = c.messages[c.messages.length - 1];
                       const isOutgoing =
                         lastMsg && (lastMsg.sender === "SALES" || lastMsg.sender === "AI");
 
                       return (
-                        <div className="flex items-center justify-between mt-1">
-                          <div className="flex items-center gap-1 text-[11px] text-[#667781] truncate">
+                        <div className="flex items-center justify-between gap-2 mt-1 min-w-0">
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 min-w-0 flex-1 overflow-hidden flex-nowrap">
                             {isOutgoing && (
                               <MessageStatusTick status={lastMsg?.status} size="sm" />
                             )}
-                            <span className="truncate">{c.lastMessageSnippet}</span>
+                            <span className="truncate whitespace-nowrap min-w-0 flex-1">
+                              {c.lastMessageSnippet || "Belum ada pesan"}
+                            </span>
                           </div>
 
                           {c.unreadCount > 0 && (
-                            <span className="w-4 h-4 rounded-full bg-[#25d366] text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 ml-1">
+                            <span className="h-4 min-w-[16px] px-1 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0 font-mono">
                               {c.unreadCount}
                             </span>
                           )}
                         </div>
                       );
                     })()}
+
+                    {/* Baris 3: Status Sales, Stage CRM & Tag (Single-line chips horizontal) */}
+                    <div className="flex items-center gap-1.5 mt-1.5 min-w-0 overflow-hidden flex-nowrap">
+                      {c.assignedSalesName ? (
+                        <span
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0 whitespace-nowrap ${
+                            isMine
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-semibold"
+                              : "bg-slate-100 text-slate-600 border border-slate-200/70"
+                          }`}
+                        >
+                          <UserCheck className="w-2.5 h-2.5 shrink-0" />
+                          <span className="truncate max-w-[85px]">
+                            {isMine
+                              ? "Chat Saya"
+                              : c.assignedSalesName.replace(/\s*\(.*\)/, "")}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-50 text-amber-700 border border-amber-200/80 shrink-0 whitespace-nowrap">
+                          <ShieldAlert className="w-2.5 h-2.5 shrink-0" />
+                          <span>Belum Ada Sales</span>
+                        </span>
+                      )}
+
+                      {prospect && (
+                        <span
+                          className={`text-[9px] px-1.5 py-0.5 rounded border font-mono font-semibold shrink-0 whitespace-nowrap ${getStageBadge(
+                            prospect.stage
+                          )}`}
+                        >
+                          {prospect.stage}
+                        </span>
+                      )}
+
+                      {c.tags && c.tags.length > 0 && (
+                        <div className="flex items-center gap-1 min-w-0 overflow-hidden shrink">
+                          {c.tags.slice(0, 2).map((tag) => (
+                            <span
+                              key={tag}
+                              className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono border border-slate-200/60 shrink-0 whitespace-nowrap truncate max-w-[80px]"
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                          {c.tags.length > 2 && (
+                            <span className="text-[9px] text-slate-400 font-mono shrink-0">
+                              +{c.tags.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -1003,98 +1126,132 @@ export function WhatsAppInboxView({
       {/* ======================================================== */}
       {/* 2. RUANG CHAT AKTIF (1:1 WHATSAPP WEB CHAT WINDOW)       */}
       {/* ======================================================== */}
-      <div className="flex-1 flex h-full overflow-hidden relative">
+      <div
+        className={`${
+          !activeConvId ? "hidden md:flex" : "flex"
+        } flex-1 flex h-full overflow-hidden relative`}
+      >
         <div className="flex-1 flex flex-col h-full bg-[#efeae2] relative min-w-0">
           {activeConv ? (
             <>
               {/* Header Ruang Chat */}
-              <div className="h-16 bg-[#f0f2f5] px-4 py-2.5 flex items-center justify-between border-b border-[#d1d7db] z-10 gap-3">
-                {/* Info Kontak & Profil (Kiri) */}
+              <div className="h-16 bg-[#f0f2f5] px-4 py-2.5 flex items-center justify-between border-b border-[#d1d7db] z-10 gap-2 sm:gap-3">
+                {/* Mobile Back Button to Conversation List */}
+                <button
+                  type="button"
+                  onClick={() => setActiveConvId("")}
+                  className="md:hidden p-1.5 -ml-1 text-slate-600 hover:bg-slate-200/70 rounded-md transition-colors shrink-0"
+                  title="Kembali ke daftar percakapan"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+
+                {/* Info Kontak & Profil (Kiri - Single-Line Guaranteed) */}
                 <div
                   onClick={() => setIsContactInfoOpen((prev) => !prev)}
-                  className="flex items-center gap-3 cursor-pointer p-1 -m-1 rounded-lg hover:bg-slate-200/60 transition-colors group select-none min-w-0"
+                  className="flex items-center gap-2.5 sm:gap-3 cursor-pointer p-1 -m-1 rounded-md hover:bg-slate-200/60 transition-colors group select-none min-w-0 flex-1"
                   title="Klik untuk membuka Info Kontak, Tags & Riset CRM"
                 >
                   {/* Round Avatar Header */}
                   {activeConv.avatarUrl ? (
                     <img
                       src={activeConv.avatarUrl}
-                      alt={activeConv.contactName}
-                      className="w-10 h-10 rounded-full object-cover shadow-xs flex-shrink-0 border border-slate-200"
+                      alt={activeConv.contactName || activeConv.companyName}
+                      className="w-10 h-10 rounded-full object-cover shadow-2xs shrink-0 border border-slate-200/90"
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-slate-300 group-hover:bg-indigo-200 text-slate-700 group-hover:text-indigo-800 font-bold flex items-center justify-center text-sm shadow-xs flex-shrink-0 transition-colors">
-                      {activeConv.companyName.substring(0, 2).toUpperCase()}
+                    <div className="w-10 h-10 rounded-full bg-slate-200 group-hover:bg-slate-300 text-slate-700 font-semibold flex items-center justify-center text-xs shadow-2xs shrink-0 transition-colors border border-slate-300/50">
+                      {(activeConv.companyName || activeConv.contactName || "WA").substring(0, 2).toUpperCase()}
                     </div>
                   )}
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-semibold text-[#111b21] group-hover:text-indigo-600 transition-colors truncate max-w-[180px] sm:max-w-[260px]">
-                        {activeConv.contactName}
+
+                  <div className="min-w-0 flex-1">
+                    {/* Baris 1 Header: Nama Kontak + Perusahaan + CRM Stage */}
+                    <div className="flex items-center gap-2 min-w-0 flex-nowrap overflow-hidden">
+                      <h3 className="text-sm font-semibold text-slate-900 group-hover:text-blue-600 transition-colors truncate whitespace-nowrap min-w-0 shrink">
+                        {activeConv.contactName || activeConv.companyName || "Kontak WhatsApp"}
                       </h3>
+                      {activeConv.companyName && activeConv.companyName !== activeConv.contactName && (
+                        <span className="text-xs text-slate-500 font-normal truncate whitespace-nowrap min-w-0 shrink max-w-[160px] hidden sm:inline">
+                          ({activeConv.companyName})
+                        </span>
+                      )}
                       {activeProspect && (
                         <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full border font-bold flex-shrink-0 ${getStageBadge(
+                          className={`text-[9px] px-1.5 py-0.5 rounded font-mono border font-semibold shrink-0 whitespace-nowrap ${getStageBadge(
                             activeProspect.stage
                           )}`}
                         >
                           CRM: {activeProspect.stage}
                         </span>
                       )}
-                      {/* Tags */}
                       {activeConv.tags && activeConv.tags.length > 0 && (
-                        <div className="hidden lg:flex items-center gap-1 flex-shrink-0">
+                        <div className="hidden xl:flex items-center gap-1 shrink-0">
                           {activeConv.tags.slice(0, 2).map((t) => (
                             <span
                               key={t}
-                              className="text-[9px] px-1.5 py-0.2 rounded-full bg-indigo-50 text-indigo-700 font-medium border border-indigo-200"
+                              className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-slate-100 text-slate-600 font-medium border border-slate-200/70 shrink-0"
                             >
                               #{t}
                             </span>
                           ))}
-                          {activeConv.tags.length > 2 && (
-                            <span className="text-[9px] text-slate-400 font-medium">
-                              +{activeConv.tags.length - 2}
-                            </span>
-                          )}
                         </div>
                       )}
                     </div>
-                    <div className="text-[11px] text-[#667781] flex items-center gap-1.5 mt-0.5 truncate">
-                      <span className="truncate max-w-[140px] sm:max-w-[200px] font-medium text-slate-600">
-                        {activeConv.companyName}
+
+                    {/* Baris 2 Header: Nomor WA + Bio/Status WA + PIC Sales */}
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5 min-w-0 flex-nowrap whitespace-nowrap overflow-hidden">
+                      <span className="font-mono text-[11px] text-slate-600 shrink-0">
+                        +{activeConv.whatsappNumber}
                       </span>
-                      <span>·</span>
-                      <span className="font-mono">+{activeConv.whatsappNumber}</span>
-                      <span className="text-indigo-600 hover:text-indigo-800 text-[10px] font-semibold bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/60 px-1.5 py-0.2 rounded flex items-center gap-1 transition-colors flex-shrink-0">
-                        <Info className="w-2.5 h-2.5" />
-                        Riset & Info
-                      </span>
+                      {activeConv.bio ? (
+                        <>
+                          <span className="text-slate-300 shrink-0">·</span>
+                          <span className="text-slate-500 truncate text-[11px] italic min-w-0 shrink max-w-[180px]">
+                            &ldquo;{activeConv.bio}&rdquo;
+                          </span>
+                        </>
+                      ) : activeConv.companyName && activeConv.companyName !== activeConv.contactName ? (
+                        <>
+                          <span className="text-slate-300 shrink-0 sm:hidden">·</span>
+                          <span className="text-slate-500 truncate text-[11px] min-w-0 shrink sm:hidden">
+                            {activeConv.companyName}
+                          </span>
+                        </>
+                      ) : null}
+                      {activeConv.assignedSalesName && (
+                        <>
+                          <span className="text-slate-300 shrink-0">·</span>
+                          <span className="text-slate-500 text-[11px] shrink-0 font-medium">
+                            Sales: {activeConv.assignedSalesName.replace(/\s*\(.*\)/, "")}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 {/* Action Buttons di Header Chat (Kanan) */}
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   {/* Multi-Agent Assignment: Hanya Owner yang Berhak Mengatur/Memindahkan */}
                   {isOwner ? (
                     <div className="relative">
                       <button
                         type="button"
                         onClick={() => setIsAssignDropdownOpen((prev) => !prev)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors shadow-xs ${
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold border transition-colors shadow-2xs ${
                           activeConv.assignedSalesName
                             ? "bg-white hover:bg-slate-50 text-slate-700 border-slate-300"
-                            : "bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 animate-pulse"
+                            : "bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300"
                         }`}
                       >
-                        <UserCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                        <span className="max-w-[130px] truncate">
+                        <UserCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span className="max-w-[120px] truncate">
                           {activeConv.assignedSalesName
                             ? activeConv.assignedSalesName.replace(/\s*\(.*\)/, "")
                             : "Tugaskan Sales"}
                         </span>
-                        <ChevronDown className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                        <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
                       </button>
 
                       {/* Dropdown Menu untuk Transfer / Assignment (Khusus Owner) */}
@@ -1104,9 +1261,9 @@ export function WhatsAppInboxView({
                             className="fixed inset-0 z-20"
                             onClick={() => setIsAssignDropdownOpen(false)}
                           />
-                          <div className="absolute right-0 mt-1.5 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30 divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100">
-                            <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                              Tugaskan Kontak Ini Ke (Owner):
+                          <div className="absolute right-0 mt-1.5 w-60 bg-white rounded-lg shadow-lg border border-slate-200/90 py-1.5 z-30 divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100">
+                            <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                              Tugaskan Kontak Ini Ke:
                             </div>
                             <div className="max-h-56 overflow-y-auto">
                               {SALES_TEAM.map((sales) => (
@@ -1138,10 +1295,10 @@ export function WhatsAppInboxView({
                     /* Tampilan Read-Only untuk Sales / Non-Owner */
                     <div
                       title="Hanya Owner yang berhak mengatur atau mengubah penugasan kontak"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border bg-white text-slate-700 border-slate-200 select-none shadow-xs"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border bg-white text-slate-700 border-slate-200 select-none shadow-2xs"
                     >
-                      <UserCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                      <span className="max-w-[130px] truncate">
+                      <UserCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="max-w-[120px] truncate">
                         {activeConv.assignedSalesName
                           ? `Sales: ${activeConv.assignedSalesName.replace(/\s*\(.*\)/, "")}`
                           : "Menunggu Penugasan"}
@@ -1154,10 +1311,10 @@ export function WhatsAppInboxView({
                     type="button"
                     onClick={() => setIsContactInfoOpen((prev) => !prev)}
                     title={isContactInfoOpen ? "Tutup Info Kontak & Riset CRM" : "Buka Info Kontak & Riset CRM"}
-                    className={`p-2 rounded-full transition-colors ${
+                    className={`p-1.5 rounded-md transition-colors ${
                       isContactInfoOpen
-                        ? "bg-indigo-100 text-indigo-700 shadow-xs"
-                        : "text-[#54656f] hover:bg-slate-200/60"
+                        ? "bg-slate-200 text-slate-800 shadow-2xs"
+                        : "text-[#54656f] hover:bg-slate-200/70"
                     }`}
                   >
                     <Info className="w-4 h-4" />
@@ -1166,7 +1323,7 @@ export function WhatsAppInboxView({
                   {/* Tombol Search dalam Chat */}
                   <button
                     type="button"
-                    className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-full transition-colors"
+                    className="p-1.5 text-[#54656f] hover:bg-slate-200/70 rounded-md transition-colors"
                     title="Cari dalam percakapan ini"
                   >
                     <Search className="w-4 h-4" />
@@ -1178,10 +1335,10 @@ export function WhatsAppInboxView({
                       type="button"
                       onClick={() => setIsMoreMenuOpen((prev) => !prev)}
                       title="Menu Lainnya"
-                      className={`p-2 rounded-full transition-colors ${
+                      className={`p-1.5 rounded-md transition-colors ${
                         isMoreMenuOpen
                           ? "bg-slate-200/80 text-slate-800"
-                          : "text-[#54656f] hover:bg-slate-200/60"
+                          : "text-[#54656f] hover:bg-slate-200/70"
                       }`}
                     >
                       <MoreVertical className="w-4 h-4" />
@@ -1193,7 +1350,7 @@ export function WhatsAppInboxView({
                           className="fixed inset-0 z-20"
                           onClick={() => setIsMoreMenuOpen(false)}
                         />
-                        <div className="absolute right-0 mt-1.5 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-30 divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100 text-slate-700">
+                        <div className="absolute right-0 mt-1.5 w-60 bg-white rounded-lg shadow-lg border border-slate-200/90 py-1 z-30 divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100 text-slate-700">
                           {/* Aksi Bisnis */}
                           <div className="py-1">
                             <button
@@ -1204,7 +1361,7 @@ export function WhatsAppInboxView({
                               }}
                               className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 hover:bg-slate-50 transition-colors"
                             >
-                              <FolderPlus className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                              <FolderPlus className="w-4 h-4 text-slate-600 shrink-0" />
                               <span>Tambah Proyek (/projects)</span>
                             </button>
 
@@ -1216,7 +1373,7 @@ export function WhatsAppInboxView({
                               }}
                               className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 hover:bg-slate-50 transition-colors"
                             >
-                              <CheckSquare className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                              <CheckSquare className="w-4 h-4 text-slate-600 shrink-0" />
                               <span>Tambah Task To Do (/tasks)</span>
                             </button>
                           </div>
@@ -1230,9 +1387,9 @@ export function WhatsAppInboxView({
                                 handleSimulateClientReply();
                               }}
                               disabled={isSimulating}
-                              className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 text-purple-700 hover:bg-purple-50 transition-colors"
+                              className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 text-slate-700 hover:bg-slate-50 transition-colors"
                             >
-                              <Sparkles className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                              <Sparkles className="w-4 h-4 text-slate-500 shrink-0" />
                               <span>{isSimulating ? "Menerima..." : "Simulasi Balasan Klien"}</span>
                             </button>
 
@@ -1242,9 +1399,9 @@ export function WhatsAppInboxView({
                                 setIsMoreMenuOpen(false);
                                 handleSimulateRecipientRead();
                               }}
-                              className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 text-sky-700 hover:bg-sky-50 transition-colors"
+                              className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 text-slate-700 hover:bg-slate-50 transition-colors"
                             >
-                              <CheckCheck className="w-4 h-4 text-[#53bdeb] flex-shrink-0" />
+                              <CheckCheck className="w-4 h-4 text-[#53bdeb] shrink-0" />
                               <span>Simulasi Dibaca (Centang Biru)</span>
                             </button>
                           </div>
@@ -1259,7 +1416,7 @@ export function WhatsAppInboxView({
                               }}
                               className="w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 text-rose-600 hover:bg-rose-50 transition-colors"
                             >
-                              <Trash2 className="w-4 h-4 text-rose-500 flex-shrink-0" />
+                              <Trash2 className="w-4 h-4 text-rose-500 shrink-0" />
                               <span>Hapus Percakapan</span>
                             </button>
                           </div>
@@ -1341,7 +1498,8 @@ export function WhatsAppInboxView({
                       {/* Atribusi Pengirim Pesan Tim */}
                       {isSales && m.sentByUserName && (
                         <div className="text-[10px] font-semibold text-emerald-800 mb-0.5 flex items-center gap-1 opacity-90 select-none">
-                          <span>💬 {m.sentByUserName}</span>
+                          <span className="font-mono text-emerald-700">@</span>
+                          <span>{m.sentByUserName}</span>
                         </div>
                       )}
 
@@ -1422,7 +1580,7 @@ export function WhatsAppInboxView({
             {session.status !== "CONNECTED" && (
               <div className="bg-amber-50 border-t border-amber-200 px-4 py-2 flex items-center justify-between text-xs text-amber-900 z-10 shadow-xs">
                 <span className="flex items-center gap-1.5 font-medium">
-                  <Smartphone className="w-4 h-4 text-amber-600 animate-pulse flex-shrink-0" />
+                  <Smartphone className="w-4 h-4 text-amber-600 flex-shrink-0" />
                   Perangkat WhatsApp belum terhubung. Pesan tidak akan terkirim ke ponsel prospek.
                 </span>
                 <button
@@ -1467,7 +1625,7 @@ export function WhatsAppInboxView({
                       {pendingAttachment.fileName}
                     </p>
                     <p className="text-[10px] text-slate-500">
-                      {pendingAttachment.fileSize} •{" "}
+                      {pendingAttachment.fileSize} /{" "}
                       {pendingAttachment.isImage
                         ? "Gambar siap dikirim"
                         : "Dokumen siap dikirim"}
@@ -1483,7 +1641,7 @@ export function WhatsAppInboxView({
                     }
                     setPendingAttachment(null);
                   }}
-                  className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-slate-800 rounded-full transition-colors flex-shrink-0"
+                  className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-slate-800 rounded-md transition-colors flex-shrink-0"
                   title="Batal lampiran"
                 >
                   <X className="w-4 h-4" />
@@ -1503,7 +1661,7 @@ export function WhatsAppInboxView({
               <button
                 type="button"
                 onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
-                className={`p-2 rounded-full transition-colors ${
+                className={`p-2 rounded-md transition-colors ${
                   isEmojiPickerOpen
                     ? "text-[#00a884] bg-[#00a884]/15"
                     : "text-[#54656f] hover:bg-slate-200/60"
@@ -1515,7 +1673,7 @@ export function WhatsAppInboxView({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className={`p-2 rounded-full transition-colors ${
+                className={`p-2 rounded-md transition-colors ${
                   pendingAttachment
                     ? "text-[#00a884] bg-[#00a884]/15"
                     : "text-[#54656f] hover:bg-slate-200/60"
@@ -1543,7 +1701,7 @@ export function WhatsAppInboxView({
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   disabled={isSending}
-                  className="w-full bg-white rounded-lg px-4 py-2 text-xs text-[#111b21] placeholder-[#667781] focus:outline-none focus:ring-1 focus:ring-[#00a884] shadow-xs"
+                  className="w-full bg-white rounded-md px-3.5 py-2 text-xs text-[#111b21] placeholder-[#667781] focus:outline-none focus:ring-1 focus:ring-emerald-600 border border-slate-200 shadow-2xs"
                 />
               </form>
 
@@ -1552,7 +1710,7 @@ export function WhatsAppInboxView({
                   type="button"
                   onClick={() => handleSendMessage()}
                   disabled={isSending}
-                  className="p-2 bg-[#00a884] hover:bg-[#008f6f] text-white rounded-full transition-colors shadow-sm"
+                  className="p-2 bg-[#00a884] hover:bg-[#008f6f] text-white rounded-md transition-colors shadow-2xs shrink-0"
                   title="Kirim Pesan"
                 >
                   <Send className="w-4 h-4" />
@@ -1560,7 +1718,7 @@ export function WhatsAppInboxView({
               ) : (
                 <button
                   type="button"
-                  className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-full transition-colors"
+                  className="p-2 text-[#54656f] hover:bg-slate-200/60 rounded-md transition-colors shrink-0"
                 >
                   <Mic className="w-5 h-5" />
                 </button>
@@ -1570,8 +1728,8 @@ export function WhatsAppInboxView({
         ) : (
           /* Empty State (WhatsApp Web Style) */
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-[#f0f2f5]">
-            <div className="w-20 h-20 rounded-full bg-[#00a884]/10 text-[#00a884] flex items-center justify-center mb-4">
-              <MessageSquare className="w-10 h-10" />
+            <div className="w-16 h-16 rounded-full bg-[#00a884]/10 text-[#00a884] flex items-center justify-center mb-4 border border-[#00a884]/20">
+              <MessageSquare className="w-8 h-8" />
             </div>
             <h3 className="text-base font-bold text-[#111b21]">
               WhatsApp Web Multi-Device untuk Fynux OS
@@ -1644,23 +1802,24 @@ export function WhatsAppInboxView({
 
       {/* Modal Mulai Chat Baru dari Daftar Prospek CRM */}
       {isNewChatModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
-            <div className="bg-[#00a884] text-white px-5 py-4 flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider">
-                Mulai Chat WhatsApp Prospek Baru
+        <ModalPortal>
+          <div className="fixed inset-0 z-[9999] modal-backdrop-clean flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs animate-ios-fade">
+            <div className="bg-white rounded-xl shadow-xl border border-slate-200/90 w-full max-w-md max-h-[88vh] flex flex-col overflow-hidden animate-ios-scale relative">
+            <div className="shrink-0 bg-white px-5 py-3.5 border-b border-slate-200/80 flex items-center justify-between text-slate-900">
+              <h3 className="text-sm font-semibold text-slate-900">
+                Mulai Chat WhatsApp Prospek
               </h3>
               <button
                 type="button"
                 onClick={() => setIsNewChatModalOpen(false)}
-                className="text-white/80 hover:text-white"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-md transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-4 max-h-96 overflow-y-auto divide-y divide-slate-100">
-              <p className="text-[11px] text-slate-500 mb-2">
+            <div className="flex-1 overflow-y-auto px-5 py-3 divide-y divide-slate-100">
+              <p className="text-[11px] text-slate-500 mb-2.5">
                 Pilih prospek dari database CRM untuk membuka ruang obrolan:
               </p>
               {localProspects.map((p) => (
@@ -1699,18 +1858,24 @@ export function WhatsAppInboxView({
                     }
                     setIsNewChatModalOpen(false);
                   }}
-                  className="py-2.5 px-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors flex items-center justify-between"
+                  className="py-2.5 px-2 hover:bg-slate-50 rounded-md cursor-pointer transition-colors flex items-center justify-between gap-3 group"
                 >
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-800">
-                      {p.contactName}
+                  <div className="min-w-0 flex-1">
+                    <h5 className="text-xs font-semibold text-slate-900 group-hover:text-blue-600 transition-colors truncate whitespace-nowrap min-w-0">
+                      {p.contactName || p.companyName || "Prospek CRM"}
                     </h5>
-                    <div className="text-[11px] text-slate-500">
-                      {p.companyName} · +{p.whatsappNumber}
+                    <div className="text-[11px] text-slate-500 truncate whitespace-nowrap mt-0.5 font-mono min-w-0 flex items-center gap-1.5">
+                      {p.companyName && p.companyName !== p.contactName && (
+                        <>
+                          <span className="truncate max-w-[160px]">{p.companyName}</span>
+                          <span className="text-slate-300 shrink-0">·</span>
+                        </>
+                      )}
+                      <span className="shrink-0">+{p.whatsappNumber}</span>
                     </div>
                   </div>
                   <span
-                    className={`text-[9px] px-2 py-0.5 rounded font-bold border ${getStageBadge(
+                    className={`text-[9px] px-2 py-0.5 rounded font-mono font-semibold border shrink-0 whitespace-nowrap ${getStageBadge(
                       p.stage
                     )}`}
                   >
@@ -1719,53 +1884,67 @@ export function WhatsAppInboxView({
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Lightbox Modal untuk Pratinjau Gambar Ukuran Penuh */}
-      {lightboxUrl && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in duration-150"
-          onClick={() => setLightboxUrl(null)}
-        >
-          <div
-            className="relative max-w-4xl max-h-[90vh] flex flex-col items-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img
-              src={lightboxUrl}
-              alt="Pratinjau Foto WhatsApp"
-              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-            />
-            <div className="mt-3 flex items-center gap-3">
-              <a
-                href={lightboxUrl}
-                download="whatsapp-image"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-semibold backdrop-blur-sm transition-colors flex items-center gap-1.5"
-              >
-                <Download className="w-3.5 h-3.5" /> Unduh Gambar
-              </a>
+            {/* Sticky Action Footer */}
+            <div className="shrink-0 px-5 py-3 border-t border-slate-200/80 bg-slate-50/90 rounded-b-xl flex items-center justify-end">
               <button
                 type="button"
-                onClick={() => setLightboxUrl(null)}
-                className="px-3 py-1.5 bg-white text-slate-800 rounded-lg text-xs font-bold hover:bg-slate-100 transition-colors shadow-sm"
+                onClick={() => setIsNewChatModalOpen(false)}
+                className="px-3.5 py-1.5 border border-slate-200 text-slate-700 text-xs font-semibold rounded-md bg-white hover:bg-slate-100 transition-colors"
               >
                 Tutup
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setLightboxUrl(null)}
-              className="absolute -top-3 -right-3 p-2 bg-white text-slate-800 rounded-full shadow-lg hover:bg-slate-100 transition-colors"
-              title="Tutup"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
         </div>
+        </ModalPortal>
+      )}
+
+      {/* Lightbox Modal untuk Pratinjau Gambar Ukuran Penuh */}
+      {lightboxUrl && (
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-[10000] modal-backdrop-clean flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <div
+              className="relative max-w-4xl max-h-[90vh] flex flex-col items-center animate-ios-scale"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={lightboxUrl}
+                alt="Pratinjau Foto WhatsApp"
+                className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+              />
+              <div className="mt-3 flex items-center gap-3">
+                <a
+                  href={lightboxUrl}
+                  download="whatsapp-image"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-semibold backdrop-blur-sm transition-colors flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" /> Unduh Gambar
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setLightboxUrl(null)}
+                  className="px-3 py-1.5 bg-white text-slate-800 rounded-lg text-xs font-bold hover:bg-slate-100 transition-colors shadow-sm"
+                >
+                  Tutup
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLightboxUrl(null)}
+                className="absolute -top-3 -right-3 p-2 bg-white text-slate-800 rounded-full shadow-lg hover:bg-slate-100 transition-colors"
+                title="Tutup"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </ModalPortal>
       )}
 
       {/* Modal Tambahkan Proyek ke /projects dari WhatsApp */}
@@ -1792,7 +1971,7 @@ export function WhatsAppInboxView({
                 c.id === activeConv.id
                   ? {
                       ...c,
-                      lastMessageSnippet: `🚀 Proyek: ${project.name}`,
+                      lastMessageSnippet: `Proyek: ${project.name}`,
                       lastMessageAt: newChatMsg.timestamp,
                       messages: [...c.messages, newChatMsg],
                     }
@@ -1834,7 +2013,7 @@ export function WhatsAppInboxView({
                 c.id === activeConv.id
                   ? {
                       ...c,
-                      lastMessageSnippet: `📌 Task: ${task.title}`,
+                      lastMessageSnippet: `Task: ${task.title}`,
                       lastMessageAt: newChatMsg.timestamp,
                       messages: [...c.messages, newChatMsg],
                     }
