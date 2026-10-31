@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { ModalPortal } from "@/components/common/ModalPortal";
 import { useToast } from "@/components/common/Toast";
-import { SalesUserOption } from "@/modules/crm/types";
+import { SalesUserOption, Prospect } from "@/modules/crm/types";
 import {
   bulkDistributeProspectsAction,
   fetchAvailableSalesAction,
@@ -23,7 +23,7 @@ interface BulkDistributeModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedProspectIds: string[];
-  onSuccess: () => void;
+  onSuccess: (updatedProspects?: Prospect[]) => void;
 }
 
 export function BulkDistributeModal({
@@ -82,7 +82,7 @@ export function BulkDistributeModal({
         toast.success(
           `Berhasil membagikan ${res.updatedCount} prospek rata ke ${targetCount} akun sales.`
         );
-        onSuccess();
+        onSuccess(res.updatedProspects);
         onClose();
       } else {
         setErrorMsg(res.message || "Gagal membagikan prospek.");

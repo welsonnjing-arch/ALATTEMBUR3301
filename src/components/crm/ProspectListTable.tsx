@@ -80,7 +80,19 @@ export function ProspectListTable({
   const PAGE_SIZE = 25;
 
   useEffect(() => {
-    setProspects(initialProspects);
+    setProspects((prev) => {
+      if (!initialProspects || initialProspects.length === 0) return prev;
+      const map = new Map<string, Prospect>();
+      for (const p of initialProspects) {
+        map.set(p.id, p);
+      }
+      for (const p of prev) {
+        if (!map.has(p.id)) {
+          map.set(p.id, p);
+        }
+      }
+      return Array.from(map.values());
+    });
     setSelectedIds([]);
   }, [initialProspects]);
 
@@ -522,8 +534,14 @@ export function ProspectListTable({
         isOpen={isDistributeBulkOpen}
         onClose={() => setIsDistributeBulkOpen(false)}
         selectedProspectIds={selectedIds}
-        onSuccess={() => {
+        onSuccess={(updatedList) => {
           setSelectedIds([]);
+          if (updatedList && updatedList.length > 0) {
+            setProspects((prev) => {
+              const updatedMap = new Map(updatedList.map((p) => [p.id, p]));
+              return prev.map((p) => updatedMap.get(p.id) || p);
+            });
+          }
           handleRefresh();
         }}
       />
@@ -538,6 +556,7 @@ export function ProspectListTable({
               const toAdd = newProspects.filter((p) => !existingIds.has(p.id));
               return [...toAdd, ...prev];
             });
+            setSelectedStage("ALL");
             setCurrentPage(1);
           }
           handleRefresh();

@@ -77,6 +77,7 @@ export interface BulkDistributeResult {
   updatedCount: number;
   message?: string;
   distributionSummary?: Record<string, number>;
+  updatedProspects?: Prospect[];
 }
 
 export interface SalesUserOption {

@@ -13,6 +13,7 @@ import { FailedReason, NextAction, PipelineStage } from "@/types/enums";
 import { calculateNextFollowUp } from "../follow-up/follow-up.service";
 import { logActivity } from "@/lib/logger";
 import { INITIAL_INTERNAL_USERS } from "@/modules/auth/session";
+import { getAllUsers } from "@/modules/auth/user.service";
 
 // In-Memory Database Store dengan globalThis agar konsisten di Server Action, Server Component, & HMR
 const INITIAL_PROSPECTS_DATA: Prospect[] = [];
@@ -83,11 +84,14 @@ export function getProspectsStore(): Prospect[] {
   return crmGlobal.prospectsData;
 }
 
-export function persistProspects(): void {
+export function persistProspects(dataToPersist?: Prospect[]): void {
   ensureStorageDir();
   try {
-    const data = crmGlobal.prospectsData || getProspectsStore();
-    if (data) {
+    const data = dataToPersist || crmGlobal.prospectsData || getProspectsStore();
+    if (data && Array.isArray(data)) {
+      if (!crmGlobal.prospectsData || crmGlobal.prospectsData !== data) {
+        crmGlobal.prospectsData = data;
+      }
       fs.writeFileSync(
         PROSPECTS_FILE,
         JSON.stringify(data, null, 2),
@@ -217,9 +221,9 @@ export async function createProspect(
     updatedAt: new Date().toISOString(),
   };
 
-  const store = crmGlobal.prospectsData || prospectsData;
+  const store = getProspectsStore();
   store.unshift(newProspect);
-  persistProspects();
+  persistProspects(store);
 
   logActivity({
     category: "CRM",
@@ -245,22 +249,34 @@ export interface BulkImportResult {
 }
 
 /**
- * Mengambil daftar sales user internal yang aktif
+ * Mengambil daftar sales user internal yang aktif (termasuk fallback Owner jika belum ada Sales)
  */
 export function getAvailableSalesUsers(): SalesUserOption[] {
   const seen = new Set<string>();
   const list: SalesUserOption[] = [];
-  for (const u of INITIAL_INTERNAL_USERS) {
+  const users = getAllUsers();
+  for (const u of users) {
     if (u.role === "SALES" && u.status === "ACTIVE" && !seen.has(u.id)) {
       seen.add(u.id);
       list.push({ id: u.id, fullName: u.fullName, email: u.email });
     }
   }
+
+  // Fallback: jika belum ada akun sales, sertakan akun owner agar pembagian tetap dapat berjalan
+  if (list.length === 0) {
+    for (const u of users) {
+      if (u.role === "OWNER" && u.status === "ACTIVE" && !seen.has(u.id)) {
+        seen.add(u.id);
+        list.push({ id: u.id, fullName: `${u.fullName} (Owner)`, email: u.email });
+      }
+    }
+  }
+
   return list;
 }
 
 export function getInternalUserById(userId: string) {
-  return INITIAL_INTERNAL_USERS.find((u) => u.id === userId);
+  return getAllUsers().find((u) => u.id === userId);
 }
 
 export async function bulkCreateProspects(
@@ -269,7 +285,7 @@ export async function bulkCreateProspects(
   actorRole: string,
   distributionConfig?: BulkDistributionConfig
 ): Promise<BulkImportResult> {
-  const store = crmGlobal.prospectsData || prospectsData;
+  const store = getProspectsStore();
   const created: Prospect[] = [];
   const errors: Array<{ row: number; companyName: string; reason: string }> = [];
 
@@ -391,7 +407,7 @@ export async function bulkCreateProspects(
   }
 
   if (created.length > 0) {
-    persistProspects();
+    persistProspects(store);
     logActivity({
       category: "CRM",
       action: "PROSPECT_BULK_IMPORTED",
@@ -432,7 +448,7 @@ export async function bulkDistributeProspects(
     return { success: false, updatedCount: 0, message: "Pilih minimal 1 akun sales untuk pembagian." };
   }
 
-  const store = crmGlobal.prospectsData || prospectsData;
+  const store = getProspectsStore();
   const targetProspects = store.filter((p) => prospectIds.includes(p.id) && !p.isArchived);
 
   if (targetProspects.length === 0) {
@@ -464,7 +480,7 @@ export async function bulkDistributeProspects(
     assignedIndex++;
   }
 
-  persistProspects();
+  persistProspects(store);
 
   logActivity({
     category: "CRM",
@@ -485,6 +501,7 @@ export async function bulkDistributeProspects(
     success: true,
     updatedCount: targetProspects.length,
     distributionSummary,
+    updatedProspects: targetProspects,
   };
 }
 
@@ -710,7 +727,7 @@ export async function deleteProspect(
   actorUserId: string,
   actorRole: string
 ): Promise<{ success: boolean; error?: string }> {
-  const store = crmGlobal.prospectsData || prospectsData;
+  const store = getProspectsStore();
   const idx = store.findIndex((p) => p.id === prospectId);
   if (idx === -1) {
     return { success: false, error: "Data prospek tidak ditemukan." };
@@ -738,7 +755,7 @@ export async function deleteProspect(
   }
 
   const [deleted] = store.splice(idx, 1);
-  persistProspects();
+  persistProspects(store);
 
   logActivity({
     category: "CRM",
@@ -765,7 +782,7 @@ export async function bulkDeleteProspects(
   actorUserId: string,
   actorRole: string
 ): Promise<{ success: boolean; deletedCount: number; error?: string }> {
-  const store = crmGlobal.prospectsData || prospectsData;
+  const store = getProspectsStore();
   let deletedCount = 0;
 
   for (const id of prospectIds) {
@@ -787,7 +804,7 @@ export async function bulkDeleteProspects(
     deletedCount++;
   }
 
-  persistProspects();
+  persistProspects(store);
 
   logActivity({
     category: "CRM",

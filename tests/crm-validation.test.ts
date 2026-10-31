@@ -275,14 +275,20 @@ describe("CRM Data Validation & Normalization Rules", () => {
 
     assert.equal(distResult.success, true);
     assert.equal(distResult.updatedCount, 4);
+    assert.ok(distResult.updatedProspects && distResult.updatedProspects.length === 4);
     assert.equal(distResult.distributionSummary?.[targetSalesIds[0]], 2);
     assert.equal(distResult.distributionSummary?.[targetSalesIds[1]], 2);
 
-    // 3. Verifikasi pada data prospek di CRM
+    // 3. Verifikasi pada data prospek di CRM dan disk persistence
     const updatedP1 = await getProspectById(prospectIds[0]);
     const updatedP2 = await getProspectById(prospectIds[1]);
     assert.ok(updatedP1?.assignedSalesId === targetSalesIds[0] || updatedP1?.assignedSalesId === targetSalesIds[1]);
     assert.ok(updatedP2?.assignedSalesId === targetSalesIds[0] || updatedP2?.assignedSalesId === targetSalesIds[1]);
+
+    // Verifikasi disk persistence langsung dari file JSON
+    const diskContent = JSON.parse(fs.readFileSync(PROSPECTS_FILE, "utf-8"));
+    const diskP1 = diskContent.find((p: any) => p.id === prospectIds[0]);
+    assert.ok(diskP1 && diskP1.assignedSalesId);
   });
 
   after(() => {
