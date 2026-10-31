@@ -90,11 +90,12 @@ export interface SalesUserOption {
  * Mendukung nomor Indonesia, nomor internasional, serta WhatsApp Linked ID (LID)
  */
 export function normalizeWhatsAppNumber(phone: string): NormalizePhoneResult {
-  let cleaned = phone.replace(/[^0-9]/g, "");
+  let cleaned = String(phone || "").replace(/[^0-9]/g, "");
   if (cleaned.startsWith("0")) {
     cleaned = "62" + cleaned.slice(1);
-  } else if (cleaned.startsWith("+62")) {
-    cleaned = "62" + cleaned.slice(3);
+  } else if (cleaned.startsWith("8") && cleaned.length >= 9 && cleaned.length <= 13) {
+    // Normalisasi angka lokal tanpa awalan 0/62 (misal format export Excel angka integer: 8123456789)
+    cleaned = "62" + cleaned;
   }
   const isValid = cleaned.length >= 8 && cleaned.length <= 18;
   return { formatted: cleaned, isValid };

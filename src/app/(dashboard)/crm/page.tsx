@@ -3,6 +3,8 @@ import { getSessionCookie } from "@/modules/auth/session";
 import { ProspectListTable } from "@/components/crm/ProspectListTable";
 import { Users, TrendingUp, CheckCircle, AlertCircle } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function CRMPage() {
   const session = await getSessionCookie();
 
@@ -34,22 +36,30 @@ export default async function CRMPage() {
       </div>
 
       {/* Mini Stats Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-xs font-semibold text-slate-500">Total Prospek Riset</div>
-          <div className="text-2xl font-bold text-slate-900 mt-1">{total}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4">
+        <div className="bg-white p-4.5 rounded-xl border border-slate-200/80 shadow-2xs card-hover-lift min-w-0">
+          <div className="text-xs font-semibold text-slate-600 truncate">Total Prospek Riset</div>
+          <div className="text-xl sm:text-2xl font-bold text-slate-900 font-mono mt-1.5 tracking-tight truncate">
+            {total}
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-xs font-semibold text-indigo-600">Pipeline Aktif</div>
-          <div className="text-2xl font-bold text-indigo-700 mt-1">{inPipeline}</div>
+        <div className="bg-white p-4.5 rounded-xl border border-slate-200/80 shadow-2xs card-hover-lift min-w-0">
+          <div className="text-xs font-semibold text-slate-600 truncate">Pipeline Aktif</div>
+          <div className="text-xl sm:text-2xl font-bold text-slate-900 font-mono mt-1.5 tracking-tight truncate">
+            {inPipeline}
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-xs font-semibold text-emerald-600">Deal Closed Won</div>
-          <div className="text-2xl font-bold text-emerald-700 mt-1">{won}</div>
+        <div className="bg-white p-4.5 rounded-xl border border-slate-200/80 shadow-2xs card-hover-lift min-w-0">
+          <div className="text-xs font-semibold text-slate-600 truncate">Deal Closed Won</div>
+          <div className="text-xl sm:text-2xl font-bold text-slate-900 font-mono mt-1.5 tracking-tight truncate">
+            {won}
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-xs font-semibold text-rose-600">Failed / Tersimpan</div>
-          <div className="text-2xl font-bold text-rose-700 mt-1">{failed}</div>
+        <div className="bg-white p-4.5 rounded-xl border border-slate-200/80 shadow-2xs card-hover-lift min-w-0">
+          <div className="text-xs font-semibold text-slate-600 truncate">Failed / Tersimpan</div>
+          <div className="text-xl sm:text-2xl font-bold text-slate-900 font-mono mt-1.5 tracking-tight truncate">
+            {failed}
+          </div>
         </div>
       </div>
 

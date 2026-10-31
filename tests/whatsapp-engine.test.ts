@@ -1,5 +1,7 @@
-import { test, describe } from "node:test";
+import { test, describe, after, before } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import {
   startWhatsAppPairing,
   confirmWhatsAppPairing,
@@ -8,16 +10,36 @@ import {
   handleIncomingWhatsAppMessage,
   getWhatsAppSession,
 } from "../src/modules/whatsapp/whatsapp.service";
-import { createProspect, prospectsData, getProspectById } from "../src/modules/crm/crm.service";
+import { createProspect, prospectsData, getProspectById, persistProspects } from "../src/modules/crm/crm.service";
 import {
   conversationsData,
   getAllConversations,
   assignConversationToSales,
   updateConversationCRMDetails,
   getOrCreateConversationByProspect,
+  persistConversations,
 } from "../src/modules/inbox/inbox.service";
+import { resetProjectsAndTasksForTesting } from "../src/modules/projects/projects.service";
+
+let createdTestAttachmentFile: string | null = null;
 
 describe("Native WhatsApp Web Engine & CRM Synchronization", () => {
+  const DATA_DIR = path.join(process.cwd(), "data");
+  const PROSPECTS_FILE = path.join(DATA_DIR, "crm-prospects.json");
+  const CONVERSATIONS_FILE = path.join(DATA_DIR, "whatsapp-conversations.json");
+  let backupProspects: string | null = null;
+  let backupConversations: string | null = null;
+
+  before(() => {
+    if (fs.existsSync(PROSPECTS_FILE)) {
+      backupProspects = fs.readFileSync(PROSPECTS_FILE, "utf-8");
+    }
+    if (fs.existsSync(CONVERSATIONS_FILE)) {
+      backupConversations = fs.readFileSync(CONVERSATIONS_FILE, "utf-8");
+    }
+    conversationsData.length = 0;
+    prospectsData.length = 0;
+  });
   test("generates dynamic QR code data URL or preserves connected session", async () => {
     const session = await startWhatsAppPairing();
     assert.ok(session.status === "SCANNING_QR" || session.status === "CONNECTED");
@@ -126,11 +148,21 @@ describe("Native WhatsApp Web Engine & CRM Synchronization", () => {
     const sales1Id = "22222222-2222-2222-2222-222222222222";
     const sales2Id = "44444444-4444-4444-4444-444444444444";
 
-    const allConvs = await getAllConversations();
-    if (allConvs.length >= 2) {
-      await assignConversationToSales(allConvs[0].id, sales1Id, "Budi Santoso (Sales 1)");
-      await assignConversationToSales(allConvs[1].id, sales2Id, "Siti Rahma (Sales 2)");
-    }
+    const p1 = await createProspect(
+      { companyName: "PT Lead Sales Satu", contactName: "Klien 1", whatsappNumber: "081211112222" },
+      sales1Id,
+      "SALES"
+    );
+    const p2 = await createProspect(
+      { companyName: "PT Lead Sales Dua", contactName: "Klien 2", whatsappNumber: "081233334444" },
+      sales2Id,
+      "SALES"
+    );
+    const conv1 = await getOrCreateConversationByProspect(p1.prospect!);
+    const conv2 = await getOrCreateConversationByProspect(p2.prospect!);
+
+    await assignConversationToSales(conv1.id, sales1Id, "Budi Santoso (Sales 1)");
+    await assignConversationToSales(conv2.id, sales2Id, "Siti Rahma (Sales 2)");
 
     const updatedConvs = await getAllConversations();
 
@@ -199,6 +231,7 @@ describe("Native WhatsApp Web Engine & CRM Synchronization", () => {
     assert.equal(lastMsg.attachment?.fileName, "Proposal-Business-Website.pdf");
     assert.equal(lastMsg.attachment?.mimeType, "application/pdf");
     assert.ok(lastMsg.attachment?.url?.startsWith("/api/whatsapp/media/"));
+    createdTestAttachmentFile = lastMsg.attachment?.url?.replace("/api/whatsapp/media/", "") || null;
 
     // 2. Terima pesan masuk dengan lampiran gambar
     const incomingRes = await handleIncomingWhatsAppMessage(
@@ -483,5 +516,40 @@ describe("Native WhatsApp Web Engine & CRM Synchronization", () => {
     assert.ok(updatedProspect);
     assert.equal(updatedProspect?.avatarUrl, mockAvatar);
     assert.equal(updatedProspect?.bio, mockBio);
+  });
+
+  after(() => {
+    if (backupProspects !== null) {
+      fs.writeFileSync(PROSPECTS_FILE, backupProspects, "utf-8");
+      try {
+        const parsed = JSON.parse(backupProspects);
+        prospectsData.length = 0;
+        prospectsData.push(...parsed);
+      } catch {}
+    }
+    if (backupConversations !== null) {
+      fs.writeFileSync(CONVERSATIONS_FILE, backupConversations, "utf-8");
+      try {
+        const parsed = JSON.parse(backupConversations);
+        conversationsData.length = 0;
+        conversationsData.push(...parsed);
+      } catch {}
+    }
+    resetProjectsAndTasksForTesting();
+
+    if (createdTestAttachmentFile) {
+      const filePath = path.join(
+        process.cwd(),
+        "data",
+        "uploads",
+        "whatsapp",
+        createdTestAttachmentFile
+      );
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch {}
+    }
   });
 });

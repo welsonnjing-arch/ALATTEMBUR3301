@@ -55,13 +55,42 @@ function loadPersistedProspects(): Prospect[] {
   return [...INITIAL_PROSPECTS_DATA];
 }
 
+const crmGlobal = globalThis as unknown as CRMGlobalStore;
+
+export function getProspectsStore(): Prospect[] {
+  ensureStorageDir();
+  try {
+    if (fs.existsSync(PROSPECTS_FILE)) {
+      const content = fs.readFileSync(PROSPECTS_FILE, "utf-8");
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) {
+        if (!crmGlobal.prospectsData) {
+          crmGlobal.prospectsData = parsed;
+        } else {
+          crmGlobal.prospectsData.length = 0;
+          crmGlobal.prospectsData.push(...parsed);
+        }
+        return crmGlobal.prospectsData;
+      }
+    }
+  } catch (err) {
+    console.error("[CRM_PERSISTENCE] Gagal membaca crm-prospects.json:", err);
+  }
+
+  if (!crmGlobal.prospectsData) {
+    crmGlobal.prospectsData = loadPersistedProspects();
+  }
+  return crmGlobal.prospectsData;
+}
+
 export function persistProspects(): void {
   ensureStorageDir();
   try {
-    if (crmGlobal.prospectsData) {
+    const data = crmGlobal.prospectsData || getProspectsStore();
+    if (data) {
       fs.writeFileSync(
         PROSPECTS_FILE,
-        JSON.stringify(crmGlobal.prospectsData, null, 2),
+        JSON.stringify(data, null, 2),
         "utf-8"
       );
     }
@@ -70,9 +99,8 @@ export function persistProspects(): void {
   }
 }
 
-const crmGlobal = globalThis as unknown as CRMGlobalStore;
 if (!crmGlobal.prospectsData || crmGlobal.prospectsData.length === 0) {
-  crmGlobal.prospectsData = loadPersistedProspects();
+  crmGlobal.prospectsData = getProspectsStore();
 }
 
 export const prospectsData = crmGlobal.prospectsData;
@@ -82,7 +110,8 @@ export async function getAllProspects(filter?: {
   assignedSalesId?: string;
   search?: string;
 }): Promise<Prospect[]> {
-  let list = [...prospectsData];
+  const store = getProspectsStore();
+  let list = [...store];
 
   if (filter?.stage && filter.stage !== "ALL") {
     list = list.filter((p) => p.stage === filter.stage);
@@ -107,7 +136,8 @@ export async function getAllProspects(filter?: {
 }
 
 export async function getProspectById(id: string): Promise<Prospect | null> {
-  const p = prospectsData.find((item) => item.id === id);
+  const store = getProspectsStore();
+  const p = store.find((item) => item.id === id);
   return p ? { ...p } : null;
 }
 
@@ -117,7 +147,8 @@ export async function checkDuplicateWhatsApp(
   const { formatted, isValid } = normalizeWhatsAppNumber(rawPhone);
   if (!isValid) return { isDuplicate: false };
 
-  const matched = prospectsData.find(
+  const store = getProspectsStore();
+  const matched = store.find(
     (p) => p.whatsappNumber === formatted && !p.isArchived
   );
 
@@ -477,7 +508,8 @@ export async function updateProspectDetails(
   actorUserId?: string,
   actorUserName?: string
 ): Promise<{ success: boolean; prospect?: Prospect; error?: string }> {
-  const prospect = prospectsData.find((p) => p.id === prospectId && !p.isArchived);
+  const store = getProspectsStore();
+  const prospect = store.find((p) => p.id === prospectId && !p.isArchived);
   if (!prospect) {
     return { success: false, error: "Prospek tidak ditemukan." };
   }
@@ -520,15 +552,16 @@ export async function updateProspectStage(
   actorUserId: string,
   failedReason?: FailedReason
 ): Promise<{ success: boolean; error?: string }> {
-  const idx = prospectsData.findIndex((p) => p.id === prospectId);
+  const store = getProspectsStore();
+  const idx = store.findIndex((p) => p.id === prospectId);
   if (idx === -1) return { success: false, error: "Prospek tidak ditemukan." };
 
-  prospectsData[idx].stage = stage;
-  prospectsData[idx].nextAction = nextAction;
-  prospectsData[idx].updatedAt = new Date().toISOString();
+  store[idx].stage = stage;
+  store[idx].nextAction = nextAction;
+  store[idx].updatedAt = new Date().toISOString();
 
   if (stage === "FAILED" && failedReason) {
-    prospectsData[idx].failedReason = failedReason;
+    store[idx].failedReason = failedReason;
   }
 
   persistProspects();
@@ -554,10 +587,11 @@ export async function confirmOutreachSent(
   actorUserName: string,
   notes?: string
 ): Promise<{ success: boolean; nextStep?: string; nextDueDate?: string }> {
-  const idx = prospectsData.findIndex((p) => p.id === prospectId);
+  const store = getProspectsStore();
+  const idx = store.findIndex((p) => p.id === prospectId);
   if (idx === -1) return { success: false };
 
-  const p = prospectsData[idx];
+  const p = store[idx];
   const currentStep = p.followUpStep || "INITIAL";
 
   const { nextStep, nextDueDate } = calculateNextFollowUp(
@@ -608,10 +642,11 @@ export async function recordClientReply(
   replyText: string,
   actorUserId: string
 ): Promise<{ success: boolean }> {
-  const idx = prospectsData.findIndex((p) => p.id === prospectId);
+  const store = getProspectsStore();
+  const idx = store.findIndex((p) => p.id === prospectId);
   if (idx === -1) return { success: false };
 
-  const p = prospectsData[idx];
+  const p = store[idx];
   p.stage = "RESPONDED";
   p.nextAction = "REPLY_TO_CLIENT";
   p.nextFollowUpDate = undefined; // Hentikan siklus no-response
@@ -638,10 +673,11 @@ export async function reactivateProspect(
   actorUserId: string,
   notes?: string
 ): Promise<{ success: boolean }> {
-  const idx = prospectsData.findIndex((p) => p.id === prospectId);
+  const store = getProspectsStore();
+  const idx = store.findIndex((p) => p.id === prospectId);
   if (idx === -1) return { success: false };
 
-  const p = prospectsData[idx];
+  const p = store[idx];
   p.stage = "NEW";
   p.nextAction = "REACH_NOW";
   p.followUpStep = "INITIAL";

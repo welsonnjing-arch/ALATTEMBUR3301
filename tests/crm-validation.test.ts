@@ -1,5 +1,7 @@
-import { test, describe, after } from "node:test";
+import { test, describe, after, before } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import { normalizeWhatsAppNumber } from "../src/modules/crm/types";
 import {
   createProspect,
@@ -14,6 +16,15 @@ import {
 } from "../src/modules/crm/crm.service";
 
 describe("CRM Data Validation & Normalization Rules", () => {
+  const DATA_DIR = path.join(process.cwd(), "data");
+  const PROSPECTS_FILE = path.join(DATA_DIR, "crm-prospects.json");
+  let backupContent: string | null = null;
+
+  before(() => {
+    if (fs.existsSync(PROSPECTS_FILE)) {
+      backupContent = fs.readFileSync(PROSPECTS_FILE, "utf-8");
+    }
+  });
   test("normalizes local 08xxx to international standard 628xxx", () => {
     const res = normalizeWhatsAppNumber("0895324069850");
     assert.equal(res.isValid, true);
@@ -275,7 +286,13 @@ describe("CRM Data Validation & Normalization Rules", () => {
   });
 
   after(() => {
-    prospectsData.length = 0;
-    persistProspects();
+    if (backupContent !== null) {
+      fs.writeFileSync(PROSPECTS_FILE, backupContent, "utf-8");
+      try {
+        const parsed = JSON.parse(backupContent);
+        prospectsData.length = 0;
+        prospectsData.push(...parsed);
+      } catch {}
+    }
   });
 });

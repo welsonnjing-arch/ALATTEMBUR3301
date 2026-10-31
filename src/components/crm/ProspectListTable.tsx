@@ -531,7 +531,15 @@ export function ProspectListTable({
       <BulkImportModal
         isOpen={isBulkImportOpen}
         onClose={() => setIsBulkImportOpen(false)}
-        onSuccess={() => {
+        onSuccess={(newProspects) => {
+          if (newProspects && newProspects.length > 0) {
+            setProspects((prev) => {
+              const existingIds = new Set(prev.map((p) => p.id));
+              const toAdd = newProspects.filter((p) => !existingIds.has(p.id));
+              return [...toAdd, ...prev];
+            });
+            setCurrentPage(1);
+          }
           handleRefresh();
         }}
         existingPhones={prospects.map((p) => p.whatsappNumber)}

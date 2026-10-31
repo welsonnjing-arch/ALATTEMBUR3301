@@ -23,6 +23,7 @@ import {
   SalesUserOption,
   LeadDistributionMode,
   BulkDistributionConfig,
+  Prospect,
 } from "@/modules/crm/types";
 import {
   bulkCreateProspectsAction,
@@ -35,7 +36,7 @@ import { useToast } from "@/components/common/Toast";
 interface BulkImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (newProspects?: Prospect[]) => void;
   existingPhones?: string[];
 }
 
@@ -222,15 +223,25 @@ export function BulkImportModal({
         return candidates.some((cand) => nh.includes(cand));
       });
 
+    // Check specific priority candidates first so e.g. "nama" doesn't accidentally claim "nama kontak"
+    const getPriorityIdx = (priorityCandidates: string[], fallbackCandidates: string[]) => {
+      const pIdx = getIdx(priorityCandidates);
+      if (pIdx !== -1) return pIdx;
+      return getIdx(fallbackCandidates);
+    };
+
     return {
-      companyNameIdx: getIdx(["bisnis", "perusahaan", "company", "nama"]),
-      contactNameIdx: getIdx(["kontak", "pic", "contact", "namaorang"]),
-      phoneIdx: getIdx(["wa", "whatsapp", "telepon", "phone", "hp", "nohp"]),
-      websiteIdx: getIdx(["website", "domain", "url", "web"]),
-      industryIdx: getIdx(["niche", "industri", "industry", "kategori"]),
-      servicesIdx: getIdx(["layanan", "services", "potensi", "service"]),
-      notesIdx: getIdx(["catatan", "riset", "notes", "analisis"]),
-      painPointsIdx: getIdx(["peluang", "masalah", "painpoints", "pain", "kendala"]),
+      companyNameIdx: getPriorityIdx(
+        ["namaperusahaan", "namabisnis", "namaklien", "namaclient", "perusahaan", "bisnis", "company"],
+        ["nama"]
+      ),
+      contactNameIdx: getIdx(["namakontak", "kontak", "pic", "contact", "namaorang", "person"]),
+      phoneIdx: getIdx(["wa", "whatsapp", "telepon", "telp", "phone", "hp", "nohp", "nomorwa", "nomortelp", "handphone"]),
+      websiteIdx: getIdx(["website", "domain", "url", "web", "link"]),
+      industryIdx: getIdx(["niche", "industri", "industry", "kategori", "bidang", "sektor"]),
+      servicesIdx: getIdx(["layanan", "services", "potensi", "service", "produk"]),
+      notesIdx: getIdx(["catatan", "riset", "notes", "analisis", "keterangan", "deskripsi"]),
+      painPointsIdx: getIdx(["peluang", "masalah", "painpoints", "pain", "kendala", "kebutuhan"]),
     };
   };
 
@@ -340,7 +351,9 @@ export function BulkImportModal({
   const handleExecuteImport = async () => {
     const validRows = parsedRows.filter((r) => r.status === "VALID");
     if (validRows.length === 0) {
-      setSubmitError("Tidak ada data valid yang dapat di-import.");
+      setSubmitError(
+        "Tidak ada data valid yang dapat di-import. Pastikan format nomor WA benar dan belum terdaftar di database CRM."
+      );
       return;
     }
 
@@ -372,22 +385,26 @@ export function BulkImportModal({
 
     try {
       const res = await bulkCreateProspectsAction(inputs, distributionConfig);
-      if (res.success) {
+      if (res.success && res.importedCount > 0) {
         setImportSummary({
           imported: res.importedCount,
           skipped: res.skippedCount,
         });
         toast.success(
-          `${res.importedCount} prospek berhasil diimpor${
+          `${res.importedCount} prospek berhasil disimpan ke CRM${
             res.skippedCount > 0 ? ` (${res.skippedCount} duplikat dilewati)` : ""
           }`
         );
-        onSuccess();
+        onSuccess(res.prospects);
         setTimeout(() => {
           onClose();
         }, 1500);
       } else {
-        setSubmitError("Gagal mengimpor data ke CRM.");
+        const errorMsg =
+          res.errors && res.errors.length > 0
+            ? res.errors[0].reason
+            : "Gagal mengimpor data ke CRM. Seluruh kontak duplikat atau tidak valid.";
+        setSubmitError(errorMsg);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Terjadi kesalahan saat menyimpan data.";
