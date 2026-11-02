@@ -23,6 +23,7 @@ import { fetchSystemNotificationsAction } from "@/modules/notifications/notifica
 import { UserRole } from "@/types/roles";
 import { GlobalSearchModal } from "@/components/common/GlobalSearchModal";
 import { NotificationDrawer } from "@/components/common/NotificationDrawer";
+import { UserProfileModal } from "@/components/auth/UserProfileModal";
 import { useSound } from "@/components/common/SoundProvider";
 import { getDismissedNotificationIds } from "@/lib/notifications-client";
 
@@ -37,8 +38,20 @@ export function Header({
   isSidebarCollapsed = false,
   onToggleSidebar,
 }: HeaderProps) {
-  const currentRole = session?.role || "OWNER";
-  const userName = session?.fullName || "Faiz Aditama (Owner)";
+  const [currentSession, setCurrentSession] = useState<UserSessionData | null | undefined>(session);
+
+  useEffect(() => {
+    setCurrentSession(session);
+  }, [session]);
+
+  const currentRole = currentSession?.role || "OWNER";
+  const userName = currentSession?.fullName || "Faiz Aditama (Owner)";
+  const avatarUrl = currentSession?.avatarUrl;
+  const [avatarError, setAvatarError] = useState(false);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [avatarUrl]);
 
   const homeWorkspace =
     currentRole === "DEVELOPER"
@@ -51,6 +64,7 @@ export function Header({
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
   const { muted: isSoundMuted, toggleMute: toggleSound } = useSound();
@@ -208,10 +222,19 @@ export function Header({
                   : "border-transparent hover:bg-slate-100/90 hover:border-slate-200/70"
               }`}
             >
-              {/* Avatar with brand logo gradient styling */}
+              {/* Avatar with image or crisp monochromatic fallback */}
               <div className="relative">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0 border border-blue-400/30">
-                  {(userName || "U").charAt(0)}
+                <div className="w-8 h-8 rounded-full bg-slate-900 text-slate-100 flex items-center justify-center font-bold text-xs shadow-xs shrink-0 border border-slate-700/40 overflow-hidden">
+                  {avatarUrl && !avatarError ? (
+                    <img
+                      src={avatarUrl}
+                      alt={userName}
+                      className="w-full h-full object-cover"
+                      onError={() => setAvatarError(true)}
+                    />
+                  ) : (
+                    (userName || "U").charAt(0).toUpperCase()
+                  )}
                 </div>
               </div>
 
@@ -245,15 +268,24 @@ export function Header({
                 {/* User Profile Card Header */}
                 <div className="p-3 bg-gradient-to-br from-slate-50 to-slate-100/70 rounded-xl border border-slate-200/60 mb-1.5">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 text-white flex items-center justify-center font-bold text-sm shadow-sm border border-blue-400/30 shrink-0">
-                      {(userName || "U").charAt(0)}
+                    <div className="w-10 h-10 rounded-full bg-slate-900 text-slate-100 flex items-center justify-center font-bold text-sm shadow-sm border border-slate-700/40 shrink-0 overflow-hidden">
+                      {avatarUrl && !avatarError ? (
+                        <img
+                          src={avatarUrl}
+                          alt={userName}
+                          className="w-full h-full object-cover"
+                          onError={() => setAvatarError(true)}
+                        />
+                      ) : (
+                        (userName || "U").charAt(0).toUpperCase()
+                      )}
                     </div>
                     <div className="overflow-hidden flex-1">
                       <div className="font-semibold text-xs text-slate-900 truncate">
                         {userName}
                       </div>
                       <div className="text-[11px] text-slate-500 truncate">
-                        {session?.email || "faiz@fynux.id"}
+                        {currentSession?.email || "faiz@fynux.id"}
                       </div>
                       <div className="mt-1 flex items-center gap-1.5">
                         <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-2 py-0.5 rounded-full bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border border-blue-200/70 font-mono">
@@ -271,6 +303,19 @@ export function Header({
 
                 {/* Role-Aware Menu Items */}
                 <div className="space-y-0.5 text-xs font-medium text-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileOpen(false);
+                      setIsProfileModalOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-100/80 hover:text-slate-900 transition-colors text-left cursor-pointer"
+                    role="menuitem"
+                  >
+                    <User className="w-4 h-4 text-blue-600" />
+                    <span>Profil & Kata Sandi</span>
+                  </button>
+
                   <Link
                     href={homeWorkspace.href}
                     onClick={() => setIsProfileOpen(false)}
@@ -329,6 +374,16 @@ export function Header({
         isOpen={isNotifOpen}
         onClose={() => setIsNotifOpen(false)}
         onCountChange={(count) => setUnreadCount(count)}
+      />
+
+      {/* User Profile & Security Modal */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        session={currentSession}
+        onSessionUpdated={(updated) => {
+          setCurrentSession((prev) => (prev ? { ...prev, ...updated } : prev));
+        }}
       />
     </>
   );

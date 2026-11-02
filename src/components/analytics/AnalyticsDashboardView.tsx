@@ -56,55 +56,55 @@ export function AnalyticsDashboardView({ stats }: AnalyticsDashboardViewProps) {
   return (
     <div className="space-y-6">
       {/* Top 4 KPI Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Sales Closing Rate</span>
-            <TrendingUp className="w-4 h-4 text-emerald-600" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">Sales Closing Rate</span>
+            <TrendingUp className="w-4 h-4 text-blue-600 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-black text-emerald-700 font-mono">
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
             {stats.closingRate}%
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">
+          <p className="text-[11px] text-slate-400 mt-1 truncate whitespace-nowrap">
             {stats.wonCount} Deal Won dari {stats.totalProspects} Prospek Teriset
           </p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Delivery On-Time SLA</span>
-            <Briefcase className="w-4 h-4 text-indigo-600" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">Delivery On-Time SLA</span>
+            <Briefcase className="w-4 h-4 text-blue-600 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-black text-indigo-700 font-mono">
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
             {stats.projectStats.onTimeRate}%
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Rata-rata siklus pengerjaan: {stats.projectStats.avgDurationDays} hari
+          <p className="text-[11px] text-slate-400 mt-1 truncate whitespace-nowrap">
+            Rata siklus: {stats.projectStats.avgDurationDays} hari
           </p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">AI Assistant Assistance</span>
-            <Bot className="w-4 h-4 text-purple-600" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">AI Assistant</span>
+            <Bot className="w-4 h-4 text-blue-600 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-black text-purple-700 font-mono">
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
             {stats.aiAgentMetrics.draftsGenerated} Draf
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Akurasi kepatuhan guardrail: {stats.aiAgentMetrics.approvalAccuracy}%
+          <p className="text-[11px] text-slate-400 mt-1 truncate whitespace-nowrap">
+            Akurasi guardrail: {stats.aiAgentMetrics.approvalAccuracy}%
           </p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Client Retention Rate</span>
-            <ShieldCheck className="w-4 h-4 text-blue-600" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">Client Retention Rate</span>
+            <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-black text-blue-700 font-mono">
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
             {stats.retentionMetrics.retentionRate}%
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">
+          <p className="text-[11px] text-slate-400 mt-1 truncate whitespace-nowrap">
             {stats.retentionMetrics.activeMaintenance} Kontrak Maintenance Berjalan
           </p>
         </div>
@@ -113,7 +113,7 @@ export function AnalyticsDashboardView({ stats }: AnalyticsDashboardViewProps) {
       {/* Row 2: Sales Funnel & Service Revenue Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Sales Conversion Funnel */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
               <h3 className="text-sm font-bold text-slate-900">
@@ -123,7 +123,7 @@ export function AnalyticsDashboardView({ stats }: AnalyticsDashboardViewProps) {
                 Pipeline prospek teriset hingga tahap penerimaan deal
               </p>
             </div>
-            <span className="text-xs font-bold text-indigo-600 font-mono">
+            <span className="text-xs font-bold text-blue-600 font-mono">
               {stats.totalProspects} Prospek
             </span>
           </div>
@@ -146,7 +146,7 @@ export function AnalyticsDashboardView({ stats }: AnalyticsDashboardViewProps) {
               </div>
               <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-indigo-500 rounded-full"
+                  className="h-full bg-blue-600 rounded-full"
                   style={{
                     width: `${
                       stats.researchedCount > 0
@@ -165,7 +165,7 @@ export function AnalyticsDashboardView({ stats }: AnalyticsDashboardViewProps) {
               </div>
               <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-amber-500 rounded-full"
+                  className="h-full bg-slate-600 rounded-full"
                   style={{
                     width: `${
                       stats.researchedCount > 0
@@ -184,7 +184,7 @@ export function AnalyticsDashboardView({ stats }: AnalyticsDashboardViewProps) {
               </div>
               <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-emerald-500 rounded-full"
+                  className="h-full bg-slate-900 rounded-full"
                   style={{
                     width: `${
                       stats.researchedCount > 0
@@ -199,7 +199,7 @@ export function AnalyticsDashboardView({ stats }: AnalyticsDashboardViewProps) {
         </div>
 
         {/* Revenue Breakdown by Catalog Category */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
               <h3 className="text-sm font-bold text-slate-900">
@@ -209,7 +209,7 @@ export function AnalyticsDashboardView({ stats }: AnalyticsDashboardViewProps) {
                 Porsi kontribusi katalog layanan Fynux Digital Solutions
               </p>
             </div>
-            <span className="text-xs font-bold text-emerald-700 font-mono">
+            <span className="text-xs font-bold text-slate-900 font-mono">
               {formatRupiah(stats.totalRevenuePaid)}
             </span>
           </div>
@@ -220,7 +220,7 @@ export function AnalyticsDashboardView({ stats }: AnalyticsDashboardViewProps) {
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
                     <span
-                      className="w-2.5 h-2.5 rounded-full"
+                      className="w-2.5 h-2.5 rounded-sm shrink-0"
                       style={{ backgroundColor: item.color }}
                     />
                     <span className="font-bold text-slate-800">{item.name}</span>
@@ -241,9 +241,9 @@ export function AnalyticsDashboardView({ stats }: AnalyticsDashboardViewProps) {
 
       {/* Row 3: SLA & AI Assistance Guardrail Performance */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3">
           <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-indigo-600" />
+            <Activity className="w-4 h-4 text-blue-600" />
             Kecepatan Delivery & Resolusi Garansi
           </h3>
           <p className="text-xs text-slate-500 leading-relaxed">
@@ -255,21 +255,21 @@ export function AnalyticsDashboardView({ stats }: AnalyticsDashboardViewProps) {
               <div className="text-base font-bold text-slate-900 font-mono mt-0.5">
                 &lt; 24 Jam
               </div>
-              <span className="text-[10px] text-emerald-600">Sesuai SLA Garansi</span>
+              <span className="text-[10px] text-slate-600">Sesuai SLA Garansi</span>
             </div>
             <div className="p-3 bg-slate-50 rounded-xl">
               <span className="text-slate-500 text-[10px]">Penyelesaian Patch Bug</span>
               <div className="text-base font-bold text-slate-900 font-mono mt-0.5">
                 100%
               </div>
-              <span className="text-[10px] text-indigo-600">Terverifikasi normal</span>
+              <span className="text-[10px] text-slate-600">Terverifikasi normal</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3">
           <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Bot className="w-4 h-4 text-purple-600" />
+            <Bot className="w-4 h-4 text-blue-600" />
             AI Guardrail & Kepatuhan Komersial
           </h3>
           <p className="text-xs text-slate-500 leading-relaxed">
@@ -281,14 +281,14 @@ export function AnalyticsDashboardView({ stats }: AnalyticsDashboardViewProps) {
               <div className="text-base font-bold text-slate-900 font-mono mt-0.5">
                 100% Human-in-Loop
               </div>
-              <span className="text-[10px] text-emerald-600">Sales mereview sebelum kirim</span>
+              <span className="text-[10px] text-slate-600">Sales mereview sebelum kirim</span>
             </div>
             <div className="p-3 bg-slate-50 rounded-xl">
               <span className="text-slate-500 text-[10px]">Tiket Approval Terpicu</span>
               <div className="text-base font-bold text-slate-900 font-mono mt-0.5">
                 Otomatis
               </div>
-              <span className="text-[10px] text-purple-600">Saat terdeteksi diskon/komitmen</span>
+              <span className="text-[10px] text-slate-600">Saat terdeteksi diskon/komitmen</span>
             </div>
           </div>
         </div>

@@ -28,6 +28,8 @@ import {
   Check,
   Sparkles,
   Palette,
+  List,
+  LayoutGrid,
 } from "lucide-react";
 import {
   BoardAttachment,
@@ -43,6 +45,8 @@ import {
   updateTeamBoardItemPositionAction,
 } from "@/modules/projects/projects.actions";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
+import { ModalPortal } from "@/components/common/ModalPortal";
+import { useToast } from "@/components/common/Toast";
 
 interface TeamBoardCanvasViewProps {
   initialItems: TeamBoardItem[];
@@ -145,10 +149,10 @@ function TextFormatToolbar({
   ],
 }: TextFormatToolbarProps) {
   return (
-    <div className="flex items-center justify-between text-xs py-1 border-b border-slate-800/80 mb-1">
-      <span className="text-[11px] font-semibold text-slate-400">{label}</span>
+    <div className="flex items-center justify-between text-xs py-1 border-b border-slate-200 mb-1">
+      <span className="text-[11px] font-semibold text-slate-500">{label}</span>
       <div className="flex items-center gap-1.5">
-        <div className="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+        <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
           {sizeOptions.map((opt) => (
             <button
               key={opt.value}
@@ -156,8 +160,8 @@ function TextFormatToolbar({
               onClick={() => onChange({ ...style, size: opt.value })}
               className={`px-1.5 py-0.5 text-[10px] font-bold rounded transition-colors ${
                 style.size === opt.value
-                  ? "bg-brand-orange text-white shadow-sm"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
               {opt.label}
@@ -171,8 +175,8 @@ function TextFormatToolbar({
           title="Tebal (Bold)"
           className={`p-1 rounded border transition-colors ${
             style.bold
-              ? "bg-brand-orange/20 border-brand-orange text-brand-orange font-bold"
-              : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
+              ? "bg-blue-50 border-blue-400 text-blue-700 font-bold"
+              : "bg-white border-slate-200 text-slate-500 hover:text-slate-800"
           }`}
         >
           <Bold className="w-3 h-3" />
@@ -184,8 +188,8 @@ function TextFormatToolbar({
           title="Miring (Italic)"
           className={`p-1 rounded border transition-colors ${
             style.italic
-              ? "bg-brand-orange/20 border-brand-orange text-brand-orange"
-              : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
+              ? "bg-blue-50 border-blue-400 text-blue-700"
+              : "bg-white border-slate-200 text-slate-500 hover:text-slate-800"
           }`}
         >
           <Italic className="w-3 h-3" />
@@ -197,8 +201,8 @@ function TextFormatToolbar({
           title="Coret (Strikethrough)"
           className={`p-1 rounded border transition-colors ${
             style.strikethrough
-              ? "bg-brand-orange/20 border-brand-orange text-brand-orange"
-              : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
+              ? "bg-blue-50 border-blue-400 text-blue-700"
+              : "bg-white border-slate-200 text-slate-500 hover:text-slate-800"
           }`}
         >
           <Strikethrough className="w-3 h-3" />
@@ -349,6 +353,7 @@ export function TeamBoardCanvasView({
   initialViewport,
   currentUserRole = "OWNER",
 }: TeamBoardCanvasViewProps) {
+  const { toast } = useToast();
   const initialSafePanX = safeNumber(initialViewport?.panX, 40);
   const initialSafePanY = safeNumber(initialViewport?.panY, 40);
   const initialSafeZoom = safeNumber(initialViewport?.zoom, 1.0);
@@ -359,11 +364,19 @@ export function TeamBoardCanvasView({
   >("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Responsive device state
+  // Responsive device state & Mobile View Toggle (Canvas vs List)
   const [isMobile, setIsMobile] = useState(false);
+  const [viewMode, setViewMode] = useState<"CANVAS" | "LIST">("CANVAS");
+
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+    };
     handleResize();
+    if (window.innerWidth < 768) {
+      setViewMode("LIST");
+    }
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -670,6 +683,156 @@ export function TeamBoardCanvasView({
       }
       setResizingId(null);
     }
+  };
+
+  // Canvas Touch Events for Panning & Gesture Pinch Zooming
+  const touchPanStartRef = useRef<{ clientX: number; clientY: number; panX: number; panY: number } | null>(null);
+  const touchPinchDistRef = useRef<number | null>(null);
+  const touchDraggingIdRef = useRef<string | null>(null);
+  const touchDragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const touchLastNodePosRef = useRef<{ id: string; x: number; y: number; width?: number; height?: number } | null>(null);
+
+  const handleCanvasTouchStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest(".canvas-node-handle")) return;
+    if (target.closest("button") || target.closest("input") || target.closest("select")) return;
+    if (target.closest(".side-popover") || target.closest(".selection-bubble")) return;
+
+    if (e.touches.length === 1) {
+      const t = e.touches[0];
+      touchPanStartRef.current = {
+        clientX: t.clientX,
+        clientY: t.clientY,
+        panX: pan.x,
+        panY: pan.y,
+      };
+      setIsPanning(true);
+    } else if (e.touches.length === 2) {
+      // 2-finger touch activates smooth pinch-to-zoom mode and pauses 1-finger canvas pan
+      setIsPanning(false);
+      touchPanStartRef.current = null;
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      touchPinchDistRef.current = dist;
+    }
+  };
+
+  const handleCanvasTouchMove = (e: React.TouchEvent) => {
+    if (touchDraggingIdRef.current && e.touches.length === 1) {
+      const t = e.touches[0];
+      const nodeX = (t.clientX - pan.x) / zoom - touchDragOffsetRef.current.x;
+      const nodeY = (t.clientY - pan.y) / zoom - touchDragOffsetRef.current.y;
+      const roundedX = Math.round(nodeX);
+      const roundedY = Math.round(nodeY);
+
+      touchLastNodePosRef.current = {
+        id: touchDraggingIdRef.current,
+        x: roundedX,
+        y: roundedY,
+        width: touchLastNodePosRef.current?.width,
+        height: touchLastNodePosRef.current?.height,
+      };
+
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === touchDraggingIdRef.current
+            ? { ...item, x: roundedX, y: roundedY }
+            : item
+        )
+      );
+    } else if (e.touches.length === 2 && touchPinchDistRef.current !== null) {
+      const currentDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const delta = (currentDist - touchPinchDistRef.current) / 250;
+      touchPinchDistRef.current = currentDist;
+      setZoom((prev) => {
+        const nextZoom = Math.min(2.0, Math.max(0.3, Math.round((prev + delta) * 100) / 100));
+        scheduleViewportSave(panRef.current.x, panRef.current.y, nextZoom);
+        return nextZoom;
+      });
+    } else if (isPanning && touchPanStartRef.current && e.touches.length === 1) {
+      const t = e.touches[0];
+      const deltaX = t.clientX - touchPanStartRef.current.clientX;
+      const deltaY = t.clientY - touchPanStartRef.current.clientY;
+      setPan({
+        x: touchPanStartRef.current.panX + deltaX,
+        y: touchPanStartRef.current.panY + deltaY,
+      });
+    }
+  };
+
+  const handleCanvasTouchEnd = async (e: React.TouchEvent) => {
+    if (touchDraggingIdRef.current) {
+      const lastPos = touchLastNodePosRef.current;
+      if (lastPos && lastPos.id === touchDraggingIdRef.current) {
+        await updateTeamBoardItemPositionAction(
+          lastPos.id,
+          lastPos.x,
+          lastPos.y,
+          lastPos.width,
+          lastPos.height
+        );
+      } else {
+        const draggedNode = items.find((i) => i.id === touchDraggingIdRef.current);
+        if (draggedNode && draggedNode.x !== undefined && draggedNode.y !== undefined) {
+          await updateTeamBoardItemPositionAction(
+            draggedNode.id,
+            draggedNode.x,
+            draggedNode.y,
+            draggedNode.width,
+            draggedNode.height
+          );
+        }
+      }
+      touchDraggingIdRef.current = null;
+      touchLastNodePosRef.current = null;
+    }
+
+    if (e.touches.length === 0) {
+      if (isPanning) {
+        setIsPanning(false);
+        scheduleViewportSave(panRef.current.x, panRef.current.y, zoomRef.current);
+      }
+      touchPanStartRef.current = null;
+      touchPinchDistRef.current = null;
+    } else if (e.touches.length === 1) {
+      // Smoothly transition back to 1-finger panning without snapping
+      const t = e.touches[0];
+      touchPanStartRef.current = {
+        clientX: t.clientX,
+        clientY: t.clientY,
+        panX: panRef.current.x,
+        panY: panRef.current.y,
+      };
+      touchPinchDistRef.current = null;
+      setIsPanning(true);
+    }
+  };
+
+  const handleNodeHeaderTouchStart = (e: React.TouchEvent, item: TeamBoardItem) => {
+    e.stopPropagation();
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const itemX = item.x ?? 100;
+    const itemY = item.y ?? 100;
+    const touchCanvasX = (t.clientX - pan.x) / zoom;
+    const touchCanvasY = (t.clientY - pan.y) / zoom;
+    touchDragOffsetRef.current = {
+      x: touchCanvasX - itemX,
+      y: touchCanvasY - itemY,
+    };
+    touchLastNodePosRef.current = {
+      id: item.id,
+      x: itemX,
+      y: itemY,
+      width: item.width,
+      height: item.height,
+    };
+    touchDraggingIdRef.current = item.id;
   };
 
   // Node Drag Start
@@ -1185,46 +1348,46 @@ export function TeamBoardCanvasView({
     switch (theme) {
       case "emerald":
         return {
-          border: "border-emerald-500/50 hover:border-emerald-500/80",
-          badgeBg: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+          border: "border-emerald-300 hover:border-emerald-400",
+          badgeBg: "bg-emerald-50 text-emerald-700 border-emerald-200",
           accentBar: "bg-emerald-500",
-          glow: "focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500/20",
+          glow: "focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20",
         };
       case "amber":
         return {
-          border: "border-amber-500/50 hover:border-amber-500/80",
-          badgeBg: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+          border: "border-amber-300 hover:border-amber-400",
+          badgeBg: "bg-amber-50 text-amber-700 border-amber-200",
           accentBar: "bg-amber-500",
-          glow: "focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-500/20",
+          glow: "focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-500/20",
         };
       case "rose":
         return {
-          border: "border-rose-500/50 hover:border-rose-500/80",
-          badgeBg: "bg-rose-500/20 text-rose-300 border-rose-500/40",
+          border: "border-rose-300 hover:border-rose-400",
+          badgeBg: "bg-rose-50 text-rose-700 border-rose-200",
           accentBar: "bg-rose-500",
-          glow: "focus-within:border-rose-400 focus-within:ring-2 focus-within:ring-rose-500/20",
+          glow: "focus-within:border-rose-500 focus-within:ring-2 focus-within:ring-rose-500/20",
         };
       case "sky":
         return {
-          border: "border-sky-500/50 hover:border-sky-500/80",
-          badgeBg: "bg-sky-500/20 text-sky-300 border-sky-500/40",
+          border: "border-sky-300 hover:border-sky-400",
+          badgeBg: "bg-sky-50 text-sky-700 border-sky-200",
           accentBar: "bg-sky-500",
-          glow: "focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-500/20",
+          glow: "focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-500/20",
         };
       case "purple":
         return {
-          border: "border-purple-500/50 hover:border-purple-500/80",
-          badgeBg: "bg-purple-500/20 text-purple-300 border-purple-500/40",
+          border: "border-purple-300 hover:border-purple-400",
+          badgeBg: "bg-purple-50 text-purple-700 border-purple-200",
           accentBar: "bg-purple-500",
-          glow: "focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-500/20",
+          glow: "focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-500/20",
         };
       case "indigo":
       default:
         return {
-          border: "border-indigo-500/50 hover:border-indigo-500/80",
-          badgeBg: "bg-indigo-500/20 text-indigo-300 border-indigo-500/40",
-          accentBar: "bg-indigo-500",
-          glow: "focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500/20",
+          border: "border-blue-300 hover:border-blue-400",
+          badgeBg: "bg-blue-50 text-blue-700 border-blue-200",
+          accentBar: "bg-blue-600",
+          glow: "focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20",
         };
     }
   };
@@ -1232,18 +1395,18 @@ export function TeamBoardCanvasView({
   const getCategoryIcon = (cat: TeamBoardItem["category"]) => {
     switch (cat) {
       case "ANNOUNCEMENT":
-        return <Bell className="w-3.5 h-3.5 text-amber-400" />;
+        return <Bell className="w-3.5 h-3.5 text-amber-600" />;
       case "SOP":
-        return <BookOpen className="w-3.5 h-3.5 text-sky-400" />;
+        return <BookOpen className="w-3.5 h-3.5 text-sky-600" />;
       case "TARGET":
-        return <Target className="w-3.5 h-3.5 text-emerald-400" />;
+        return <Target className="w-3.5 h-3.5 text-emerald-600" />;
       case "IDEA":
-        return <Lightbulb className="w-3.5 h-3.5 text-purple-400" />;
+        return <Lightbulb className="w-3.5 h-3.5 text-purple-600" />;
     }
   };
 
   return (
-    <div className="relative w-full h-[calc(100vh-4.5rem)] bg-slate-950 overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
+    <div className="relative w-full h-[calc(100vh-12rem)] min-h-[580px] bg-slate-50 border border-slate-200/80 rounded-xl overflow-hidden font-sans selection:bg-blue-100 selection:text-blue-900 shadow-sm">
       {/* Hidden file input for desktop /upload & side panel trigger */}
       <input
         ref={cardFileInputRef}
@@ -1335,8 +1498,8 @@ export function TeamBoardCanvasView({
               { name: "Hijau", hex: "#22c55e", bgClass: "bg-emerald-500 hover:ring-emerald-400" },
               { name: "Biru", hex: "#3b82f6", bgClass: "bg-blue-500 hover:ring-blue-400" },
               { name: "Oren", hex: "#f97316", bgClass: "bg-orange-500 hover:ring-orange-400" },
-              { name: "Abu-abu", hex: "#94a3b8", bgClass: "bg-slate-400 hover:ring-slate-300" },
-              { name: "Putih", hex: "#ffffff", bgClass: "bg-white hover:ring-slate-200" },
+              { name: "Abu-abu", hex: "#64748b", bgClass: "bg-slate-500 hover:ring-slate-400" },
+              { name: "Hitam", hex: "#0f172a", bgClass: "bg-slate-900 hover:ring-slate-700" },
             ].map((col) => (
               <button
                 key={col.name}
@@ -1358,8 +1521,8 @@ export function TeamBoardCanvasView({
 
       {/* Slash command notification toast */}
       {slashToast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-brand-orange text-white text-xs font-bold px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
-          <Sparkles className="w-4 h-4 animate-spin" />
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900 border border-slate-700/80 text-white text-xs font-medium px-3.5 py-1.5 rounded-lg shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
           {slashToast}
         </div>
       )}
@@ -1367,24 +1530,22 @@ export function TeamBoardCanvasView({
       {/* Top Floating Control Bar */}
       <div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
         {/* Left: Title & Quick Category Filter Dropdown & Shared Canvas Badge */}
-        <div className="flex items-center gap-2.5 bg-slate-900/90 backdrop-blur-md px-3.5 py-2 rounded-xl border border-slate-800 shadow-xl pointer-events-auto">
+        <div className="flex items-center gap-2.5 bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-xl border border-slate-200/90 shadow-sm pointer-events-auto">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-brand-orange animate-pulse" />
-            <span className="text-xs font-black text-white tracking-wider uppercase">
+            <Layers className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span className="text-xs font-bold text-slate-900 tracking-wider uppercase">
               Kanban Workspace
             </span>
           </div>
 
-          <div className="h-4 w-px bg-slate-800" />
+          <div className="h-4 w-px bg-slate-200" />
 
           {/* Shared Canvas View Indicator */}
-          <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 bg-slate-950/80 rounded-lg border border-slate-800 text-[10px] text-slate-300">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-semibold text-emerald-400">Shared Viewport</span>
-            <span className="text-slate-500 font-mono">Sync</span>
+          <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 rounded-md border border-slate-200 text-[10px] text-slate-600 font-mono">
+            <span className="font-semibold text-emerald-700">SHARED VIEWPORT • SYNCED</span>
           </div>
 
-          <div className="hidden lg:block h-4 w-px bg-slate-800" />
+          <div className="hidden lg:block h-4 w-px bg-slate-200" />
 
           {/* Category Filter Dropdown */}
           <div className="relative flex items-center">
@@ -1395,7 +1556,7 @@ export function TeamBoardCanvasView({
                   e.target.value as "ALL" | "ANNOUNCEMENT" | "SOP" | "TARGET" | "IDEA"
                 )
               }
-              className="bg-slate-950/80 text-xs font-semibold text-slate-200 border border-slate-700/80 rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:border-brand-orange appearance-none cursor-pointer"
+              className="bg-slate-50 text-xs font-semibold text-slate-700 border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
             >
               <option value="ALL">Semua Kategori ({items.length})</option>
               <option value="ANNOUNCEMENT">
@@ -1416,93 +1577,326 @@ export function TeamBoardCanvasView({
 
           {/* Quick Search */}
           <div className="relative hidden sm:block">
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Cari kanban..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-slate-950/80 text-xs text-slate-200 pl-8 pr-3 py-1.5 rounded-lg border border-slate-700/80 focus:outline-none focus:border-brand-orange w-40 placeholder:text-slate-500"
+              className="bg-slate-50 text-xs text-slate-800 pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-500 w-40 placeholder:text-slate-400"
             />
           </div>
         </div>
 
         {/* Right: Zoom Controls & Create Button */}
         <div className="flex items-center gap-2 pointer-events-auto">
-          {/* Zoom controls */}
-          <div className="flex items-center bg-slate-900/90 backdrop-blur-md rounded-xl border border-slate-800 p-1 shadow-xl">
+          {/* Mobile/Desktop View Mode Toggle: Canvas vs List */}
+          <div className="flex items-center bg-white/95 backdrop-blur-md rounded-xl border border-slate-200/90 p-1 shadow-sm">
             <button
-              onClick={() => handleZoom(-0.1)}
-              title="Perkecil (-)"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              type="button"
+              onClick={() => setViewMode("CANVAS")}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                viewMode === "CANVAS"
+                  ? "bg-blue-600 text-white shadow-2xs font-bold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              }`}
+              title="Tampilan Kanvas 2D Interaktif"
             >
-              <ZoomOut className="w-3.5 h-3.5" />
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="text-[11px] sm:text-xs">Kanvas</span>
             </button>
-            <span className="text-[11px] font-mono text-slate-300 px-2 min-w-[42px] text-center">
-              {Math.round(zoom * 100)}%
-            </span>
             <button
-              onClick={() => handleZoom(0.1)}
-              title="Perbesar (+)"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              type="button"
+              onClick={() => setViewMode("LIST")}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                viewMode === "LIST"
+                  ? "bg-blue-600 text-white shadow-2xs font-bold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              }`}
+              title="Tampilan Daftar / Kartu Mobile"
             >
-              <ZoomIn className="w-3.5 h-3.5" />
-            </button>
-            <div className="h-4 w-px bg-slate-800 mx-1" />
-            <button
-              onClick={handleResetView}
-              title="Fokuskan Sudut Pandang ke Kotak (Reset 1:1)"
-              className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors text-xs font-semibold"
-            >
-              <Maximize2 className="w-3.5 h-3.5 text-brand-orange" />
-              <span className="hidden sm:inline">Fokus Kotak</span>
+              <List className="w-3.5 h-3.5" />
+              <span className="text-[11px] sm:text-xs">Daftar</span>
             </button>
           </div>
+
+          {/* Zoom controls (Canvas only) */}
+          {viewMode === "CANVAS" && (
+            <div className="hidden sm:flex items-center bg-white/95 backdrop-blur-md rounded-xl border border-slate-200/90 p-1 shadow-sm">
+              <button
+                onClick={() => handleZoom(-0.1)}
+                title="Perkecil (-)"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[11px] font-mono text-slate-700 px-2 min-w-[42px] text-center font-semibold">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                onClick={() => handleZoom(0.1)}
+                title="Perbesar (+)"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+              <div className="h-4 w-px bg-slate-200 mx-1" />
+              <button
+                onClick={handleResetView}
+                title="Fokuskan Sudut Pandang ke Kotak (Reset 1:1)"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors text-xs font-semibold"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-blue-600" />
+                <span className="hidden md:inline">Fokus Kotak</span>
+              </button>
+            </div>
+          )}
 
           {/* Primary Create Button */}
           <button
             onClick={handlePrimaryCreate}
-            className="flex items-center gap-2 bg-gradient-to-r from-brand-orange to-amber-500 hover:opacity-95 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-brand-orange/20 transition-all hover:scale-105 active:scale-95"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-all active:scale-95"
           >
             <Plus className="w-4 h-4" />
-            <span>Tambah Kotak</span>
+            <span className="hidden sm:inline">Tambah Kotak</span>
           </button>
         </div>
       </div>
 
-      {/* Off-screen recovery alert: appears if cards were panned out of view */}
-      {areCardsOffScreen && items.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-slate-900/95 border border-amber-500/60 backdrop-blur-md shadow-2xl text-amber-200 text-xs font-medium animate-in fade-in slide-in-from-bottom-3 duration-200">
+      {/* Off-screen recovery alert: appears if cards were panned out of view in canvas mode */}
+      {viewMode === "CANVAS" && areCardsOffScreen && items.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-white/95 border border-amber-300 backdrop-blur-md shadow-xl text-amber-900 text-xs font-medium animate-in fade-in slide-in-from-bottom-3 duration-200">
           <span className="flex items-center gap-1.5">
-            <Target className="w-4 h-4 text-amber-400" />
+            <Target className="w-4 h-4 text-amber-600" />
             Kotak kanban berada di luar sudut pandang layar.
           </span>
           <button
             type="button"
             onClick={handleResetView}
-            className="px-3 py-1 bg-gradient-to-r from-brand-orange to-amber-500 hover:opacity-90 text-white font-bold rounded-lg shadow-sm transition-all hover:scale-105 active:scale-95"
+            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-sm transition-all active:scale-95"
           >
             Bawa ke Layar (Fokus Kotak)
           </button>
         </div>
       )}
 
-      {/* Infinite Canvas Area */}
-      <div
-        ref={canvasRef}
-        onMouseDown={handleCanvasMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onDoubleClick={handleCanvasDoubleClick}
-        className={`w-full h-full relative select-none cursor-${
-          isPanning ? "grabbing" : "grab"
-        } overflow-hidden`}
-        style={{
-          backgroundImage: `radial-gradient(circle, rgba(71, 85, 105, 0.25) 1px, transparent 1px)`,
-          backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
-          backgroundPosition: `${pan.x}px ${pan.y}px`,
-        }}
-      >
+      {/* Floating Mobile Toggle to return to List View when exploring Canvas */}
+      {isMobile && viewMode === "CANVAS" && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+          <button
+            type="button"
+            onClick={() => setViewMode("LIST")}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900/90 hover:bg-slate-900 text-white text-xs font-semibold rounded-full shadow-lg backdrop-blur-md border border-slate-700/80 transition-transform active:scale-95"
+          >
+            <List className="w-3.5 h-3.5" />
+            <span>Beralih ke Tampilan Daftar</span>
+          </button>
+        </div>
+      )}
+
+      {/* Conditional: Mobile List / Card View vs Interactive 2D Canvas */}
+      {viewMode === "LIST" ? (
+        <div className="w-full h-full pt-20 pb-8 px-4 sm:px-6 overflow-y-auto">
+          <div className="max-w-4xl mx-auto space-y-4">
+            {/* Quick mobile search when toolbar input is hidden on mobile */}
+            <div className="sm:hidden relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Cari kanban..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white text-xs text-slate-800 pl-9 pr-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 placeholder:text-slate-400 shadow-2xs"
+              />
+            </div>
+
+            {filteredItems.length === 0 ? (
+              <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 shadow-2xs mt-6">
+                <Layers className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-sm font-bold text-slate-800">Tidak ada catatan ditemukan</p>
+                <p className="text-xs text-slate-500 mt-1">Coba sesuaikan filter kategori atau kata kunci pencarian.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {filteredItems.map((item) => {
+                  const styles = getThemeStyles(item.colorTheme);
+                  const imageAttachments = item.attachments?.filter(isImageAttachment) || [];
+                  const docAttachments = item.attachments?.filter((att) => !isImageAttachment(att)) || [];
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`bg-white rounded-2xl border ${styles.border} shadow-2xs p-4 flex flex-col justify-between space-y-3 transition-shadow hover:shadow-xs`}
+                    >
+                      <div className="space-y-2">
+                        {/* Card Header */}
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${styles.badgeBg}`}
+                          >
+                            {getCategoryIcon(item.category)}
+                            {item.category}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {new Date(item.createdAt).toLocaleDateString("id-ID", {
+                                day: "numeric",
+                                month: "short",
+                              })}
+                            </span>
+                            <button
+                              onClick={(e) => handleOpenEdit(item, e)}
+                              className="p-1 text-slate-400 hover:text-blue-600 rounded transition-colors"
+                              title="Edit catatan"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteNode(item.id, e)}
+                              className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors"
+                              title="Hapus catatan"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Title & Subtitle */}
+                        <h3
+                          className={`text-slate-900 leading-snug font-bold ${getStyleClasses(
+                            item.titleStyle,
+                            "text-sm",
+                            "font-bold"
+                          )}`}
+                          dangerouslySetInnerHTML={{ __html: item.title }}
+                        />
+                        {item.subtitle && (
+                          <h4
+                            className={`text-slate-500 leading-snug ${getStyleClasses(
+                              item.subtitleStyle,
+                              "text-xs",
+                              "font-medium"
+                            )}`}
+                            dangerouslySetInnerHTML={{ __html: item.subtitle }}
+                          />
+                        )}
+
+                        {/* Content */}
+                        <div
+                          className={`text-slate-700 leading-relaxed whitespace-pre-wrap ${getStyleClasses(
+                            item.contentStyle,
+                            "text-xs",
+                            "font-normal"
+                          )}`}
+                          dangerouslySetInnerHTML={{ __html: item.content }}
+                        />
+
+                        {/* Image Attachments */}
+                        {imageAttachments.length > 0 && (
+                          <div className="pt-2 grid grid-cols-2 gap-2">
+                            {imageAttachments.map((img) => (
+                              <img
+                                key={img.id}
+                                src={img.url}
+                                alt={img.name}
+                                onClick={() => setPreviewAttachment(img)}
+                                className="h-28 w-full object-cover rounded-xl border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Document Attachments */}
+                        {docAttachments.length > 0 && (
+                          <div className="pt-1 space-y-1">
+                            {docAttachments.map((doc) => (
+                              <div
+                                key={doc.id}
+                                onClick={() => setPreviewAttachment(doc)}
+                                className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors"
+                              >
+                                <span className="flex items-center gap-1.5 truncate">
+                                  <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                  <span className="truncate">{doc.name}</span>
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-mono shrink-0 ml-2">
+                                  {doc.size}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Author Footer */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                        <span className="flex items-center gap-1">
+                          <User className="w-3 h-3" />
+                          {item.authorName}
+                        </span>
+                        <span>Fynux Internal</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Infinite Canvas Area with Touch Gestures */
+        <div
+          ref={canvasRef}
+          onMouseDown={handleCanvasMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onDoubleClick={handleCanvasDoubleClick}
+          onTouchStart={handleCanvasTouchStart}
+          onTouchMove={handleCanvasTouchMove}
+          onTouchEnd={handleCanvasTouchEnd}
+          onTouchCancel={handleCanvasTouchEnd}
+          className={`w-full h-full relative select-none cursor-${
+            isPanning ? "grabbing" : "grab"
+          } overflow-hidden`}
+          style={{
+            touchAction: "none",
+            backgroundImage: `radial-gradient(circle, rgba(148, 163, 184, 0.45) 1px, transparent 1px)`,
+            backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
+            backgroundPosition: `${pan.x}px ${pan.y}px`,
+          }}
+        >
+        {/* Empty State Indicator */}
+        {filteredItems.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none z-20">
+            <div className="flex flex-col items-center justify-center p-8 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 text-center shadow-lg pointer-events-auto max-w-sm animate-in fade-in zoom-in-95 duration-150">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+                <Layers className="w-6 h-6" />
+              </div>
+              <h4 className="text-sm font-bold text-slate-800">
+                {searchQuery || selectedCategory !== "ALL"
+                  ? "Tidak ada kotak yang cocok"
+                  : "Papan Tim Masih Kosong"}
+              </h4>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                {searchQuery || selectedCategory !== "ALL"
+                  ? "Coba ubah kata kunci pencarian atau filter kategori papan."
+                  : "Klik tombol 'Tambah Kotak' di kanan atas atau klik dua kali di kanvas untuk mulai membuat catatan, SOP, atau target tim."}
+              </p>
+              {!searchQuery && selectedCategory === "ALL" && (
+                <button
+                  type="button"
+                  onClick={() => handlePrimaryCreate()}
+                  className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors active:scale-95"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Tambah Kotak Pertama</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Transform Container */}
         <div
           style={{
@@ -1527,10 +1921,10 @@ export function TeamBoardCanvasView({
                 key={item.id}
                 data-card-id={item.id}
                 onClick={(e) => handleCardClick(item, e)}
-                className={`canvas-node select-text selection:bg-blue-600 selection:text-white absolute bg-slate-900/95 backdrop-blur-md rounded-2xl border ${
+                className={`canvas-node select-text selection:bg-blue-100 selection:text-blue-900 absolute bg-white rounded-2xl border ${
                   styles.border
-                } ${styles.glow} shadow-2xl flex flex-col group transition-shadow ${
-                  isActive ? "ring-2 ring-brand-orange/80 shadow-brand-orange/10 z-30" : "hover:shadow-indigo-500/10 z-10"
+                } shadow-sm hover:shadow-md flex flex-col group transition-shadow ${
+                  isActive ? "ring-2 ring-blue-500 shadow-md z-30" : "hover:border-slate-300 z-10"
                 }`}
                 style={{
                   left: `${posX}px`,
@@ -1542,7 +1936,8 @@ export function TeamBoardCanvasView({
                 {/* Header (Draggable Handle + Actions) */}
                 <div
                   onMouseDown={(e) => handleNodeHeaderMouseDown(e, item)}
-                  className="px-4 py-2.5 border-b border-slate-800/80 flex items-center justify-between cursor-move bg-slate-950/50 rounded-t-2xl select-none"
+                  onTouchStart={(e) => handleNodeHeaderTouchStart(e, item)}
+                  className="canvas-node-handle px-4 py-2.5 border-b border-slate-100 flex items-center justify-between cursor-move bg-slate-50/80 rounded-t-2xl select-none"
                 >
                   <div className="flex items-center gap-2">
                     <span
@@ -1554,7 +1949,7 @@ export function TeamBoardCanvasView({
                   </div>
 
                   <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
-                    <span className="text-[10px] text-slate-500 flex items-center gap-1 mr-1">
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1 mr-1">
                       <Calendar className="w-3 h-3" />
                       {new Date(item.createdAt).toLocaleDateString("id-ID", {
                         day: "numeric",
@@ -1566,7 +1961,7 @@ export function TeamBoardCanvasView({
                     <button
                       onClick={(e) => handleOpenEdit(item, e)}
                       title="Buka modal edit detail"
-                      className="text-slate-400 hover:text-brand-orange p-1 rounded transition-colors"
+                      className="text-slate-400 hover:text-blue-600 p-1 rounded transition-colors"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
@@ -1575,7 +1970,7 @@ export function TeamBoardCanvasView({
                     <button
                       onClick={(e) => handleDeleteNode(item.id, e)}
                       title="Hapus kotak ini"
-                      className="text-slate-400 hover:text-rose-400 p-1 rounded transition-colors"
+                      className="text-slate-400 hover:text-rose-500 p-1 rounded transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -1598,7 +1993,7 @@ export function TeamBoardCanvasView({
                         ) as HTMLElement | null;
                         sub?.focus();
                       }}
-                      className={`w-full bg-slate-950/70 border border-slate-700/80 rounded-lg px-2.5 py-1 text-white focus:outline-none focus:border-brand-orange transition-colors ${getStyleClasses(
+                      className={`w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 transition-colors ${getStyleClasses(
                         item.titleStyle,
                         "text-base",
                         "font-extrabold"
@@ -1606,7 +2001,7 @@ export function TeamBoardCanvasView({
                     />
                   ) : (
                     <h3
-                      className={`text-white leading-tight ${getStyleClasses(
+                      className={`text-slate-900 leading-tight ${getStyleClasses(
                         item.titleStyle,
                         "text-base",
                         "font-extrabold"
@@ -1629,7 +2024,7 @@ export function TeamBoardCanvasView({
                         ) as HTMLElement | null;
                         cont?.focus();
                       }}
-                      className={`w-full bg-slate-950/60 border border-slate-700/60 rounded-lg px-2 py-0.5 text-brand-orange focus:outline-none focus:border-brand-orange transition-colors ${getStyleClasses(
+                      className={`w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-0.5 text-blue-600 focus:outline-none focus:bg-white focus:border-blue-500 transition-colors ${getStyleClasses(
                         item.subtitleStyle,
                         "text-xs",
                         "font-semibold"
@@ -1638,7 +2033,7 @@ export function TeamBoardCanvasView({
                   ) : (
                     item.subtitle && (
                       <h4
-                        className={`text-brand-orange leading-snug ${getStyleClasses(
+                        className={`text-blue-600 leading-snug ${getStyleClasses(
                           item.subtitleStyle,
                           "text-xs",
                           "font-semibold"
@@ -1666,17 +2061,17 @@ export function TeamBoardCanvasView({
                           setSlashToast("Membuka pemilih berkas untuk /upload...");
                           setTimeout(() => setSlashToast(null), 3000);
                         }}
-                        className={`w-full min-h-[90px] bg-slate-950/50 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs focus:outline-none focus:border-brand-orange/70 transition-colors whitespace-pre-wrap selection:bg-blue-600 selection:text-white leading-relaxed ${getStyleClasses(
+                        className={`w-full min-h-[90px] bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-700 text-xs focus:outline-none focus:bg-white focus:border-blue-500 transition-colors whitespace-pre-wrap selection:bg-blue-100 selection:text-blue-900 leading-relaxed ${getStyleClasses(
                           item.contentStyle,
                           "text-xs",
                           "font-normal"
                         )}`}
                       />
-                      <div className="text-[10px] text-slate-500 flex items-center justify-between px-1">
+                      <div className="text-[10px] text-slate-400 flex items-center justify-between px-1">
                         <span className="flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-brand-orange" />
-                          Blok teks untuk styling &bull; Ketik{" "}
-                          <code className="text-brand-orange font-mono font-bold bg-slate-800 px-1 py-0.5 rounded">
+                          <Sparkles className="w-3 h-3 text-blue-600" />
+                          Blok teks untuk styling / Ketik{" "}
+                          <code className="text-blue-600 font-mono font-bold bg-slate-100 px-1 py-0.5 rounded border border-slate-200">
                             /upload
                           </code>{" "}
                           untuk berkas
@@ -1685,7 +2080,7 @@ export function TeamBoardCanvasView({
                     </div>
                   ) : (
                     <div
-                      className={`text-slate-300 leading-relaxed whitespace-pre-line ${getStyleClasses(
+                      className={`text-slate-600 leading-relaxed whitespace-pre-line ${getStyleClasses(
                         item.contentStyle,
                         "text-xs",
                         "font-normal"
@@ -1696,16 +2091,16 @@ export function TeamBoardCanvasView({
 
                   {/* 1. PREVIEW GAMBAR LANGSUNG DI KANVAS */}
                   {imageAttachments.length > 0 && (
-                    <div className="pt-2 border-t border-slate-800/60">
-                      <div className="text-[10px] font-bold text-slate-400 mb-1.5 flex items-center justify-between uppercase tracking-wider">
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="text-[10px] font-bold text-slate-500 mb-1.5 flex items-center justify-between uppercase tracking-wider">
                         <span className="flex items-center gap-1">
-                          <ImageIcon className="w-3 h-3 text-brand-orange" />
+                          <ImageIcon className="w-3 h-3 text-blue-600" />
                           Lampiran Gambar ({imageAttachments.length})
                         </span>
                       </div>
 
                       {imageAttachments.length === 1 ? (
-                        <div className="relative rounded-xl overflow-hidden border border-slate-700/80 bg-slate-950/60 max-h-48 cursor-pointer group/img hover:border-brand-orange transition-all shadow-md">
+                        <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50 max-h-48 cursor-pointer group/img hover:border-blue-400 transition-all shadow-xs">
                           <img
                             src={imageAttachments[0].url}
                             alt={imageAttachments[0].name}
@@ -1720,7 +2115,7 @@ export function TeamBoardCanvasView({
                               e.stopPropagation();
                               setPreviewAttachment(imageAttachments[0]);
                             }}
-                            className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-xs font-bold text-white backdrop-blur-xs"
+                            className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-xs font-bold text-white backdrop-blur-xs"
                           >
                             Klik untuk Memperbesar Gambar
                           </div>
@@ -1730,7 +2125,7 @@ export function TeamBoardCanvasView({
                               onClick={(e) =>
                                 handleRemoveCardAttachment(item.id, imageAttachments[0].id, e)
                               }
-                              className="absolute top-2 right-2 bg-rose-600/90 hover:bg-rose-600 text-white p-1 rounded-full shadow-lg transition-transform hover:scale-110"
+                              className="absolute top-2 right-2 bg-rose-600/90 hover:bg-rose-600 text-white p-1 rounded-full shadow transition-transform hover:scale-110"
                               title="Hapus gambar"
                             >
                               <X className="w-3 h-3" />
@@ -1742,7 +2137,7 @@ export function TeamBoardCanvasView({
                           {imageAttachments.map((img) => (
                             <div
                               key={img.id}
-                              className="relative rounded-lg overflow-hidden border border-slate-700/80 bg-slate-950/60 h-24 cursor-pointer group/img hover:border-brand-orange transition-all shadow-sm"
+                              className="relative rounded-lg overflow-hidden border border-slate-200 bg-slate-50 h-24 cursor-pointer group/img hover:border-blue-400 transition-all shadow-xs"
                             >
                               <img
                                 src={img.url}
@@ -1758,7 +2153,7 @@ export function TeamBoardCanvasView({
                                   e.stopPropagation();
                                   setPreviewAttachment(img);
                                 }}
-                                className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-[10px] font-bold text-white text-center p-1"
+                                className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-[10px] font-bold text-white text-center p-1"
                               >
                                 Perbesar
                               </div>
@@ -1783,16 +2178,16 @@ export function TeamBoardCanvasView({
 
                   {/* 2. DOKUMEN NON-GAMBAR (PDF, DOCS) */}
                   {docAttachments.length > 0 && (
-                    <div className="pt-2 border-t border-slate-800/60 space-y-1.5">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                        <Paperclip className="w-3 h-3 text-brand-orange" /> Berkas Dokumen (
+                    <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                        <Paperclip className="w-3 h-3 text-blue-600" /> Berkas Dokumen (
                         {docAttachments.length})
                       </span>
                       <div className="flex flex-wrap gap-2">
                         {docAttachments.map((att) => (
                           <div
                             key={att.id}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-[11px] text-slate-200 transition-colors group/att"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-[11px] text-slate-700 transition-colors group/att"
                           >
                             <button
                               type="button"
@@ -1800,9 +2195,9 @@ export function TeamBoardCanvasView({
                                 e.stopPropagation();
                                 setPreviewAttachment(att);
                               }}
-                              className="flex items-center gap-1.5 hover:text-brand-orange transition-colors"
+                              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors"
                             >
-                              <FileText className="w-3.5 h-3.5 text-brand-orange" />
+                              <FileText className="w-3.5 h-3.5 text-blue-600" />
                               <span className="max-w-[130px] truncate">{att.name}</span>
                             </button>
                             {isActive && (
@@ -1811,7 +2206,7 @@ export function TeamBoardCanvasView({
                                 onClick={(e) =>
                                   handleRemoveCardAttachment(item.id, att.id, e)
                                 }
-                                className="text-slate-400 hover:text-rose-400 ml-1 p-0.5"
+                                className="text-slate-400 hover:text-rose-500 ml-1 p-0.5"
                                 title="Hapus dokumen"
                               >
                                 <X className="w-3 h-3" />
@@ -1825,19 +2220,19 @@ export function TeamBoardCanvasView({
                 </div>
 
                 {/* Footer (Author Info) */}
-                <div className="px-4 py-2 border-t border-slate-800/70 flex items-center justify-between text-[10px] text-slate-400 bg-slate-950/20 rounded-b-2xl">
+                <div className="px-4 py-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500 bg-slate-50/50 rounded-b-2xl">
                   <span className="flex items-center gap-1 truncate">
-                    <User className="w-3 h-3 text-slate-500" />
+                    <User className="w-3 h-3 text-slate-400" />
                     {item.authorName}
                   </span>
-                  <span className="text-slate-600 font-mono">Fynux Internal</span>
+                  <span className="text-slate-400 font-mono">Fynux Internal</span>
                 </div>
 
                 {/* Custom Resize Corner Handle (Bottom-Right) */}
                 <div
                   onMouseDown={(e) => handleResizeMouseDown(e, item)}
                   title="Tarik sudut untuk mengubah ukuran kotak"
-                  className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-center justify-center text-slate-600 hover:text-brand-orange transition-colors"
+                  className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-center justify-center text-slate-400 hover:text-blue-600 transition-colors"
                 >
                   <svg className="w-2.5 h-2.5" viewBox="0 0 6 6" fill="currentColor">
                     <circle cx="5" cy="5" r="0.8" />
@@ -1849,19 +2244,19 @@ export function TeamBoardCanvasView({
                 {/* SIDE FLOATING POPOVER (Category & Color Palette) - Only appears when card is active on desktop */}
                 {isActive && !isMobile && (
                   <div
-                    className="side-popover absolute left-full ml-3 top-0 flex flex-col gap-2.5 p-3 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-2xl shadow-2xl z-40 min-w-[150px] animate-in fade-in slide-in-from-left-2 duration-150"
+                    className="side-popover absolute left-full ml-3 top-0 flex flex-col gap-2.5 p-3 bg-white border border-slate-200/90 rounded-2xl shadow-xl z-40 min-w-[150px] animate-in fade-in slide-in-from-left-2 duration-150"
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Header */}
-                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800/80 pb-1.5">
-                      <span className="flex items-center gap-1 text-slate-300">
-                        <Palette className="w-3 h-3 text-brand-orange" /> Menu Kotak
+                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 pb-1.5">
+                      <span className="flex items-center gap-1 text-slate-700">
+                        <Palette className="w-3 h-3 text-blue-600" /> Menu Kotak
                       </span>
                       <button
                         type="button"
                         onClick={() => setActiveCardId(null)}
-                        className="text-slate-400 hover:text-white"
+                        className="text-slate-400 hover:text-slate-700"
                         title="Tutup Menu"
                       >
                         <X className="w-3 h-3" />
@@ -1870,7 +2265,7 @@ export function TeamBoardCanvasView({
 
                     {/* Kategori Selector */}
                     <div>
-                      <div className="text-[10px] font-semibold text-slate-400 mb-1">
+                      <div className="text-[10px] font-semibold text-slate-500 mb-1">
                         Kategori
                       </div>
                       <div className="grid grid-cols-2 gap-1">
@@ -1881,8 +2276,8 @@ export function TeamBoardCanvasView({
                             onClick={() => handleUpdateCardCategory(item.id, cat)}
                             className={`px-1.5 py-1 rounded-lg text-[10px] font-bold border flex items-center justify-center gap-1 transition-all ${
                               item.category === cat
-                                ? "bg-brand-orange text-white border-brand-orange shadow-sm"
-                                : "bg-slate-800/80 text-slate-400 border-slate-700/70 hover:text-white hover:border-slate-600"
+                                ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                                : "bg-slate-50 text-slate-600 border-slate-200 hover:text-slate-900 hover:border-slate-300"
                             }`}
                             title={cat}
                           >
@@ -1901,14 +2296,14 @@ export function TeamBoardCanvasView({
 
                     {/* Warna Selector */}
                     <div>
-                      <div className="text-[10px] font-semibold text-slate-400 mb-1">
+                      <div className="text-[10px] font-semibold text-slate-500 mb-1">
                         Warna Tema
                       </div>
-                      <div className="flex items-center justify-between bg-slate-950/60 p-1.5 rounded-xl border border-slate-800">
+                      <div className="flex items-center justify-between bg-slate-50 p-1.5 rounded-xl border border-slate-200">
                         {(["indigo", "emerald", "amber", "rose", "sky", "purple"] as const).map(
                           (col) => {
                             const bgMap = {
-                              indigo: "bg-indigo-500",
+                              indigo: "bg-blue-600",
                               emerald: "bg-emerald-500",
                               amber: "bg-amber-500",
                               rose: "bg-rose-500",
@@ -1923,7 +2318,7 @@ export function TeamBoardCanvasView({
                                 onClick={() => handleUpdateCardColorTheme(item.id, col)}
                                 className={`w-4 h-4 rounded-full ${bgMap} transition-transform hover:scale-125 flex items-center justify-center ${
                                   item.colorTheme === col
-                                    ? "ring-2 ring-white scale-110 shadow-md"
+                                    ? "ring-2 ring-slate-900 scale-110 shadow-sm"
                                     : "opacity-75 hover:opacity-100"
                                 }`}
                                 title={`Warna ${col}`}
@@ -1941,9 +2336,9 @@ export function TeamBoardCanvasView({
                         targetCardUploadIdRef.current = item.id;
                         cardFileInputRef.current?.click();
                       }}
-                      className="w-full py-1.5 px-2 bg-slate-800 hover:bg-slate-700/90 text-slate-200 border border-slate-700 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors"
+                      className="w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors"
                     >
-                      <Upload className="w-3 h-3 text-brand-orange" />
+                      <Upload className="w-3 h-3 text-blue-600" />
                       <span>Upload Berkas</span>
                     </button>
 
@@ -1951,7 +2346,7 @@ export function TeamBoardCanvasView({
                     <button
                       type="button"
                       onClick={() => setActiveCardId(null)}
-                      className="w-full py-1.5 px-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 transition-colors"
+                      className="w-full py-1.5 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 transition-colors"
                     >
                       <Check className="w-3 h-3" />
                       <span>Selesai Edit</span>
@@ -1963,29 +2358,32 @@ export function TeamBoardCanvasView({
           })}
         </div>
       </div>
+      )}
 
       {/* MODAL POPUP: Fallback untuk Mobile atau Pengaturan Form Khusus */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
-            <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between sticky top-0 bg-slate-900/95 backdrop-blur-md z-10">
+        <ModalPortal>
+          <div className="fixed inset-0 z-[9999] modal-backdrop-clean flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs animate-ios-fade">
+          <div className="bg-white border border-slate-200/90 rounded-2xl w-full max-w-xl max-h-[88vh] flex flex-col overflow-hidden animate-ios-scale relative shadow-2xl">
+            <div className="px-6 py-4 border-b border-slate-200/80 flex items-center justify-between shrink-0 bg-white">
               <div className="flex items-center gap-2">
-                <Layers className="w-5 h-5 text-brand-orange" />
-                <h3 className="font-bold text-white text-base">
+                <Layers className="w-5 h-5 text-blue-600" />
+                <h3 className="font-bold text-slate-900 text-sm">
                   {editingNodeId ? "Ubah Kotak Kanban" : "Tambah Kotak Kanban Baru"}
                 </h3>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleModalSave} className="p-6 space-y-4 flex-1">
+            <form onSubmit={handleModalSave} className="flex flex-col min-h-0 flex-1">
+              <div className="p-6 space-y-4 flex-1 overflow-y-auto">
               {errorMessage && (
-                <div className="p-3 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs">
+                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs">
                   {errorMessage}
                 </div>
               )}
@@ -1993,7 +2391,7 @@ export function TeamBoardCanvasView({
               {/* Kategori & Warna Theme */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     Kategori Papan
                   </label>
                   <select
@@ -2001,7 +2399,7 @@ export function TeamBoardCanvasView({
                     onChange={(e) =>
                       setCategory(e.target.value as TeamBoardItem["category"])
                     }
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-orange"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500"
                   >
                     <option value="ANNOUNCEMENT">📢 Pengumuman</option>
                     <option value="SOP">📖 SOP & Prosedur</option>
@@ -2011,14 +2409,14 @@ export function TeamBoardCanvasView({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     Warna Tema Kotak
                   </label>
                   <div className="flex items-center gap-2 py-1">
                     {(["indigo", "emerald", "amber", "rose", "sky", "purple"] as const).map(
                       (theme) => {
                         const bgColors = {
-                          indigo: "bg-indigo-500",
+                          indigo: "bg-blue-600",
                           emerald: "bg-emerald-500",
                           amber: "bg-amber-500",
                           rose: "bg-rose-500",
@@ -2033,7 +2431,7 @@ export function TeamBoardCanvasView({
                             onClick={() => setColorTheme(theme)}
                             className={`w-7 h-7 rounded-full ${bgColors} transition-transform hover:scale-110 flex items-center justify-center ${
                               colorTheme === theme
-                                ? "ring-2 ring-white scale-110 shadow-lg"
+                                ? "ring-2 ring-slate-900 scale-110 shadow-sm"
                                 : "opacity-70 hover:opacity-100"
                             }`}
                             title={`Warna ${theme}`}
@@ -2063,7 +2461,7 @@ export function TeamBoardCanvasView({
                   placeholder="Contoh: Rilis Update Fynux OS v2.0"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-brand-orange transition-all placeholder:text-slate-600 ${getStyleClasses(
+                  className={`w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 transition-all placeholder:text-slate-400 ${getStyleClasses(
                     titleStyle,
                     "text-base",
                     "font-extrabold"
@@ -2088,7 +2486,7 @@ export function TeamBoardCanvasView({
                   placeholder="Contoh: Modul Team Board & Interactive Canvas"
                   value={subtitle}
                   onChange={(e) => setSubtitle(e.target.value)}
-                  className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-brand-orange focus:outline-none focus:border-brand-orange transition-all placeholder:text-slate-600 ${getStyleClasses(
+                  className={`w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-blue-600 focus:outline-none focus:bg-white focus:border-blue-500 transition-all placeholder:text-slate-400 ${getStyleClasses(
                     subtitleStyle,
                     "text-xs",
                     "font-semibold"
@@ -2114,7 +2512,7 @@ export function TeamBoardCanvasView({
                   placeholder="Tulis detail catatan, arahan, atau target tim..."
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-brand-orange transition-all placeholder:text-slate-600 ${getStyleClasses(
+                  className={`w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-700 focus:outline-none focus:bg-white focus:border-blue-500 transition-all placeholder:text-slate-400 ${getStyleClasses(
                     contentStyle,
                     "text-xs",
                     "font-normal"
@@ -2123,21 +2521,21 @@ export function TeamBoardCanvasView({
               </div>
 
               {/* UPLOAD BERKAS & PREVIEW DI MODAL */}
-              <div className="pt-2 border-t border-slate-800">
-                <label className="block text-xs font-semibold text-slate-300 mb-2 flex items-center justify-between">
+              <div className="pt-2 border-t border-slate-100">
+                <label className="block text-xs font-semibold text-slate-700 mb-2 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Paperclip className="w-3.5 h-3.5 text-brand-orange" />
+                    <Paperclip className="w-3.5 h-3.5 text-blue-600" />
                     Lampiran Berkas (Gambar & Dokumen)
                   </span>
-                  <span className="text-[10px] text-slate-500 font-normal">
+                  <span className="text-[10px] text-slate-400 font-normal">
                     Format: JPG, PNG, WEBP, PDF, TXT
                   </span>
                 </label>
 
                 {/* Upload Button */}
                 <div className="flex items-center gap-2">
-                  <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-xs text-slate-200 font-medium transition-colors shadow-sm">
-                    <Upload className="w-3.5 h-3.5 text-brand-orange" />
+                  <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs text-slate-700 font-medium transition-colors shadow-xs">
+                    <Upload className="w-3.5 h-3.5 text-blue-600" />
                     <span>Pilih Berkas Lampiran...</span>
                     <input
                       type="file"
@@ -2146,7 +2544,7 @@ export function TeamBoardCanvasView({
                       className="hidden"
                     />
                   </label>
-                  <span className="text-[11px] text-slate-500">
+                  <span className="text-[11px] text-slate-400">
                     Otomatis dikompres & muncul di canvas
                   </span>
                 </div>
@@ -2154,7 +2552,7 @@ export function TeamBoardCanvasView({
                 {/* List Preview Berkas */}
                 {attachments.length > 0 && (
                   <div className="mt-3 space-y-2">
-                    <div className="text-[11px] font-bold text-slate-400">
+                    <div className="text-[11px] font-bold text-slate-600">
                       Berkas Terlampir ({attachments.length}):
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -2163,26 +2561,26 @@ export function TeamBoardCanvasView({
                         return (
                           <div
                             key={att.id}
-                            className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-950 border border-slate-800 text-xs"
+                            className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs"
                           >
                             <div
                               onClick={() => setPreviewAttachment(att)}
-                              className="flex items-center gap-2 min-w-0 cursor-pointer hover:text-brand-orange transition-colors flex-1"
+                              className="flex items-center gap-2 min-w-0 cursor-pointer hover:text-blue-600 transition-colors flex-1"
                             >
                               {isImg ? (
                                 <img
                                   src={att.url}
                                   alt={att.name}
-                                  className="w-8 h-8 rounded-lg object-cover border border-slate-700 shrink-0"
+                                  className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0"
                                 />
                               ) : (
-                                <FileText className="w-5 h-5 text-brand-orange shrink-0" />
+                                <FileText className="w-5 h-5 text-blue-600 shrink-0" />
                               )}
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-slate-200 font-medium text-[11px]">
+                                <p className="truncate text-slate-800 font-medium text-[11px]">
                                   {att.name}
                                 </p>
-                                <p className="text-[9px] text-slate-500">{att.size}</p>
+                                <p className="text-[9px] text-slate-400">{att.size}</p>
                               </div>
                             </div>
                             <button
@@ -2190,7 +2588,7 @@ export function TeamBoardCanvasView({
                               onClick={() =>
                                 setAttachments((prev) => prev.filter((a) => a.id !== att.id))
                               }
-                              className="text-slate-500 hover:text-rose-400 p-1 rounded transition-colors"
+                              className="text-slate-400 hover:text-rose-500 p-1 rounded transition-colors"
                               title="Hapus berkas"
                             >
                               <X className="w-3.5 h-3.5" />
@@ -2203,19 +2601,22 @@ export function TeamBoardCanvasView({
                 )}
               </div>
 
-              {/* Submit Buttons */}
-              <div className="pt-4 flex items-center justify-end gap-2 border-t border-slate-800">
+              </div>
+
+              {/* Sticky Submit Footer */}
+              <div className="shrink-0 px-6 py-4 border-t border-slate-200/80 bg-slate-50/90 rounded-b-2xl flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 border border-slate-200/90 text-slate-700 text-xs font-semibold rounded-lg bg-white hover:bg-slate-100 transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-brand-orange to-amber-500 text-white shadow-lg shadow-brand-orange/20 hover:opacity-90 disabled:opacity-50 transition-all flex items-center gap-2"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-sm disabled:opacity-50 transition-colors flex items-center gap-2"
                 >
                   {isSubmitting && <Sparkles className="w-3.5 h-3.5 animate-spin" />}
                   <span>
@@ -2226,7 +2627,8 @@ export function TeamBoardCanvasView({
             </form>
           </div>
         </div>
-      )}
+      </ModalPortal>
+    )}
 
       {/* DOCUMENT & IMAGE HIGH-RES PREVIEW MODAL */}
       <DocumentPreviewModal

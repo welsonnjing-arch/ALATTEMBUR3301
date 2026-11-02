@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "test": "tsx --test tests/**/*.test.ts"
+    "test": "tsx --test tests/**/*.test.ts",
+    "postinstall": "node scripts/patch-next-font.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

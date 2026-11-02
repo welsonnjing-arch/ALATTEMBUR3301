@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { normalizeWhatsAppNumber } from "../src/modules/crm/types";
+import { createUser, deleteUser } from "../src/modules/auth/user.service";
 import {
   createProspect,
   bulkCreateProspects,
@@ -289,6 +290,66 @@ describe("CRM Data Validation & Normalization Rules", () => {
     const diskContent = JSON.parse(fs.readFileSync(PROSPECTS_FILE, "utf-8"));
     const diskP1 = diskContent.find((p: any) => p.id === prospectIds[0]);
     assert.ok(diskP1 && diskP1.assignedSalesId);
+  });
+
+  test("includes Developer with canHandleSales: true in getAvailableSalesUsers and Round-Robin CRM distribution", async () => {
+    const timestamp = Date.now();
+    // 1. Buat 1 Developer murni (canHandleSales: false) dan 1 Developer Hybrid (canHandleSales: true)
+    const pureDev = createUser({
+      fullName: "Pure Coder",
+      email: `pure.coder.${timestamp}@fynux.com`,
+      role: "DEVELOPER",
+      password: "passwordPure123",
+      canHandleSales: false,
+    });
+
+    const hybridDev = createUser({
+      fullName: "Hybrid Dev",
+      email: `hybrid.dev.${timestamp}@fynux.com`,
+      role: "DEVELOPER",
+      password: "passwordHybrid123",
+      canHandleSales: true,
+    });
+
+    try {
+      // 2. Periksa list sales users
+      const salesList = getAvailableSalesUsers();
+      const foundPureDev = salesList.find((s) => s.id === pureDev.id);
+      const foundHybridDev = salesList.find((s) => s.id === hybridDev.id);
+
+      assert.equal(foundPureDev, undefined, "Pure Developer tidak boleh masuk ke daftar sales CRM");
+      assert.ok(foundHybridDev, "Hybrid Developer harus masuk ke daftar sales CRM");
+      assert.equal(foundHybridDev?.fullName, "Hybrid Dev (Dev/Marketing)");
+      assert.equal(foundHybridDev?.role, "DEVELOPER");
+
+      // 3. Uji distribusi Round-Robin yang melibatkan Hybrid Developer
+      const testInputs = [
+        { companyName: "Klien Hybrid 1", whatsappNumber: "081911223341" },
+        { companyName: "Klien Hybrid 2", whatsappNumber: "081911223342" },
+      ];
+
+      const distResult = await bulkCreateProspects(
+        testInputs,
+        "owner-user-id",
+        "OWNER",
+        {
+          mode: "ROUND_ROBIN",
+          targetSalesIds: [hybridDev.id],
+        }
+      );
+
+      assert.equal(distResult.success, true);
+      assert.equal(distResult.importedCount, 2);
+      assert.equal(distResult.prospects[0].assignedSalesId, hybridDev.id);
+      assert.equal(distResult.prospects[1].assignedSalesId, hybridDev.id);
+    } finally {
+      try {
+        deleteUser(pureDev.id);
+      } catch {}
+      try {
+        deleteUser(hybridDev.id);
+      } catch {}
+    }
   });
 
   after(() => {

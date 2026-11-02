@@ -27,6 +27,7 @@ import {
 } from "@/modules/auth/auth.actions";
 import { ModalPortal } from "@/components/common/ModalPortal";
 import { formatDateWIB } from "@/lib/date";
+import { PendingRegistrationBanner } from "@/components/dashboard/PendingRegistrationBanner";
 
 interface TeamMemberItem {
   id: string;
@@ -36,6 +37,7 @@ interface TeamMemberItem {
   status: UserStatus;
   permissions: string[];
   avatarUrl?: string;
+  canHandleSales?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -57,6 +59,7 @@ export function UserManagementTab() {
   const [createEmail, setCreateEmail] = useState("");
   const [createRole, setCreateRole] = useState<UserRole>("SALES");
   const [createPassword, setCreatePassword] = useState("");
+  const [createCanHandleSales, setCreateCanHandleSales] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
   // Form Fields - Edit
@@ -64,6 +67,7 @@ export function UserManagementTab() {
   const [editRole, setEditRole] = useState<UserRole>("SALES");
   const [editStatus, setEditStatus] = useState<UserStatus>("ACTIVE");
   const [editNewPassword, setEditNewPassword] = useState("");
+  const [editCanHandleSales, setEditCanHandleSales] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Form Fields - Delete
@@ -91,6 +95,7 @@ export function UserManagementTab() {
     setCreateEmail("");
     setCreateRole("SALES");
     setCreatePassword("");
+    setCreateCanHandleSales(false);
     setErrorMsg(null);
     setSuccessMsg(null);
     setIsCreateOpen(true);
@@ -106,6 +111,7 @@ export function UserManagementTab() {
       email: createEmail,
       role: createRole,
       password: createPassword,
+      canHandleSales: createRole === "DEVELOPER" ? createCanHandleSales : false,
     });
 
     setIsCreating(false);
@@ -125,6 +131,7 @@ export function UserManagementTab() {
     setEditRole(m.role);
     setEditStatus(m.status);
     setEditNewPassword("");
+    setEditCanHandleSales(Boolean(m.canHandleSales));
     setErrorMsg(null);
     setSuccessMsg(null);
     setIsEditOpen(true);
@@ -141,6 +148,7 @@ export function UserManagementTab() {
       role: editRole,
       status: editStatus,
       password: editNewPassword.trim() || undefined,
+      canHandleSales: editRole === "DEVELOPER" ? editCanHandleSales : false,
     });
 
     setIsUpdating(false);
@@ -192,6 +200,9 @@ export function UserManagementTab() {
 
   return (
     <div className="space-y-4">
+      {/* Pending Registration Google Auth Banner */}
+      <PendingRegistrationBanner />
+
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -256,20 +267,40 @@ export function UserManagementTab() {
                 {members.map((m) => (
                   <tr key={m.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-900">{m.fullName}</div>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-slate-900 text-slate-100 flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden border border-slate-200/80 shadow-2xs">
+                          {m.avatarUrl ? (
+                            <img
+                              src={m.avatarUrl}
+                              alt={m.fullName}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            (m.fullName || "U").charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <div className="font-semibold text-slate-900">{m.fullName}</div>
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-slate-600 font-mono text-[11px]">
                       {m.email}
                     </td>
                     <td className="py-3 px-4">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${getRoleBadge(
-                          m.role
-                        )}`}
-                      >
-                        <Shield className="w-2.5 h-2.5" />
-                        {m.role}
-                      </span>
+                      <div className="flex flex-col gap-1 items-start">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${getRoleBadge(
+                            m.role
+                          )}`}
+                        >
+                          <Shield className="w-2.5 h-2.5" />
+                          {m.role}
+                        </span>
+                        {m.role === "DEVELOPER" && m.canHandleSales && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200 font-mono">
+                            + MARKETING
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       {m.status === "ACTIVE" ? (
@@ -383,6 +414,30 @@ export function UserManagementTab() {
                   </select>
                 </div>
 
+                {createRole === "DEVELOPER" && (
+                  <div className="p-3 rounded-lg bg-blue-50/70 border border-blue-200/80 space-y-1 animate-ios-fade">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={createCanHandleSales}
+                        onChange={(e) => setCreateCanHandleSales(e.target.checked)}
+                        className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <div>
+                        <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                          <span>Bertindak Sebagai Marketing / Sales</span>
+                          <span className="text-[10px] bg-blue-200/70 text-blue-800 px-1.5 py-0.2 rounded font-mono font-semibold">
+                            Hybrid
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                          Developer ini otomatis dimasukkan ke dalam pembagian prospek CRM (Round-Robin) saat impor data dan dapat mengelola leads penjualan.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                )}
+
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
                     Kata Sandi Awal (Min. 6 Karakter)
@@ -486,6 +541,30 @@ export function UserManagementTab() {
                     </select>
                   </div>
                 </div>
+
+                {editRole === "DEVELOPER" && (
+                  <div className="p-3 rounded-lg bg-blue-50/70 border border-blue-200/80 space-y-1 animate-ios-fade">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editCanHandleSales}
+                        onChange={(e) => setEditCanHandleSales(e.target.checked)}
+                        className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <div>
+                        <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                          <span>Bertindak Sebagai Marketing / Sales</span>
+                          <span className="text-[10px] bg-blue-200/70 text-blue-800 px-1.5 py-0.2 rounded font-mono font-semibold">
+                            Hybrid
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                          Developer ini otomatis dimasukkan ke dalam pembagian prospek CRM (Round-Robin) saat impor data dan dapat mengelola leads penjualan.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                )}
 
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">

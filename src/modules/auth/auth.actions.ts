@@ -149,6 +149,7 @@ export async function fetchTeamMembersAction(): Promise<
     status: u.status,
     permissions: u.permissions,
     avatarUrl: u.avatarUrl,
+    canHandleSales: u.canHandleSales,
     createdAt: u.createdAt,
     updatedAt: u.updatedAt,
   }));
@@ -177,6 +178,7 @@ export async function createTeamMemberAction(
         status: newUser.status,
         permissions: newUser.permissions,
         avatarUrl: newUser.avatarUrl,
+        canHandleSales: newUser.canHandleSales,
         createdAt: newUser.createdAt,
         updatedAt: newUser.updatedAt,
       },

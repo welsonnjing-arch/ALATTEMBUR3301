@@ -5,6 +5,12 @@ const nextConfig = {
   experimental: {
     serverActions: {
       bodySizeLimit: '25mb',
+      allowedOrigins: [
+        'workspace.fynux.co',
+        '*.fynux.co',
+        'localhost:3000',
+        '127.0.0.1:3000',
+      ],
     },
     serverComponentsExternalPackages: [
       '@whiskeysockets/baileys',
@@ -21,6 +27,14 @@ const nextConfig = {
         hostname: '**',
       },
     ],
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/uploads/avatars/:filename*',
+        destination: '/api/avatar/:filename*',
+      },
+    ];
   },
 };
 

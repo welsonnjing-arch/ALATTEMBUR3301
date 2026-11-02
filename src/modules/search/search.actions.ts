@@ -34,7 +34,7 @@ export async function searchGlobalAction(query: string): Promise<SearchResultIte
           id: p.id,
           category: "PROSPECT",
           title: p.companyName,
-          subtitle: `Kontak: ${p.contactName} • ${p.potentialServices || "Layanan"} • Stage: ${p.stage}`,
+          subtitle: `Kontak: ${p.contactName} / ${p.potentialServices || "Layanan"} / Stage: ${p.stage}`,
           url: `/crm`,
           badge: p.stage,
         });
@@ -56,7 +56,7 @@ export async function searchGlobalAction(query: string): Promise<SearchResultIte
           id: c.id,
           category: "CLIENT",
           title: c.name,
-          subtitle: `PIC: ${c.picName} • ${c.industry || "Umum"} • +${c.picPhone}`,
+          subtitle: `PIC: ${c.picName} / ${c.industry || "Umum"} / +${c.picPhone}`,
           url: `/client-lifecycle`,
           badge: c.status,
         });
@@ -77,7 +77,7 @@ export async function searchGlobalAction(query: string): Promise<SearchResultIte
           id: proj.id,
           category: "PROJECT",
           title: proj.name,
-          subtitle: `Klien: ${proj.clientName} • Progress: ${proj.progressPercent}%`,
+          subtitle: `Klien: ${proj.clientName} / Progress: ${proj.progressPercent}%`,
           url: `/projects`,
           badge: proj.status,
         });
@@ -97,7 +97,7 @@ export async function searchGlobalAction(query: string): Promise<SearchResultIte
           id: inv.id,
           category: "INVOICE",
           title: inv.invoiceNumber,
-          subtitle: `Klien: ${inv.clientName} • Status: ${inv.status} • Rp ${inv.totalAmount.toLocaleString("id-ID")}`,
+          subtitle: `Klien: ${inv.clientName} / Status: ${inv.status} / Rp ${inv.totalAmount.toLocaleString("id-ID")}`,
           url: `/finance`,
           badge: inv.status,
         });

@@ -5,11 +5,14 @@ import path from "node:path";
 import {
   createFolder,
   deleteDriveItem,
+  DRIVE_STORAGE_DIR,
   getDriveBreadcrumbs,
   getDriveItemById,
   getDriveItems,
+  getDriveItemsStore,
   getDriveStats,
   moveDriveItem,
+  reconcileStorageWithMetadata,
   registerUploadedFile,
   renameDriveItem,
   toggleStarDriveItem,
@@ -189,5 +192,24 @@ describe("Shared Drive HQ — Storage & File Management Engine", () => {
 
     const checkFolder = getDriveItemById(folderId);
     assert.equal(checkFolder, null);
+  });
+
+  test("automatically reconciles orphaned physical files in storage into metadata", async () => {
+    const orphanFile = `test-orphan-${Date.now()}.pdf`;
+    const fullOrphanPath = path.join(DRIVE_STORAGE_DIR, orphanFile);
+    fs.writeFileSync(fullOrphanPath, "test content for orphan recovery", "utf-8");
+
+    try {
+      const store = getDriveItemsStore();
+      const recovered = store.find((item) => item.storagePath === orphanFile);
+      assert.ok(recovered, "File fisik di storage yang belum terdaftar wajib otomatis dipulihkan");
+      assert.equal(recovered.extension, "pdf");
+      assert.equal(recovered.type, "FILE");
+      assert.equal(recovered.parentId, null);
+    } finally {
+      if (fs.existsSync(fullOrphanPath)) {
+        fs.unlinkSync(fullOrphanPath);
+      }
+    }
   });
 });

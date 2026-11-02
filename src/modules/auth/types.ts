@@ -8,6 +8,7 @@ export interface UserSessionData {
   status: UserStatus;
   permissions: CustomPermission[];
   avatarUrl?: string;
+  canHandleSales?: boolean;
 }
 
 export interface UserAccount {
@@ -20,6 +21,7 @@ export interface UserAccount {
   status: UserStatus;
   permissions: CustomPermission[];
   avatarUrl?: string;
+  canHandleSales?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -31,6 +33,7 @@ export interface CreateUserInput {
   role: UserRole;
   permissions?: CustomPermission[];
   avatarUrl?: string;
+  canHandleSales?: boolean;
 }
 
 export interface UpdateUserInput {
@@ -40,6 +43,7 @@ export interface UpdateUserInput {
   password?: string;
   permissions?: CustomPermission[];
   avatarUrl?: string;
+  canHandleSales?: boolean;
 }
 
 export interface AuthResult {

@@ -2,21 +2,7 @@ import { ApprovalRequest, ApprovalRequestType } from "./types";
 import { ApprovalStatus } from "@/types/enums";
 import { logActivity } from "@/lib/logger";
 
-let approvalRequestsData: ApprovalRequest[] = [
-  {
-    id: "appr-001",
-    type: "DISCOUNT",
-    title: "Permohonan Diskon 10% Paket Business Website — PT Padma Widya Setiajaya",
-    description:
-      "Klien kontraktor PT Padma Widya Setiajaya meminta penyesuaian harga dari Rp 3.500.000 menjadi Rp 3.150.000 karena ada komitmen kontrak maintenance tahunan pasca-garansi.",
-    requestedByUserId: "22222222-2222-2222-2222-222222222222",
-    requestedByUserName: "Budi Santoso (Sales)",
-    relatedEntityId: "p-002",
-    relatedEntityType: "PROSPECT",
-    status: "PENDING",
-    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-  },
-];
+let approvalRequestsData: ApprovalRequest[] = [];
 
 export async function getAllApprovalRequests(
   filterStatus?: ApprovalStatus | "ALL"

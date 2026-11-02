@@ -36,49 +36,49 @@ export default async function SalesWorkspacePage() {
       </div>
 
       {/* Target Pribadi & Indikator Harian */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs card-hover-lift min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Prospek Tanggung Jawab</span>
-            <Users className="w-4 h-4 text-indigo-500" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">Prospek Tanggung Jawab</span>
+            <Users className="w-4 h-4 text-blue-600 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-slate-900">
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
             {assignedCount}
           </div>
-          <p className="text-[10px] text-slate-400 mt-1">Prospek dalam assignment Anda</p>
+          <p className="text-[10px] text-slate-400 mt-1 truncate whitespace-nowrap">Prospek dalam assignment Anda</p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs card-hover-lift min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Follow-Up Hari Ini</span>
-            <Calendar className="w-4 h-4 text-amber-500" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">Follow-Up Hari Ini</span>
+            <Calendar className="w-4 h-4 text-slate-400 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-amber-700">
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
             {dueTodayCount}
           </div>
-          <p className="text-[10px] text-slate-400 mt-1">Jatuh tempo jadwal kalender</p>
+          <p className="text-[10px] text-slate-400 mt-1 truncate whitespace-nowrap">Jatuh tempo jadwal kalender</p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs card-hover-lift min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Respon Masuk (Perlu Balas)</span>
-            <MessageCircle className="w-4 h-4 text-emerald-500" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">Respon Masuk (Perlu Balas)</span>
+            <MessageCircle className="w-4 h-4 text-blue-600 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-emerald-700">
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
             {needReplyCount}
           </div>
-          <p className="text-[10px] text-slate-400 mt-1">Client merespons pesan outreach</p>
+          <p className="text-[10px] text-slate-400 mt-1 truncate whitespace-nowrap">Client merespons pesan outreach</p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs card-hover-lift min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Deals Closed Won</span>
-            <Target className="w-4 h-4 text-purple-500" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">Deals Closed Won</span>
+            <Target className="w-4 h-4 text-blue-600 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-purple-700">
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
             {wonCount}
           </div>
-          <p className="text-[10px] text-slate-400 mt-1">Bulan kalender berjalan</p>
+          <p className="text-[10px] text-slate-400 mt-1 truncate whitespace-nowrap">Bulan kalender berjalan</p>
         </div>
       </div>
 

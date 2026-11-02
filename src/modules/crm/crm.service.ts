@@ -249,16 +249,25 @@ export interface BulkImportResult {
 }
 
 /**
- * Mengambil daftar sales user internal yang aktif (termasuk fallback Owner jika belum ada Sales)
+ * Mengambil daftar sales user internal yang aktif (termasuk Developer dengan peran ganda Marketing, dan fallback Owner jika belum ada Sales)
  */
 export function getAvailableSalesUsers(): SalesUserOption[] {
   const seen = new Set<string>();
   const list: SalesUserOption[] = [];
   const users = getAllUsers();
   for (const u of users) {
-    if (u.role === "SALES" && u.status === "ACTIVE" && !seen.has(u.id)) {
+    const isSalesEligible =
+      (u.role === "SALES" || (u.role === "DEVELOPER" && u.canHandleSales)) &&
+      u.status === "ACTIVE";
+
+    if (isSalesEligible && !seen.has(u.id)) {
       seen.add(u.id);
-      list.push({ id: u.id, fullName: u.fullName, email: u.email });
+      list.push({
+        id: u.id,
+        fullName: u.role === "DEVELOPER" ? `${u.fullName} (Dev/Marketing)` : u.fullName,
+        email: u.email,
+        role: u.role,
+      });
     }
   }
 
@@ -267,7 +276,7 @@ export function getAvailableSalesUsers(): SalesUserOption[] {
     for (const u of users) {
       if (u.role === "OWNER" && u.status === "ACTIVE" && !seen.has(u.id)) {
         seen.add(u.id);
-        list.push({ id: u.id, fullName: `${u.fullName} (Owner)`, email: u.email });
+        list.push({ id: u.id, fullName: `${u.fullName} (Owner)`, email: u.email, role: u.role });
       }
     }
   }

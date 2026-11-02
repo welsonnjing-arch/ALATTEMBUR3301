@@ -32,7 +32,7 @@ export function getDefaultPermissionsForRole(role: UserRole): CustomPermission[]
     case "SALES":
       return [...DEFAULT_SALES_PERMISSIONS];
     case "DEVELOPER":
-      return [];
+      return ["crm.view_all"];
   }
 }
 
@@ -166,6 +166,14 @@ export function getUserByEmail(email: string): UserAccount | undefined {
 }
 
 export function toSessionData(user: UserAccount): UserSessionData {
+  // Defensive guard: jika avatarUrl adalah string base64 panjang (misal legacy),
+  // jangan masukkan ke dalam cookie sesi agar ukuran header Set-Cookie tetap aman (< 1KB).
+  const isBase64DataUrl =
+    typeof user.avatarUrl === "string" &&
+    (user.avatarUrl.startsWith("data:") || user.avatarUrl.length > 500);
+
+  const safeAvatarUrl = isBase64DataUrl ? undefined : user.avatarUrl;
+
   return {
     id: user.id,
     email: user.email,
@@ -173,7 +181,8 @@ export function toSessionData(user: UserAccount): UserSessionData {
     role: user.role,
     status: user.status,
     permissions: user.permissions,
-    avatarUrl: user.avatarUrl,
+    avatarUrl: safeAvatarUrl,
+    canHandleSales: user.canHandleSales,
   };
 }
 
@@ -211,6 +220,7 @@ export function createUser(input: CreateUserInput, actorId = "SYSTEM"): UserAcco
     status: "ACTIVE",
     permissions: input.permissions || getDefaultPermissionsForRole(input.role),
     avatarUrl: input.avatarUrl,
+    canHandleSales: input.canHandleSales || false,
     createdAt: now,
     updatedAt: now,
   };
@@ -220,6 +230,49 @@ export function createUser(input: CreateUserInput, actorId = "SYSTEM"): UserAcco
   saveUsers(users);
 
   logSecurityEvent("USER_CREATED", actorId, {
+    createdUserId: newUser.id,
+    email: newUser.email,
+    role: newUser.role,
+  });
+
+  return newUser;
+}
+
+/**
+ * Membuat user baru dari pendaftaran mandiri yang telah tervalidasi nomor otorisasi Owner
+ */
+export function createUserFromRegistration(params: {
+  fullName: string;
+  email: string;
+  passwordHash: string;
+  salt: string;
+  role: UserRole;
+}): UserAccount {
+  const emailNormalized = params.email.trim().toLowerCase();
+  const existing = getUserByEmail(emailNormalized);
+  if (existing) {
+    throw new Error(`Email "${emailNormalized}" sudah terdaftar.`);
+  }
+
+  const now = new Date().toISOString();
+  const newUser: UserAccount = {
+    id: crypto.randomUUID(),
+    email: emailNormalized,
+    passwordHash: params.passwordHash,
+    salt: params.salt,
+    fullName: params.fullName.trim(),
+    role: params.role,
+    status: "ACTIVE",
+    permissions: getDefaultPermissionsForRole(params.role),
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const users = loadUsers().filter((u) => !u.id.startsWith("test-sales-"));
+  users.push(newUser);
+  saveUsers(users);
+
+  logSecurityEvent("USER_CREATED_VIA_SELF_REGISTRATION", "SYSTEM", {
     createdUserId: newUser.id,
     email: newUser.email,
     role: newUser.role,
@@ -277,6 +330,8 @@ export function updateUser(
     passwordHash: newPasswordHash,
     salt: newSalt,
     avatarUrl: input.avatarUrl !== undefined ? input.avatarUrl : current.avatarUrl,
+    canHandleSales:
+      input.canHandleSales !== undefined ? input.canHandleSales : current.canHandleSales,
     updatedAt: new Date().toISOString(),
   };
 

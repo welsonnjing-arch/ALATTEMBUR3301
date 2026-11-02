@@ -19,6 +19,7 @@ import {
   ShieldAlert,
   Flame,
   Code2,
+  Radio,
   PanelLeftClose,
   PanelLeftOpen,
   PanelLeft,
@@ -63,7 +64,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "CRM & Prospek",
     href: "/crm",
     icon: Users,
-    allowedRoles: ["SALES", "OWNER"],
+    allowedRoles: ["SALES", "DEVELOPER", "OWNER"],
     category: "operations",
   },
   {
@@ -99,6 +100,13 @@ const NAV_ITEMS: NavItem[] = [
     href: "/tasks",
     icon: CheckSquare,
     allowedRoles: ["DEVELOPER", "SALES", "OWNER"],
+    category: "operations",
+  },
+  {
+    label: "Team Lounge",
+    href: "/team-lounge",
+    icon: Radio,
+    allowedRoles: ["OWNER", "DEVELOPER", "SALES"],
     category: "operations",
   },
   {

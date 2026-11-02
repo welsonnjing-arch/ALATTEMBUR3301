@@ -24,6 +24,7 @@ import {
   updateProjectStatusAction,
 } from "@/modules/projects/projects.actions";
 import { formatDateWIB, formatDateTimeWIB } from "@/lib/date";
+import { ModalPortal } from "@/components/common/ModalPortal";
 
 interface ProjectDetailModalProps {
   project: Project | null;
@@ -105,25 +106,26 @@ export function ProjectDetailModal({
   const getStatusBadge = (status: ProjectStatus) => {
     switch (status) {
       case "ACTIVE":
-        return "bg-emerald-100 text-emerald-800 border-emerald-200 font-bold";
+        return "bg-blue-50 text-blue-700 border-blue-200 font-bold";
       case "ON_HOLD":
-        return "bg-amber-100 text-amber-800 border-amber-200 font-bold";
+        return "bg-slate-100 text-slate-800 border-slate-300 font-bold";
       case "COMPLETED":
-        return "bg-blue-100 text-blue-800 border-blue-200 font-bold";
+        return "bg-slate-900 text-white border-slate-900 font-bold";
       case "DRAFT":
-        return "bg-slate-100 text-slate-700 border-slate-200";
+        return "bg-slate-100 text-slate-600 border-slate-200";
       case "CANCELLED":
-        return "bg-rose-100 text-rose-800 border-rose-200 line-through";
+        return "bg-slate-100 text-slate-500 border-slate-200 line-through";
       case "ARCHIVED":
-        return "bg-slate-200 text-slate-600 border-slate-300";
+        return "bg-slate-100 text-slate-400 border-slate-200";
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden my-6 animate-in fade-in zoom-in-95 duration-200">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] modal-backdrop-clean flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs animate-ios-fade">
+      <div className="w-full max-w-3xl max-h-[88vh] flex flex-col bg-white border border-slate-200/90 rounded-2xl shadow-2xl overflow-hidden">
         {/* Header Modal */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div className="px-6 py-4 border-b border-slate-200/80 flex items-center justify-between shrink-0 bg-white">
           <div>
             <div className="flex items-center gap-2">
               <span
@@ -144,20 +146,20 @@ export function ProjectDetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Switcher */}
-        <div className="px-6 border-b border-slate-200 flex gap-4 text-xs font-semibold">
+        <div className="px-6 border-b border-slate-200/80 flex gap-4 text-xs font-semibold shrink-0 bg-white">
           <button
             type="button"
             onClick={() => setActiveTab("WORKSPACE")}
             className={`py-3 border-b-2 transition-colors ${
               activeTab === "WORKSPACE"
-                ? "border-indigo-600 text-indigo-600 font-bold"
+                ? "border-slate-900 text-slate-900 font-bold"
                 : "border-transparent text-slate-500 hover:text-slate-900"
             }`}
           >
@@ -168,7 +170,7 @@ export function ProjectDetailModal({
             onClick={() => setActiveTab("LINKS")}
             className={`py-3 border-b-2 transition-colors flex items-center gap-1.5 ${
               activeTab === "LINKS"
-                ? "border-indigo-600 text-indigo-600 font-bold"
+                ? "border-slate-900 text-slate-900 font-bold"
                 : "border-transparent text-slate-500 hover:text-slate-900"
             }`}
           >
@@ -182,19 +184,19 @@ export function ProjectDetailModal({
             onClick={() => setActiveTab("CHAT")}
             className={`py-3 border-b-2 transition-colors flex items-center gap-1.5 ${
               activeTab === "CHAT"
-                ? "border-indigo-600 text-indigo-600 font-bold"
+                ? "border-slate-900 text-slate-900 font-bold"
                 : "border-transparent text-slate-500 hover:text-slate-900"
             }`}
           >
             <span>Project Chat Internal</span>
-            <span className="bg-indigo-50 text-indigo-700 px-1.5 py-0.2 rounded-full text-[10px]">
+            <span className="bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded-full text-[10px]">
               {project.chatMessages?.length || 0}
             </span>
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto space-y-5">
+        <div className="px-6 py-5 overflow-y-auto flex-1 min-h-0 space-y-5">
           {/* TAB 1: WORKSPACE */}
           {activeTab === "WORKSPACE" && (
             <div className="space-y-5">
@@ -202,7 +204,7 @@ export function ProjectDetailModal({
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-700">Persentase Progres Pengerjaan</span>
-                  <span className="font-extrabold text-indigo-700 font-mono text-sm">
+                  <span className="font-extrabold text-blue-600 font-mono text-sm">
                     {progressVal}%
                   </span>
                 </div>
@@ -212,14 +214,14 @@ export function ProjectDetailModal({
                   max={100}
                   value={progressVal}
                   onChange={(e) => setProgressVal(Number(e.target.value))}
-                  className="w-full accent-indigo-600 cursor-pointer"
+                  className="w-full accent-blue-600 cursor-pointer"
                 />
                 <div className="flex justify-end pt-1">
                   <button
                     type="button"
                     onClick={handleUpdateProgress}
                     disabled={isSubmitting || progressVal === project.progressPercent}
-                    className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50 transition-colors"
+                    className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg disabled:opacity-50 transition-colors"
                   >
                     Simpan Progres
                   </button>
@@ -260,7 +262,7 @@ export function ProjectDetailModal({
                         placeholder="Contoh: Menunggu materi dari pihak klien..."
                         value={onHoldReason}
                         onChange={(e) => setOnHoldReason(e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs border border-amber-300 bg-amber-50 rounded-lg"
+                        className="w-full px-3 py-1.5 text-xs border border-slate-300 bg-slate-50 rounded-lg focus:border-blue-500"
                       />
                     </div>
                   )}
@@ -271,7 +273,7 @@ export function ProjectDetailModal({
                     type="button"
                     onClick={handleUpdateStatus}
                     disabled={isSubmitting || selectedStatus === project.status}
-                    className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
+                    className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
                   >
                     Perbarui Status Proyek
                   </button>
@@ -280,8 +282,8 @@ export function ProjectDetailModal({
 
               {/* Scope Description */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
-                <div className="flex items-center gap-2 text-indigo-700 text-xs font-bold">
-                  <Briefcase className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-slate-900 text-xs font-bold">
+                  <Briefcase className="w-4 h-4 text-blue-600" />
                   Ruang Lingkup Deliverables (Scope of Work)
                 </div>
                 <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100 whitespace-pre-wrap">
@@ -317,7 +319,7 @@ export function ProjectDetailModal({
               {/* Form Tambah Link Baru */}
               <form onSubmit={handleAddLink} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                 <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <Plus className="w-4 h-4 text-indigo-600" /> Tambah Tautan Berkas Eksternal
+                  <Plus className="w-4 h-4 text-blue-600" /> Tambah Tautan Berkas Eksternal
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <input
@@ -353,7 +355,7 @@ export function ProjectDetailModal({
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm"
+                    className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-sm"
                   >
                     Simpan Tautan
                   </button>
@@ -418,12 +420,12 @@ export function ProjectDetailModal({
                   placeholder="Ketik pesan internal terkait proyek ini..."
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 />
                 <button
                   type="submit"
                   disabled={isSubmitting || !chatInput.trim()}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -431,7 +433,24 @@ export function ProjectDetailModal({
             </div>
           )}
         </div>
+
+        {/* Sticky Modal Footer */}
+        <div className="px-6 py-3.5 border-t border-slate-200/80 flex items-center justify-between shrink-0 bg-slate-50/90 rounded-b-2xl">
+          <div className="text-xs text-slate-500 font-medium">
+            Klien: <span className="text-slate-800 font-semibold">{project.clientName}</span> / Target Deadline: <span className="font-mono text-slate-700">{formatDateWIB(project.deadline || "")}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200/90 rounded-lg transition-colors"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-  );
+  </ModalPortal>
+);
 }

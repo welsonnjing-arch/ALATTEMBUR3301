@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Users,
   ShieldCheck,
@@ -36,6 +37,8 @@ import { CreateWarrantyClaimModal } from "./CreateWarrantyClaimModal";
 import { CreateMaintenanceModal } from "./CreateMaintenanceModal";
 import { RenewalOfferModal } from "./RenewalOfferModal";
 import { ClientDetailModal } from "./ClientDetailModal";
+import { Pagination } from "@/components/common/Pagination";
+import { useToast } from "@/components/common/Toast";
 
 interface ClientLifecycleViewProps {
   initialClients: Client[];
@@ -52,11 +55,24 @@ export function ClientLifecycleView({
   userRole = "OWNER",
   isOwner = true,
 }: ClientLifecycleViewProps) {
+  const router = useRouter();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"CLIENTS" | "WARRANTIES" | "MAINTENANCE">("CLIENTS");
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [warranties, setWarranties] = useState<Warranty[]>(initialWarranties);
   const [contracts, setContracts] = useState<MaintenanceContract[]>(initialContracts);
+
+  useEffect(() => {
+    setClients(initialClients);
+    setWarranties(initialWarranties);
+    setContracts(initialContracts);
+  }, [initialClients, initialWarranties, initialContracts]);
+
   const [searchQuery, setSearchQuery] = useState("");
+  const [clientPage, setClientPage] = useState(1);
+  const [warrantyPage, setWarrantyPage] = useState(1);
+  const [contractPage, setContractPage] = useState(1);
+  const PAGE_SIZE = 25;
 
   // Modals state
   const [isCreateClientOpen, setIsCreateClientOpen] = useState(false);
@@ -142,57 +158,78 @@ export function ClientLifecycleView({
     );
   });
 
+  const totalClientPages = Math.max(1, Math.ceil(filteredClients.length / PAGE_SIZE));
+  const safeClientPage = Math.min(clientPage, totalClientPages);
+  const paginatedClients = filteredClients.slice(
+    (safeClientPage - 1) * PAGE_SIZE,
+    safeClientPage * PAGE_SIZE
+  );
+
+  const totalWarrantyPages = Math.max(1, Math.ceil(filteredWarranties.length / PAGE_SIZE));
+  const safeWarrantyPage = Math.min(warrantyPage, totalWarrantyPages);
+  const paginatedWarranties = filteredWarranties.slice(
+    (safeWarrantyPage - 1) * PAGE_SIZE,
+    safeWarrantyPage * PAGE_SIZE
+  );
+
+  const totalContractPages = Math.max(1, Math.ceil(filteredContracts.length / PAGE_SIZE));
+  const safeContractPage = Math.min(contractPage, totalContractPages);
+  const paginatedContracts = filteredContracts.slice(
+    (safeContractPage - 1) * PAGE_SIZE,
+    safeContractPage * PAGE_SIZE
+  );
+
   return (
     <div className="space-y-6">
       {/* Top Banner Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Total Klien Resmi</span>
-            <Users className="w-4 h-4 text-indigo-600" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">Total Klien Resmi</span>
+            <Users className="w-4 h-4 text-blue-600 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-black text-slate-900 font-mono">
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
             {clients.length}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Entitas bisnis & institusi</p>
+          <p className="text-[11px] text-slate-400 mt-1 truncate whitespace-nowrap">Entitas bisnis & institusi</p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Akumulasi Nilai LTV</span>
-            <Building2 className="w-4 h-4 text-emerald-600" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">Akumulasi Nilai LTV</span>
+            <Building2 className="w-4 h-4 text-blue-600 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-black text-emerald-700 font-mono">
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
             {formatRupiah(totalLtv)}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Total revenue seluruh klien</p>
+          <p className="text-[11px] text-slate-400 mt-1 truncate whitespace-nowrap">Total revenue seluruh klien</p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Garansi Teknis Aktif</span>
-            <ShieldCheck className="w-4 h-4 text-blue-600" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">Garansi Teknis Aktif</span>
+            <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-black text-slate-900 font-mono">
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
             {activeWarrantiesCount}{" "}
             {expiringWarrantiesCount > 0 && (
-              <span className="text-xs text-amber-600 font-normal">
-                ({expiringWarrantiesCount} expiring soon)
+              <span className="text-xs text-slate-500 font-normal">
+                ({expiringWarrantiesCount} expiring)
               </span>
             )}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Dukungan pasca-deliverables</p>
+          <p className="text-[11px] text-slate-400 mt-1 truncate whitespace-nowrap">Dukungan pasca-deliverables</p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Kontrak Maintenance</span>
-            <Wrench className="w-4 h-4 text-purple-600" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">Kontrak Maintenance</span>
+            <Wrench className="w-4 h-4 text-slate-400 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-black text-slate-900 font-mono">
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
             {activeContractsCount}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Pemeliharaan & recurring MRR</p>
+          <p className="text-[11px] text-slate-400 mt-1 truncate whitespace-nowrap">Pemeliharaan & recurring MRR</p>
         </div>
       </div>
 
@@ -246,7 +283,12 @@ export function ClientLifecycleView({
             type="text"
             placeholder="Cari klien, PIC, proyek..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setClientPage(1);
+              setWarrantyPage(1);
+              setContractPage(1);
+            }}
             className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
           />
         </div>
@@ -276,79 +318,107 @@ export function ClientLifecycleView({
             )}
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50/75 border-b border-slate-200 text-slate-500 font-semibold">
-                  <tr>
-                    <th className="py-3 px-4">Nama Instansi / Perusahaan</th>
-                    <th className="py-3 px-4">Sektor Industri</th>
-                    <th className="py-3 px-4">PIC & No. WhatsApp</th>
-                    <th className="py-3 px-4">Onboarding</th>
-                    <th className="py-3 px-4 text-right">Lifetime Value (LTV)</th>
-                    <th className="py-3 px-4 text-center">Status</th>
-                    <th className="py-3 px-4 text-center">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredClients.map((client) => (
+          <div className="table-container-clean w-full overflow-x-auto rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+            <table className="w-full text-left text-xs min-w-[980px]">
+              <thead className="bg-slate-50/80 border-b border-slate-200/80 text-slate-500 font-semibold uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="py-3.5 px-4 min-w-[200px]">Nama Instansi / Perusahaan</th>
+                  <th className="py-3.5 px-4 min-w-[120px]">Sektor Industri</th>
+                  <th className="py-3.5 px-4 min-w-[150px]">PIC & No. WhatsApp</th>
+                  <th className="py-3.5 px-4 min-w-[110px]">Onboarding</th>
+                  <th className="py-3.5 px-4 text-right min-w-[140px]">Lifetime Value (LTV)</th>
+                  <th className="py-3.5 px-4 text-center min-w-[100px]">Status</th>
+                  <th className="py-3.5 px-4 text-right min-w-[160px] pr-8">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paginatedClients.length > 0 ? (
+                  paginatedClients.map((client) => (
                     <tr
                       key={client.id}
-                      className="hover:bg-slate-50/50 transition-colors"
+                      className="table-row-hover hover:bg-slate-50/80 transition-colors duration-150"
                     >
-                      <td className="py-3 px-4">
+                      <td className="py-3.5 px-4">
                         <div className="font-bold text-slate-900">{client.name}</div>
                         {client.website && (
                           <a
                             href={client.website}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[11px] text-indigo-600 hover:underline inline-flex items-center gap-1"
+                            className="text-[11px] text-blue-600 hover:underline inline-flex items-center gap-1 mt-0.5"
                           >
                             {client.website} <ExternalLink className="w-2.5 h-2.5" />
                           </a>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-slate-600">
+                      <td className="py-3.5 px-4 text-slate-600 font-medium">
                         {client.industry || "Umum"}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3.5 px-4">
                         <div className="font-semibold text-slate-800">{client.picName}</div>
                         <a
                           href={`https://wa.me/${client.picPhone}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[11px] text-emerald-600 font-semibold hover:underline inline-flex items-center gap-1"
+                          className="text-[11px] text-emerald-600 font-semibold hover:underline inline-flex items-center gap-1 mt-0.5"
                         >
-                          <Phone className="w-3 h-3" /> +{client.picPhone}
+                          <Phone className="w-3 h-3 text-emerald-500" /> +{client.picPhone}
                         </a>
                       </td>
-                      <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">
+                      <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">
                         {formatDateWIB(client.onboardingDate)}
                       </td>
-                      <td className="py-3 px-4 text-right font-black font-mono text-slate-900">
+                      <td className="py-3.5 px-4 text-right font-black font-mono text-slate-900">
                         {formatRupiah(client.totalLtv)}
                       </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className="inline-flex items-center text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      <td className="py-3.5 px-4 text-center">
+                        <span className="inline-flex items-center text-[10px] px-2.5 py-0.5 rounded-md font-bold font-mono bg-slate-900 text-white border border-slate-800">
                           {client.status}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[160px] pr-8">
                         <button
                           type="button"
                           onClick={() => setSelectedClientDetail(client)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50/80 rounded-lg transition-all active-press"
                         >
-                          Lihat Profil &rarr;
+                          <span>Lihat Profil</span>
+                          <span>&rarr;</span>
                         </button>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-slate-500">
+                      <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                      <h3 className="text-sm font-semibold text-slate-800">
+                        Belum ada klien terdaftar
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-1">
+                        {searchQuery
+                          ? `Tidak ada hasil pencarian "${searchQuery}".`
+                          : "Klien yang telah menyelesaikan deal akan muncul di sini."}
+                      </p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
+
+          {/* Pagination Controls for Clients Table */}
+          {filteredClients.length > 0 && (
+            <div className="pt-2">
+              <Pagination
+                currentPage={safeClientPage}
+                totalItems={filteredClients.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setClientPage}
+                itemLabel="klien"
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -368,7 +438,7 @@ export function ClientLifecycleView({
               <button
                 type="button"
                 onClick={() => setIsCreateWarrantyOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-xs font-semibold rounded-lg shadow-sm shadow-blue-500/20 transition-all active-press"
               >
                 <Plus className="w-4 h-4" />
                 Terbitkan Garansi Baru
@@ -376,131 +446,146 @@ export function ClientLifecycleView({
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredWarranties.map((w) => (
-              <div
-                key={w.id}
-                className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4 flex flex-col justify-between hover:shadow-md transition-shadow"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span
-                      className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
-                        w.status === "ACTIVE"
-                          ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                          : w.status === "EXPIRING_SOON"
-                          ? "bg-amber-100 text-amber-800 border-amber-200"
-                          : "bg-slate-100 text-slate-700 border-slate-200"
-                      }`}
-                    >
-                      {w.status}
-                    </span>
-                    <span className="text-[11px] font-bold text-indigo-700">
-                      Tier: {w.tier} ({w.durationMonths} Bulan)
-                    </span>
-                  </div>
-
-                  <h3 className="text-sm font-bold text-slate-900 line-clamp-1">
-                    {w.projectName}
-                  </h3>
-                  <div className="text-xs font-semibold text-slate-600">
-                    {w.clientName}
-                  </div>
-
-                  <p className="text-xs text-slate-500 line-clamp-2">
-                    {w.scopeOfSupport}
-                  </p>
-
-                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 space-y-1 text-[11px]">
-                    <div className="flex justify-between text-slate-500">
-                      <span>Mulai Garansi:</span>
-                      <span className="font-mono">{w.startDate}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-500">
-                      <span>Jatuh Tempo:</span>
-                      <span className="font-mono">{w.endDate}</span>
-                    </div>
-                    <div className="flex justify-between font-bold pt-1 border-t border-slate-200/60">
-                      <span className="text-slate-700">Sisa Masa Garansi:</span>
+          {paginatedWarranties.length === 0 ? (
+            <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-200">
+              <ShieldCheck className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-slate-700">Belum ada data garansi proyek</p>
+              <p className="text-xs text-slate-400 mt-1">Garansi akan otomatis tercatat atau dapat diterbitkan secara manual saat serah terima proyek.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {paginatedWarranties.map((w) => (
+                <div
+                  key={w.id}
+                  className="bg-white rounded-xl border border-slate-200/80 shadow-2xs p-5 space-y-4 flex flex-col justify-between card-hover-lift"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
                       <span
-                        className={`font-mono ${
-                          w.daysRemaining <= 0
-                            ? "text-rose-600"
-                            : w.daysRemaining <= 30
-                            ? "text-amber-600"
-                            : "text-emerald-700"
+                        className={`text-[10px] font-extrabold font-mono px-2.5 py-0.5 rounded-md border ${
+                          w.status === "ACTIVE"
+                            ? "bg-slate-900 text-white border-slate-800"
+                            : w.status === "EXPIRING_SOON"
+                            ? "bg-slate-200 text-slate-800 border-slate-300"
+                            : "bg-slate-100 text-slate-700 border-slate-200"
                         }`}
                       >
-                        {w.daysRemaining > 0
-                          ? `${w.daysRemaining} Hari`
-                          : "Telah Habis"}
+                        {w.status}
+                      </span>
+                      <span className="text-[11px] font-bold text-blue-600">
+                        Tier: {w.tier} ({w.durationMonths} Bulan)
                       </span>
                     </div>
+
+                    <h3 className="text-sm font-bold text-slate-900 line-clamp-1">
+                      {w.projectName}
+                    </h3>
+                    <div className="text-xs font-semibold text-slate-600">
+                      {w.clientName}
+                    </div>
+
+                    <p className="text-xs text-slate-500 line-clamp-2">
+                      {w.scopeOfSupport}
+                    </p>
+
+                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 space-y-1 text-[11px]">
+                      <div className="flex justify-between text-slate-500">
+                        <span>Mulai Garansi:</span>
+                        <span className="font-mono">{w.startDate}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-500">
+                        <span>Jatuh Tempo:</span>
+                        <span className="font-mono">{w.endDate}</span>
+                      </div>
+                      <div className="flex justify-between font-bold pt-1 border-t border-slate-200/60">
+                        <span className="text-slate-700">Sisa Masa Garansi:</span>
+                        <span
+                          className="font-mono text-slate-900 font-bold"
+                        >
+                          {w.daysRemaining > 0
+                            ? `${w.daysRemaining} Hari`
+                            : "Telah Habis"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Claims preview */}
+                    {w.claims.length > 0 && (
+                      <div className="space-y-1.5 pt-2">
+                        <div className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                          <span>Laporan Isu ({w.claims.length})</span>
+                        </div>
+                        {w.claims.map((c) => (
+                          <div
+                            key={c.id}
+                            className="p-2 rounded-lg border border-slate-100 bg-slate-50 text-[11px] space-y-1"
+                          >
+                            <div className="flex items-center justify-between font-semibold">
+                              <span className="text-slate-800 line-clamp-1">
+                                {c.issueTitle}
+                              </span>
+                              <span
+                                className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+                                  c.status === "RESOLVED"
+                                    ? "bg-slate-900 text-white"
+                                    : "bg-slate-200 text-slate-700"
+                                }`}
+                              >
+                                {c.status}
+                              </span>
+                            </div>
+                            {c.status !== "RESOLVED" && (
+                              <button
+                                type="button"
+                                onClick={() => handleResolveClaim(c.id)}
+                                className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold"
+                              >
+                                Tandai Terselesaikan &rarr;
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Claims preview */}
-                  {w.claims.length > 0 && (
-                    <div className="space-y-1.5 pt-2">
-                      <div className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
-                        <span>Laporan Isu ({w.claims.length})</span>
-                      </div>
-                      {w.claims.map((c) => (
-                        <div
-                          key={c.id}
-                          className="p-2 rounded-lg border border-slate-100 bg-slate-50 text-[11px] space-y-1"
-                        >
-                          <div className="flex items-center justify-between font-semibold">
-                            <span className="text-slate-800 line-clamp-1">
-                              {c.issueTitle}
-                            </span>
-                            <span
-                              className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
-                                c.status === "RESOLVED"
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : "bg-rose-100 text-rose-800"
-                              }`}
-                            >
-                              {c.status}
-                            </span>
-                          </div>
-                          {c.status !== "RESOLVED" && (
-                            <button
-                              type="button"
-                              onClick={() => handleResolveClaim(c.id)}
-                              className="text-[10px] text-indigo-600 hover:text-indigo-800 font-semibold"
-                            >
-                              Tandai Terselesaikan &rarr;
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                  {/* Card Actions */}
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setClaimWarrantyTarget(w)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 hover:text-slate-900"
+                    >
+                      <LifeBuoy className="w-3.5 h-3.5 text-blue-600" />
+                      Klaim Isu Baru
+                    </button>
 
-                {/* Card Actions */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setClaimWarrantyTarget(w)}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-800"
-                  >
-                    <LifeBuoy className="w-3.5 h-3.5" />
-                    Klaim Isu Baru
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleOpenRenewal("WARRANTY", w.id)}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    Tawari Maintenance
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenRenewal("WARRANTY", w.id)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      Tawari Maintenance
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pagination Controls for Warranties */}
+          {filteredWarranties.length > 0 && (
+            <div className="pt-2">
+              <Pagination
+                currentPage={safeWarrantyPage}
+                totalItems={filteredWarranties.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setWarrantyPage}
+                itemLabel="garansi"
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -520,7 +605,7 @@ export function ClientLifecycleView({
               <button
                 type="button"
                 onClick={() => setIsCreateMaintenanceOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-xs font-semibold rounded-lg shadow-sm shadow-blue-500/20 transition-all active-press"
               >
                 <Plus className="w-4 h-4" />
                 Buat Kontrak Maintenance Baru
@@ -528,90 +613,107 @@ export function ClientLifecycleView({
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredContracts.map((m) => (
-              <div
-                key={m.id}
-                className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4 flex flex-col justify-between"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="font-mono text-xs font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
-                        {m.contractNumber}
-                      </span>
-                      <h3 className="text-sm font-bold text-slate-900 mt-1">
-                        {m.clientName}
-                      </h3>
-                    </div>
-                    <span
-                      className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                        m.status === "ACTIVE"
-                          ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                          : "bg-amber-100 text-amber-800 border-amber-200"
-                      }`}
-                    >
-                      {m.status}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-3 bg-slate-50 rounded-xl">
-                      <span className="text-[10px] text-slate-500">Biaya Kontrak</span>
-                      <div className="text-base font-extrabold text-slate-900 font-mono">
-                        {formatRupiah(m.price)}
-                      </div>
-                      <span className="text-[10px] text-indigo-600 font-semibold">
-                        Tagihan: {m.billingType}
-                      </span>
-                    </div>
-
-                    <div className="p-3 bg-slate-50 rounded-xl">
-                      <span className="text-[10px] text-slate-500">Masa Berlaku</span>
-                      <div className="text-xs font-mono font-semibold text-slate-800">
-                        {m.startDate} s.d {m.endDate}
+          {paginatedContracts.length === 0 ? (
+            <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-200">
+              <Wrench className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-slate-700">Belum ada kontrak maintenance aktif</p>
+              <p className="text-xs text-slate-400 mt-1">Buat kontrak maintenance baru untuk pemeliharaan rutin pasca garansi proyek.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {paginatedContracts.map((m) => (
+                <div
+                  key={m.id}
+                  className="bg-white rounded-xl border border-slate-200/80 shadow-2xs p-5 space-y-4 flex flex-col justify-between card-hover-lift"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="font-mono text-xs font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200/60">
+                          {m.contractNumber}
+                        </span>
+                        <h3 className="text-sm font-bold text-slate-900 mt-1">
+                          {m.clientName}
+                        </h3>
                       </div>
                       <span
-                        className={`text-[10px] font-bold ${
-                          m.daysRemaining <= 15
-                            ? "text-rose-600"
-                            : "text-emerald-700"
+                        className={`text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-md border ${
+                          m.status === "ACTIVE"
+                            ? "bg-slate-900 text-white border-slate-800"
+                            : "bg-slate-200 text-slate-800 border-slate-300"
                         }`}
                       >
-                        Sisa {m.daysRemaining} hari lagi
+                        {m.status}
                       </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="p-3 bg-slate-50 rounded-xl">
+                        <span className="text-[10px] text-slate-500">Biaya Kontrak</span>
+                        <div className="text-base font-extrabold text-slate-900 font-mono">
+                          {formatRupiah(m.price)}
+                        </div>
+                        <span className="text-[10px] text-blue-600 font-semibold">
+                          Tagihan: {m.billingType}
+                        </span>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-xl">
+                        <span className="text-[10px] text-slate-500">Masa Berlaku</span>
+                        <div className="text-xs font-mono font-semibold text-slate-800">
+                          {m.startDate} s.d {m.endDate}
+                        </div>
+                        <span
+                          className="text-[10px] font-bold text-slate-700"
+                        >
+                          Sisa {m.daysRemaining} hari lagi
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-600">{m.terms}</p>
+
+                    {/* Scope items */}
+                    <div className="space-y-1">
+                      <div className="text-[11px] font-bold text-slate-700">Cakupan Layanan:</div>
+                      <ul className="text-[11px] text-slate-600 list-disc list-inside space-y-0.5">
+                        {m.scopeItems.map((item, idx) => (
+                          <li key={idx}>{item}</li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-600">{m.terms}</p>
-
-                  {/* Scope items */}
-                  <div className="space-y-1">
-                    <div className="text-[11px] font-bold text-slate-700">Cakupan Layanan:</div>
-                    <ul className="text-[11px] text-slate-600 list-disc list-inside space-y-0.5">
-                      {m.scopeItems.map((item, idx) => (
-                        <li key={idx}>{item}</li>
-                      ))}
-                    </ul>
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-[11px] text-slate-400">
+                      Pengingat Renewal: {m.renewalReminderDate}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenRenewal("MAINTENANCE", m.id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      Kirim Penawaran Renewal
+                    </button>
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
 
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400">
-                    Pengingat Renewal: {m.renewalReminderDate}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenRenewal("MAINTENANCE", m.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    Kirim Penawaran Renewal
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* Pagination Controls for Maintenance Contracts */}
+          {filteredContracts.length > 0 && (
+            <div className="pt-2">
+              <Pagination
+                currentPage={safeContractPage}
+                totalItems={filteredContracts.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setContractPage}
+                itemLabel="kontrak"
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -619,27 +721,42 @@ export function ClientLifecycleView({
       <CreateClientModal
         isOpen={isCreateClientOpen}
         onClose={() => setIsCreateClientOpen(false)}
-        onSuccess={() => window.location.reload()}
+        onSuccess={(newClient) => {
+          if (newClient) {
+            setClients((prev) => [newClient, ...prev]);
+          }
+          router.refresh();
+        }}
       />
 
       <CreateWarrantyModal
         isOpen={isCreateWarrantyOpen}
         onClose={() => setIsCreateWarrantyOpen(false)}
-        onSuccess={() => window.location.reload()}
+        onSuccess={(newWarranty) => {
+          if (newWarranty) {
+            setWarranties((prev) => [newWarranty, ...prev]);
+          }
+          router.refresh();
+        }}
         clients={clients}
       />
 
       <CreateWarrantyClaimModal
         isOpen={!!claimWarrantyTarget}
         onClose={() => setClaimWarrantyTarget(null)}
-        onSuccess={() => window.location.reload()}
+        onSuccess={() => router.refresh()}
         warranty={claimWarrantyTarget}
       />
 
       <CreateMaintenanceModal
         isOpen={isCreateMaintenanceOpen}
         onClose={() => setIsCreateMaintenanceOpen(false)}
-        onSuccess={() => window.location.reload()}
+        onSuccess={(newContract) => {
+          if (newContract) {
+            setContracts((prev) => [newContract, ...prev]);
+          }
+          router.refresh();
+        }}
         clients={clients}
       />
 

@@ -140,6 +140,40 @@ describe("User Authentication & Team Management Engine", () => {
     );
   });
 
+  test("supports Developer as Marketing hybrid with canHandleSales flag", () => {
+    // 1. Buat Developer dengan canHandleSales: true
+    const dev = createUser({
+      fullName: "Dev Hybrid Marketing",
+      email: "dev.marketing@fynux.com",
+      role: "DEVELOPER",
+      password: "passwordDev123",
+      canHandleSales: true,
+    });
+
+    assert.ok(dev.id);
+    assert.equal(dev.role, "DEVELOPER");
+    assert.equal(dev.canHandleSales, true);
+
+    // 2. Verifikasi autentikasi mengembalikan session data dengan canHandleSales
+    const authResult = authenticateUser("dev.marketing@fynux.com", "passwordDev123");
+    assert.equal(authResult.success, true);
+    assert.equal(authResult.user?.canHandleSales, true);
+
+    // 3. Update canHandleSales menjadi false
+    const updated = updateUser(dev.id, { canHandleSales: false });
+    assert.equal(updated.canHandleSales, false);
+
+    const reAuth = authenticateUser("dev.marketing@fynux.com", "passwordDev123");
+    assert.equal(reAuth.user?.canHandleSales, false);
+
+    // 4. Update kembali menjadi true
+    const reUpdated = updateUser(dev.id, { canHandleSales: true });
+    assert.equal(reUpdated.canHandleSales, true);
+
+    // Bersihkan user pengujian
+    deleteUser(dev.id);
+  });
+
   test("deletes non-owner user successfully", () => {
     const sales = getUserByEmail("sales.lap@fynux.com");
     assert.ok(sales);

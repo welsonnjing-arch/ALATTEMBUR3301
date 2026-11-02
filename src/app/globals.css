@@ -10,6 +10,271 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.015em;
 }
+
+code, kbd, samp, pre, .font-mono {
+  font-family: var(--font-mono), "SF Mono", "ui-monospace", Menlo, Monaco, Consolas, monospace !important;
+  letter-spacing: -0.01em;
+}
+
+h1, h2, h3, h4 {
+  letter-spacing: -0.025em;
+}
+
+/* Fynux Brand Gradient & Visual Identity from User Logo */
+.bg-fynux-gradient {
+  background: linear-gradient(135deg, #1d68d8 0%, #2563eb 35%, #4f46e5 70%, #7c3aed 100%);
+}
+
+.text-fynux-gradient {
+  background: linear-gradient(135deg, #1d68d8 0%, #2563eb 35%, #4f46e5 70%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.shadow-fynux-glow {
+  box-shadow: 0 4px 20px -2px rgba(29, 104, 216, 0.3), 0 2px 10px -2px rgba(124, 58, 237, 0.22);
+}
+
+.shadow-fynux-glow-lg {
+  box-shadow: 0 10px 30px -4px rgba(29, 104, 216, 0.38), 0 4px 15px -2px rgba(124, 58, 237, 0.28);
+}
+
+/* iOS Spring & Tactile Interaction Curves */
+.ease-spring {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ease-ios {
+  transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Custom Cursor Hiding on Desktop (Recent.design style) */
+@media (pointer: fine) {
+  body.has-custom-cursor,
+  body.has-custom-cursor *:not(input):not(textarea):not(select) {
+    cursor: none !important;
+  }
+
+  body.has-custom-cursor input[type="text"],
+  body.has-custom-cursor input[type="email"],
+  body.has-custom-cursor input[type="password"],
+  body.has-custom-cursor input[type="search"],
+  body.has-custom-cursor input[type="number"],
+  body.has-custom-cursor textarea {
+    cursor: text !important;
+  }
+
+  body.has-custom-cursor select,
+  body.has-custom-cursor input[type="checkbox"],
+  body.has-custom-cursor input[type="radio"],
+  body.has-custom-cursor button,
+  body.has-custom-cursor a,
+  body.has-custom-cursor [role="button"],
+  body.has-custom-cursor [role="tab"] {
+    cursor: none !important;
+  }
+}
+
+.active-press {
+  transition: transform 0.14s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.14s ease-out;
+}
+
+.active-press:active {
+  transform: scale(0.975);
+}
+
+/* Fluid Page and Modal Animations */
+@keyframes iosFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes iosModalEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes iosSlideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-ios-fade {
+  animation: iosFadeIn 0.2s ease-out forwards;
+}
+
+.animate-ios-scale {
+  animation: iosModalEnter 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-ios-slide {
+  animation: iosSlideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom Fynux OS Indeterminate Progress Bar */
+@keyframes fynuxProgress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+.animate-fynux-progress {
+  animation: fynuxProgress 1.3s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+/* Modal Viewport Centering & Reset */
+.modal-backdrop-clean {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9999 !important;
+}
+
+/* Refined Minimalist Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Smooth Hardware-Accelerated Interactive Micro-Interactions */
+.table-container-clean {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  background-color: #ffffff;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-container-clean::-webkit-scrollbar {
+  height: 6px;
+}
+.table-container-clean::-webkit-scrollbar-track {
+  background: transparent;
+}
+.table-container-clean::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+}
+.table-container-clean::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.55);
+}
+
+.table-row-hover {
+  transition: background-color 150ms ease-out;
+}
+.table-row-hover:hover {
+  background-color: rgba(248, 250, 252, 0.9);
+}
+
+.card-hover-lift {
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1), border-color 220ms ease-out;
+}
+.card-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+/* Precision Designer Pointer Cursor (Image 2 style with Brand Colors) */
+.custom-cursor-root {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+
+.custom-cursor-arrow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.custom-cursor-trail {
+  display: none !important;
+}
+
+[data-hover="true"] .custom-cursor-arrow .cursor-arrow-svg {
+  transform: scale(1.1) translate(-0.5px, -0.5px);
+  filter: drop-shadow(0 2px 8px rgba(37, 99, 235, 0.5)) !important;
+}
+
+[data-hover="true"] .custom-cursor-arrow .cursor-path {
+  fill: url(#cursorHoverGrad);
+}
+
+[data-hover="true"] .custom-cursor-trail {
+  transform: scale(1.35);
+  opacity: 0.8;
+}
+
+[data-clicking="true"] .custom-cursor-arrow .cursor-arrow-svg {
+  transform: scale(0.92);
+}
+
+
+

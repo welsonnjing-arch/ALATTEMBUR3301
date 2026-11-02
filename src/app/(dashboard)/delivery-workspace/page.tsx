@@ -42,7 +42,7 @@ export default async function DeliveryWorkspacePage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            <Code2 className="w-6 h-6 text-indigo-600" />
+            <Code2 className="w-6 h-6 text-blue-600" />
             Delivery & Developer Workspace
           </h1>
           <p className="text-xs text-slate-500 mt-1">
@@ -58,64 +58,72 @@ export default async function DeliveryWorkspacePage() {
       </div>
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs card-hover-lift min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Proyek Terkait</span>
-            <Code2 className="w-4 h-4 text-indigo-500" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">Proyek Terkait</span>
+            <Code2 className="w-4 h-4 text-blue-600 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-slate-900">{userProjects.length}</div>
-          <p className="text-[10px] text-slate-400 mt-1">Proyek aktif dalam tanggung jawab</p>
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
+            {userProjects.length}
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1 truncate whitespace-nowrap">Proyek aktif dalam tanggung jawab</p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs card-hover-lift min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Task Tanggung Jawab (PIC)</span>
-            <CheckSquare className="w-4 h-4 text-blue-500" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">Task PIC Tanggung Jawab</span>
+            <CheckSquare className="w-4 h-4 text-blue-600 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-slate-900">{myPicTasks.length}</div>
-          <p className="text-[10px] text-slate-400 mt-1">Anda sebagai PIC Utama</p>
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
+            {myPicTasks.length}
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1 truncate whitespace-nowrap">Anda sebagai PIC Utama</p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs card-hover-lift min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Deadline Minggu Ini</span>
-            <Clock className="w-4 h-4 text-amber-500" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">Deadline Minggu Ini</span>
+            <Clock className="w-4 h-4 text-slate-400 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-amber-600">{deadlineThisWeek.length}</div>
-          <p className="text-[10px] text-slate-400 mt-1">Tenggat waktu dalam 7 hari</p>
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
+            {deadlineThisWeek.length}
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1 truncate whitespace-nowrap">Tenggat waktu dalam 7 hari</p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-4.5 rounded-xl border border-slate-200/80 shadow-2xs card-hover-lift min-w-0">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Task Blocked</span>
-            <AlertTriangle className="w-4 h-4 text-rose-500" />
+            <span className="text-xs font-semibold text-slate-600 truncate whitespace-nowrap">Task Blocked</span>
+            <AlertTriangle className="w-4 h-4 text-slate-400 shrink-0 ml-1.5" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-rose-600">{blockedTasks.length}</div>
-          <p className="text-[10px] text-slate-400 mt-1">Memerlukan bantuan atau data klien</p>
+          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight truncate whitespace-nowrap">
+            {blockedTasks.length}
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1 truncate whitespace-nowrap">Memerlukan bantuan atau data klien</p>
         </div>
       </div>
 
       {/* Proyek Aktif Ringkas */}
       {userProjects.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3">
+        <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-2xs space-y-3">
           <h2 className="text-sm font-bold text-slate-900 flex items-center justify-between">
             <span>Proyek Aktif Yang Ditugaskan</span>
             <span className="text-xs font-normal text-slate-500">{userProjects.length} proyek</span>
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {userProjects.map((proj) => (
-              <div key={proj.id} className="p-3.5 border border-slate-200 rounded-lg hover:border-indigo-300 transition-colors">
+              <div key={proj.id} className="p-3.5 border border-slate-200/80 rounded-xl card-hover-lift bg-white">
                 <div className="flex items-start justify-between">
                   <h3 className="text-xs font-bold text-slate-900">{proj.name}</h3>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                  <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
                     {proj.progressPercent}%
                   </span>
                 </div>
-                <div className="text-[11px] text-indigo-600 font-semibold mt-0.5">{proj.clientName}</div>
+                <div className="text-[11px] text-blue-600 font-semibold mt-0.5">{proj.clientName}</div>
                 <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
                   <div
-                    className="h-full bg-indigo-600 rounded-full"
+                    className="h-full bg-blue-600 rounded-full"
                     style={{ width: `${proj.progressPercent}%` }}
                   />
                 </div>

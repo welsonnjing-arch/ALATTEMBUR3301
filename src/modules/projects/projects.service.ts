@@ -37,6 +37,15 @@ function ensureStorageDir() {
   }
 }
 
+interface ProjectsGlobalStore {
+  projectsData?: Project[];
+  tasksData?: Task[];
+  teamBoardData?: TeamBoardItem[];
+  sharedCanvasViewportData?: CanvasViewportState;
+}
+
+const projectsGlobal = globalThis as unknown as ProjectsGlobalStore;
+
 function loadPersistedProjects(): Project[] {
   ensureStorageDir();
   try {
@@ -64,14 +73,46 @@ function loadPersistedProjects(): Project[] {
   return [...INITIAL_PROJECTS_DATA];
 }
 
-function persistProjects() {
+export function getProjectsStore(): Project[] {
   ensureStorageDir();
   try {
-    fs.writeFileSync(
-      PROJECTS_FILE,
-      JSON.stringify(projectsGlobal.projectsData || [], null, 2),
-      "utf-8"
-    );
+    if (fs.existsSync(PROJECTS_FILE)) {
+      const content = fs.readFileSync(PROJECTS_FILE, "utf-8");
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) {
+        if (!projectsGlobal.projectsData) {
+          projectsGlobal.projectsData = parsed;
+        } else {
+          projectsGlobal.projectsData.length = 0;
+          projectsGlobal.projectsData.push(...parsed);
+        }
+        return projectsGlobal.projectsData;
+      }
+    }
+  } catch (err) {
+    console.error("[PROJECTS_PERSISTENCE] Gagal membaca projects.json:", err);
+  }
+
+  if (!projectsGlobal.projectsData) {
+    projectsGlobal.projectsData = loadPersistedProjects();
+  }
+  return projectsGlobal.projectsData;
+}
+
+export function persistProjects(dataToPersist?: Project[]): void {
+  ensureStorageDir();
+  try {
+    const data = dataToPersist || projectsGlobal.projectsData || getProjectsStore();
+    if (data && Array.isArray(data)) {
+      if (!projectsGlobal.projectsData || projectsGlobal.projectsData !== data) {
+        projectsGlobal.projectsData = data;
+      }
+      fs.writeFileSync(
+        PROJECTS_FILE,
+        JSON.stringify(data, null, 2),
+        "utf-8"
+      );
+    }
   } catch (err) {
     console.error("[PROJECTS_PERSISTENCE] Gagal menyimpan projects.json:", err);
   }
@@ -104,32 +145,56 @@ function loadPersistedTasks(): Task[] {
   return [...INITIAL_TASKS_DATA];
 }
 
-function persistTasks() {
+export function getTasksStore(): Task[] {
   ensureStorageDir();
   try {
-    fs.writeFileSync(
-      TASKS_FILE,
-      JSON.stringify(projectsGlobal.tasksData || [], null, 2),
-      "utf-8"
-    );
+    if (fs.existsSync(TASKS_FILE)) {
+      const content = fs.readFileSync(TASKS_FILE, "utf-8");
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) {
+        if (!projectsGlobal.tasksData) {
+          projectsGlobal.tasksData = parsed;
+        } else {
+          projectsGlobal.tasksData.length = 0;
+          projectsGlobal.tasksData.push(...parsed);
+        }
+        return projectsGlobal.tasksData;
+      }
+    }
+  } catch (err) {
+    console.error("[TASKS_PERSISTENCE] Gagal membaca tasks.json:", err);
+  }
+
+  if (!projectsGlobal.tasksData) {
+    projectsGlobal.tasksData = loadPersistedTasks();
+  }
+  return projectsGlobal.tasksData;
+}
+
+export function persistTasks(dataToPersist?: Task[]): void {
+  ensureStorageDir();
+  try {
+    const data = dataToPersist || projectsGlobal.tasksData || getTasksStore();
+    if (data && Array.isArray(data)) {
+      if (!projectsGlobal.tasksData || projectsGlobal.tasksData !== data) {
+        projectsGlobal.tasksData = data;
+      }
+      fs.writeFileSync(
+        TASKS_FILE,
+        JSON.stringify(data, null, 2),
+        "utf-8"
+      );
+    }
   } catch (err) {
     console.error("[TASKS_PERSISTENCE] Gagal menyimpan tasks.json:", err);
   }
 }
 
-interface ProjectsGlobalStore {
-  projectsData?: Project[];
-  tasksData?: Task[];
-  teamBoardData?: TeamBoardItem[];
-  sharedCanvasViewportData?: CanvasViewportState;
+if (!projectsGlobal.projectsData) {
+  projectsGlobal.projectsData = getProjectsStore();
 }
-
-const projectsGlobal = globalThis as unknown as ProjectsGlobalStore;
-if (!projectsGlobal.projectsData || projectsGlobal.projectsData.length === 0) {
-  projectsGlobal.projectsData = loadPersistedProjects();
-}
-if (!projectsGlobal.tasksData || projectsGlobal.tasksData.length === 0) {
-  projectsGlobal.tasksData = loadPersistedTasks();
+if (!projectsGlobal.tasksData) {
+  projectsGlobal.tasksData = getTasksStore();
 }
 if (!projectsGlobal.teamBoardData || projectsGlobal.teamBoardData.length === 0) {
   projectsGlobal.teamBoardData = [...INITIAL_TEAM_BOARD_DATA];
@@ -139,22 +204,22 @@ if (!projectsGlobal.sharedCanvasViewportData) {
 }
 
 // Exported aliases for compatibility
-export let projectsData = projectsGlobal.projectsData!;
-export let tasksData = projectsGlobal.tasksData!;
+export const projectsData = projectsGlobal.projectsData;
+export const tasksData = projectsGlobal.tasksData;
 export const teamBoardData = projectsGlobal.teamBoardData;
 
 // Methods
 export async function getAllProjects(filterStatus?: ProjectStatus | "ALL"): Promise<Project[]> {
-  projectsData = loadPersistedProjects();
-  projectsGlobal.projectsData = projectsData;
+  const store = getProjectsStore();
   if (!filterStatus || filterStatus === "ALL") {
-    return [...projectsData];
+    return [...store];
   }
-  return projectsData.filter((p) => p.status === filterStatus);
+  return store.filter((p) => p.status === filterStatus);
 }
 
 export async function getProjectById(id: string): Promise<Project | null> {
-  const p = projectsData.find((item) => item.id === id);
+  const store = getProjectsStore();
+  const p = store.find((item) => item.id === id);
   return p ? { ...p } : null;
 }
 
@@ -166,6 +231,8 @@ export async function createProject(
   if (!input.name.trim()) {
     return { success: false, error: "Nama proyek wajib diisi." };
   }
+
+  const store = getProjectsStore();
 
   const newProject: Project = {
     id: `proj-${Date.now()}`,
@@ -188,8 +255,8 @@ export async function createProject(
     updatedAt: new Date().toISOString(),
   };
 
-  projectsData.unshift(newProject);
-  persistProjects();
+  store.unshift(newProject);
+  persistProjects(store);
 
   logActivity({
     category: "PROJECT",
@@ -209,22 +276,23 @@ export async function updateProjectStatus(
   actorUserId: string,
   reason?: string
 ): Promise<{ success: boolean; error?: string }> {
-  const idx = projectsData.findIndex((p) => p.id === id);
+  const store = getProjectsStore();
+  const idx = store.findIndex((p) => p.id === id);
   if (idx === -1) return { success: false, error: "Proyek tidak ditemukan." };
 
-  projectsData[idx].status = status;
-  projectsData[idx].updatedAt = new Date().toISOString();
+  store[idx].status = status;
+  store[idx].updatedAt = new Date().toISOString();
 
   if (status === "ON_HOLD") {
-    projectsData[idx].onHoldReason = reason || "Ditunda sementara";
-    projectsData[idx].onHoldDate = new Date().toISOString();
+    store[idx].onHoldReason = reason || "Ditunda sementara";
+    store[idx].onHoldDate = new Date().toISOString();
   } else if (status === "CANCELLED") {
-    projectsData[idx].cancelledReason = reason || "Dibatalkan oleh Owner";
+    store[idx].cancelledReason = reason || "Dibatalkan oleh Owner";
   } else if (status === "COMPLETED") {
-    projectsData[idx].progressPercent = 100;
+    store[idx].progressPercent = 100;
   }
 
-  persistProjects();
+  persistProjects(store);
 
   logActivity({
     category: "PROJECT",
@@ -243,17 +311,18 @@ export async function updateProjectProgress(
   progress: number,
   actorUserId: string
 ): Promise<{ success: boolean }> {
-  const idx = projectsData.findIndex((p) => p.id === id);
+  const store = getProjectsStore();
+  const idx = store.findIndex((p) => p.id === id);
   if (idx === -1) return { success: false };
 
-  projectsData[idx].progressPercent = Math.min(100, Math.max(0, progress));
-  projectsData[idx].updatedAt = new Date().toISOString();
+  store[idx].progressPercent = Math.min(100, Math.max(0, progress));
+  store[idx].updatedAt = new Date().toISOString();
 
   if (progress === 100) {
-    projectsData[idx].status = "COMPLETED";
+    store[idx].status = "COMPLETED";
   }
 
-  persistProjects();
+  persistProjects(store);
 
   logActivity({
     category: "PROJECT",
@@ -271,15 +340,16 @@ export async function addProjectExternalLink(
   link: { title: string; url: string; category: ExternalLink["category"] },
   actorUserId: string
 ): Promise<{ success: boolean }> {
-  const idx = projectsData.findIndex((p) => p.id === projectId);
+  const store = getProjectsStore();
+  const idx = store.findIndex((p) => p.id === projectId);
   if (idx === -1) return { success: false };
 
-  projectsData[idx].externalLinks.push({
+  store[idx].externalLinks.push({
     id: `link-${Date.now()}`,
     ...link,
   });
 
-  persistProjects();
+  persistProjects(store);
 
   logActivity({
     category: "PROJECT",
@@ -297,9 +367,8 @@ export async function getAllTasks(filter?: {
   picId?: string;
   status?: TaskStatus;
 }): Promise<Task[]> {
-  tasksData = loadPersistedTasks();
-  projectsGlobal.tasksData = tasksData;
-  let list = [...tasksData];
+  const store = getTasksStore();
+  let list = [...store];
 
   if (filter?.projectId) {
     list = list.filter((t) => t.projectId === filter.projectId);
@@ -323,8 +392,9 @@ export async function createTask(
     return { success: false, error: "Judul task wajib diisi." };
   }
 
+  const pStore = getProjectsStore();
   const proj = input.projectId
-    ? projectsData.find((p) => p.id === input.projectId)
+    ? pStore.find((p) => p.id === input.projectId)
     : undefined;
 
   const newTask: Task = {
@@ -346,8 +416,9 @@ export async function createTask(
     updatedAt: new Date().toISOString(),
   };
 
-  tasksData.unshift(newTask);
-  persistTasks();
+  const tStore = getTasksStore();
+  tStore.unshift(newTask);
+  persistTasks(tStore);
 
   logActivity({
     category: "PROJECT",
@@ -367,19 +438,20 @@ export async function updateTaskStatus(
   actorUserId: string,
   blockedReason?: string
 ): Promise<{ success: boolean; error?: string }> {
-  const idx = tasksData.findIndex((t) => t.id === taskId);
+  const store = getTasksStore();
+  const idx = store.findIndex((t) => t.id === taskId);
   if (idx === -1) return { success: false, error: "Task tidak ditemukan." };
 
-  tasksData[idx].status = status;
-  tasksData[idx].updatedAt = new Date().toISOString();
+  store[idx].status = status;
+  store[idx].updatedAt = new Date().toISOString();
 
   if (status === "BLOCKED") {
-    tasksData[idx].blockedReason = blockedReason || "Terkendala data/klien";
+    store[idx].blockedReason = blockedReason || "Terkendala data/klien";
   } else if (status === "DONE") {
-    tasksData[idx].blockedReason = undefined;
+    store[idx].blockedReason = undefined;
   }
 
-  persistTasks();
+  persistTasks(store);
 
   logActivity({
     category: "PROJECT",
@@ -399,7 +471,8 @@ export async function sendProjectChatMessage(
   senderName: string,
   text: string
 ): Promise<{ success: boolean; chatMessage?: ProjectChatMessage }> {
-  const idx = projectsData.findIndex((p) => p.id === projectId);
+  const store = getProjectsStore();
+  const idx = store.findIndex((p) => p.id === projectId);
   if (idx === -1) return { success: false };
 
   const newChat: ProjectChatMessage = {
@@ -411,11 +484,11 @@ export async function sendProjectChatMessage(
     timestamp: new Date().toISOString(),
   };
 
-  if (!projectsData[idx].chatMessages) {
-    projectsData[idx].chatMessages = [];
+  if (!store[idx].chatMessages) {
+    store[idx].chatMessages = [];
   }
-  projectsData[idx].chatMessages.push(newChat);
-  persistProjects();
+  store[idx].chatMessages.push(newChat);
+  persistProjects(store);
 
   return { success: true, chatMessage: newChat };
 }
@@ -571,8 +644,11 @@ export async function updateCanvasViewport(
 }
 
 export function resetProjectsAndTasksForTesting(): void {
-  if (projectsGlobal.projectsData) projectsGlobal.projectsData.length = 0;
-  if (projectsGlobal.tasksData) projectsGlobal.tasksData.length = 0;
-  persistProjects();
-  persistTasks();
+  const pStore = getProjectsStore();
+  pStore.length = 0;
+  persistProjects(pStore);
+
+  const tStore = getTasksStore();
+  tStore.length = 0;
+  persistTasks(tStore);
 }

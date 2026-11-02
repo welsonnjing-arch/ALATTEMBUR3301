@@ -84,6 +84,7 @@ export interface SalesUserOption {
   id: string;
   fullName: string;
   email: string;
+  role?: string;
 }
 
 /**

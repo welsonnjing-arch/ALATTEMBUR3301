@@ -41,195 +41,11 @@ function determineMaintenanceStatus(
 }
 
 // In-memory data store with realistic initial data
-let clientsData: Client[] = [
-  {
-    id: "p-001",
-    name: "SMAN 2 NGAGLIK",
-    industry: "Pendidikan & Sekolah",
-    website: "https://sman2ngaglik.sch.id",
-    address: "Jl. Sukoharjo, Ngaglik, Sleman, D.I. Yogyakarta",
-    picName: "Drs. Budi Santoso, M.Pd",
-    picPhone: "62895324069850",
-    email: "info@sman2ngaglik.sch.id",
-    position: "Kepala Sekolah & Penanggung Jawab IT",
-    status: "ACTIVE",
-    totalLtv: 950000,
-    projectCount: 1,
-    onboardingDate: "2026-02-12",
-    notes: "Pengembangan sistem presensi digital dan landing page sekolah dengan dukungan multi-kiosk.",
-    createdAt: "2026-02-12T00:00:00Z",
-    updatedAt: "2026-10-25T00:00:00Z",
-  },
-  {
-    id: "p-002",
-    name: "PT Padma Widya Setiajaya",
-    industry: "Konstruksi & Pengadaan LPSE",
-    website: "https://padmawidyasetiajaya.com",
-    address: "Jl. Pemuda No. 88, Semarang, Jawa Tengah",
-    picName: "Bambang Widjanarko, S.T.",
-    picPhone: "6281234567890",
-    email: "direksi@padmawidyasetiajaya.com",
-    position: "Direktur Utama",
-    status: "ACTIVE",
-    totalLtv: 4500000,
-    projectCount: 1,
-    onboardingDate: "2026-10-25",
-    notes: "Klien korporat B2B. Membutuhkan portofolio tender resmi dan garansi uptime tinggi.",
-    createdAt: "2026-10-25T00:00:00Z",
-    updatedAt: "2026-10-25T00:00:00Z",
-  },
-  {
-    id: "p-003",
-    name: "Klinik Pratama Sehat Mandiri",
-    industry: "Pelayanan Kesehatan",
-    website: "https://sehatmandiriklinik.co.id",
-    address: "Jl. Kaliurang KM 9, Sleman, D.I. Yogyakarta",
-    picName: "dr. Hendra Kurniawan",
-    picPhone: "6287890123456",
-    email: "admin@sehatmandiriklinik.co.id",
-    position: "Pemilik & Dokter Penanggung Jawab",
-    status: "ACTIVE",
-    totalLtv: 2500000,
-    projectCount: 1,
-    onboardingDate: "2026-08-10",
-    notes: "Website profil klinik dengan modul jadwal praktek dokter terintegrasi WhatsApp pendaftaran.",
-    createdAt: "2026-08-10T00:00:00Z",
-    updatedAt: "2026-10-25T00:00:00Z",
-  },
-];
+let clientsData: Client[] = [];
 
-let warrantiesData: Warranty[] = [
-  {
-    id: "warr-001",
-    clientId: "p-001",
-    clientName: "SMAN 2 NGAGLIK",
-    projectId: "proj-001",
-    projectName: "Web App SIM-Presensi Siswa & Guru v1.0",
-    tier: "BASIC",
-    durationMonths: 3,
-    startDate: "2026-02-12",
-    endDate: "2026-05-12",
-    status: "EXPIRED",
-    daysRemaining: calculateDaysRemaining("2026-05-12"),
-    scopeOfSupport:
-      "Garansi teknis perbaikan bug script, perlindungan error fatal database, dan bantuan 1x revisi minor sistem.",
-    claims: [
-      {
-        id: "claim-001",
-        warrantyId: "warr-001",
-        issueTitle: "Perbaikan format ekspor Excel rekap absensi harian",
-        issueDescription:
-          "Kolom tanggal pada lembar kerja kedua bergeser satu sel saat diekspor oleh operator TU.",
-        reportedDate: "2026-03-05",
-        status: "RESOLVED",
-        reportedBy: "Operator TU SMAN 2 Ngaglik",
-        resolutionNotes: "Patch v1.0.2 diterapkan dan formula cell disinkronkan kembali. Telah divalidasi normal.",
-        resolvedAt: "2026-03-06T14:30:00Z",
-      },
-    ],
-    createdAt: "2026-02-12T00:00:00Z",
-  },
-  {
-    id: "warr-002",
-    clientId: "p-002",
-    clientName: "PT Padma Widya Setiajaya",
-    projectId: "proj-002",
-    projectName: "Business Website & Company Profile PT Padma Widya Setiajaya",
-    tier: "BUSINESS",
-    durationMonths: 6,
-    startDate: "2026-10-25",
-    endDate: "2027-04-25",
-    status: "ACTIVE",
-    daysRemaining: calculateDaysRemaining("2027-04-25"),
-    scopeOfSupport:
-      "Garansi teknis 6 bulan mencakup perbaikan bug CMS, monitoring stabilitas server NVMe, instalasi SSL berkala, dan penyesuaian konten minor 3x.",
-    claims: [],
-    createdAt: "2026-10-25T00:00:00Z",
-  },
-  {
-    id: "warr-003",
-    clientId: "p-003",
-    clientName: "Klinik Pratama Sehat Mandiri",
-    projectId: "proj-003",
-    projectName: "Website Profil & Jadwal Dokter Klinik Pratama",
-    tier: "BASIC",
-    durationMonths: 3,
-    startDate: "2026-08-10",
-    endDate: "2026-11-10",
-    status: "EXPIRING_SOON",
-    daysRemaining: calculateDaysRemaining("2026-11-10"),
-    scopeOfSupport:
-      "Garansi teknis bug responsivitas layout mobile dan perlindungan keamanan formulir janji temu WhatsApp.",
-    claims: [
-      {
-        id: "claim-002",
-        warrantyId: "warr-003",
-        issueTitle: "Tombol WhatsApp dokter jaga tidak merespons pada iOS Safari",
-        issueDescription:
-          "Saat diklik di browser Safari iPhone, tautan wa.me tidak memicu aplikasi WhatsApp secara langsung.",
-        reportedDate: "2026-09-15",
-        status: "RESOLVED",
-        reportedBy: "Admin Klinik Sehat Mandiri",
-        resolutionNotes: "Deep-link wa.me diperbarui dengan fallback universal link standar.",
-        resolvedAt: "2026-09-15T16:00:00Z",
-      },
-    ],
-    createdAt: "2026-08-10T00:00:00Z",
-  },
-];
+let warrantiesData: Warranty[] = [];
 
-let maintenanceContractsData: MaintenanceContract[] = [
-  {
-    id: "mnc-001",
-    contractNumber: "MNC-202606-0001",
-    clientId: "p-001",
-    clientName: "SMAN 2 NGAGLIK",
-    projectId: "proj-001",
-    projectName: "Web App SIM-Presensi Siswa & Guru v1.0",
-    billingType: "MONTHLY",
-    price: 98000,
-    startDate: "2026-06-01",
-    endDate: "2026-11-30",
-    daysRemaining: calculateDaysRemaining("2026-11-30"),
-    status: "ACTIVE",
-    terms:
-      "Perawatan rutin bulanan pasca garansi: backup mingguan database presensi, monitoring SSL, dan asistensi teknis darurat via WhatsApp.",
-    scopeItems: [
-      "Backup mingguan database PostgreSQL",
-      "Pembaruan berkala patch keamanan dependencies",
-      "Monitoring uptime server dan sertifikat SSL",
-      "Bantuan teknis minor 1x per bulan",
-    ],
-    renewalReminderDate: "2026-11-15",
-    renewalAlertSent: false,
-    createdAt: "2026-06-01T00:00:00Z",
-  },
-  {
-    id: "mnc-002",
-    contractNumber: "MNC-202610-0002",
-    clientId: "p-003",
-    clientName: "Klinik Pratama Sehat Mandiri",
-    projectId: "proj-003",
-    projectName: "Website Profil & Jadwal Dokter Klinik Pratama",
-    billingType: "ANNUAL",
-    price: 1100000,
-    startDate: "2026-11-11",
-    endDate: "2027-11-10",
-    daysRemaining: calculateDaysRemaining("2027-11-10"),
-    status: "ACTIVE",
-    terms:
-      "Paket kontrak maintenance tahunan: garansi perbaikan bug berkelanjutan, update konten jadwal praktek dokter berkala, dan renewal hosting NVMe tahun ke-2.",
-    scopeItems: [
-      "Perpanjangan hosting NVMe 1 tahun",
-      "Pembaruan jadwal dokter hingga 4x per kuartal",
-      "Penyimpanan berkala backup cloud",
-      "Prioritas penanganan bug teknis",
-    ],
-    renewalReminderDate: "2027-10-10",
-    renewalAlertSent: false,
-    createdAt: "2026-10-25T00:00:00Z",
-  },
-];
+let maintenanceContractsData: MaintenanceContract[] = [];
 
 // Service Methods
 export async function getAllClients(): Promise<Client[]> {
@@ -582,4 +398,10 @@ export async function generateRenewalFollowUpDraft(
       messageText,
     };
   }
+}
+
+export function resetClientLifecycleForTesting(): void {
+  clientsData.length = 0;
+  warrantiesData.length = 0;
+  maintenanceContractsData.length = 0;
 }

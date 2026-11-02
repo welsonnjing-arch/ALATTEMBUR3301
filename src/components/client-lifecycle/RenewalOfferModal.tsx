@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import { MessageSquare, Copy, Check, ExternalLink, X } from "lucide-react";
+import { ModalPortal } from "@/components/common/ModalPortal";
+import { useToast } from "@/components/common/Toast";
 
 interface RenewalOfferModalProps {
   isOpen: boolean;
@@ -18,6 +20,7 @@ export function RenewalOfferModal({
   targetPhone,
   initialMessage,
 }: RenewalOfferModalProps) {
+  const { toast } = useToast();
   const [message, setMessage] = useState(initialMessage);
   const [copied, setCopied] = useState(false);
 
@@ -26,6 +29,7 @@ export function RenewalOfferModal({
   const handleCopy = () => {
     navigator.clipboard.writeText(message);
     setCopied(true);
+    toast.success("Disalin ke clipboard");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -36,44 +40,58 @@ export function RenewalOfferModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-6 space-y-4 relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="flex items-center gap-2 text-indigo-700">
-          <MessageSquare className="w-5 h-5" />
-          <h3 className="text-base font-bold text-slate-900">
-            Draf Penawaran Perpanjangan (Renewal)
-          </h3>
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] modal-backdrop-clean flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs animate-ios-fade">
+        <div className="w-full max-w-lg max-h-[88vh] flex flex-col bg-white border border-slate-200/90 rounded-2xl shadow-2xl overflow-hidden animate-ios-scale relative">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-slate-200/80 flex items-center justify-between shrink-0 bg-white">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg">
+              <MessageSquare className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Draf Penawaran Perpanjangan (Renewal)
+              </h3>
+              <p className="text-xs text-slate-500">
+                Penawaran resmi untuk klien <strong>{clientName}</strong> ({targetPhone}).
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        <p className="text-xs text-slate-500">
-          Pesan penawaran ramah & profesional yang disiapkan otomatis untuk klien{" "}
-          <strong>{clientName}</strong> ({targetPhone}). Anda dapat mengedit teks sebelum mengirim.
-        </p>
+        {/* Scrollable Form Body */}
+        <div className="px-6 py-5 overflow-y-auto flex-1 min-h-0 space-y-4">
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Pesan disiapkan otomatis dengan klausul pemeliharaan website. Anda dapat mengedit teks sebelum mengirim.
+          </p>
 
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Isi Pesan WhatsApp
-          </label>
-          <textarea
-            rows={8}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            className="w-full p-3 text-xs border border-slate-300 rounded-xl font-sans leading-relaxed focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50/50"
-          />
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Isi Pesan WhatsApp
+            </label>
+            <textarea
+              rows={8}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className="w-full p-3 text-xs border border-slate-300 rounded-lg font-sans leading-relaxed focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50/50"
+            />
+          </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100">
+        {/* Sticky Modal Footer */}
+        <div className="px-6 py-4 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 bg-slate-50/90 rounded-b-2xl">
           <button
             type="button"
             onClick={handleCopy}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition-colors"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors"
           >
             {copied ? (
               <>
@@ -88,18 +106,18 @@ export function RenewalOfferModal({
             )}
           </button>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900"
+              className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200/90 rounded-lg transition-colors"
             >
               Tutup
             </button>
             <button
               type="button"
               onClick={handleOpenWhatsApp}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
             >
               Kirim ke WhatsApp <ExternalLink className="w-3.5 h-3.5" />
             </button>
@@ -107,5 +125,6 @@ export function RenewalOfferModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

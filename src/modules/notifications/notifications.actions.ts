@@ -5,6 +5,8 @@ import { getAllTasks } from "../projects/projects.service";
 import { getAllWarranties } from "../client-lifecycle/client-lifecycle.service";
 import { getAllProspects } from "../crm/crm.service";
 import { isFollowUpDueTodayOrOverdue } from "../follow-up/follow-up.service";
+import { getSessionCookie } from "../auth/session";
+import { getPendingRegistrationsForOwner } from "../auth/registration.service";
 
 export interface SystemNotificationItem {
   id: string;
@@ -68,7 +70,26 @@ export async function fetchSystemNotificationsAction(): Promise<SystemNotificati
     }
   } catch {}
 
-  // 4. Follow-up Due Today
+  // 4. Pending Registration Otorisasi (Khusus Akun Owner)
+  try {
+    const session = await getSessionCookie();
+    if (session?.role === "OWNER") {
+      const pendingRegs = getPendingRegistrationsForOwner();
+      for (const reg of pendingRegs) {
+        notifications.push({
+          id: `notif-reg-${reg.id}`,
+          type: "APPROVAL",
+          title: `Otorisasi Akun: ${reg.fullName}`,
+          description: `${reg.fullName} (${reg.email}) mendaftar sebagai ${reg.role}. Nomor otorisasi yang benar: [${reg.correctNumber}].`,
+          timestamp: reg.createdAt,
+          url: "/command-center",
+          severity: "URGENT",
+        });
+      }
+    }
+  } catch {}
+
+  // 5. Follow-up Due Today
   try {
     const prospects = await getAllProspects();
     const dueToday = prospects.filter((p) =>

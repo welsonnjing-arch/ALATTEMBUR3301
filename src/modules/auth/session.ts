@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { UserSessionData } from "./types";
 import { UserRole } from "@/types/roles";
-import { getAllUsers, toSessionData } from "./user.service";
+import { getAllUsers, getUserById, toSessionData } from "./user.service";
 
 const SESSION_COOKIE_NAME = "fynux_session";
 
@@ -44,6 +44,19 @@ export async function getSessionCookie(): Promise<UserSessionData | null> {
 
   try {
     const parsed = JSON.parse(Buffer.from(sessionVal, "base64").toString("utf-8"));
+    if (!parsed || !parsed.id) {
+      return null;
+    }
+
+    // Selalu sinkronkan dengan database user terbaru agar perubahan avatarUrl, fullName, dan status langsung live
+    const freshUser = getUserById(parsed.id);
+    if (freshUser) {
+      if (freshUser.status === "INACTIVE") {
+        return null;
+      }
+      return toSessionData(freshUser);
+    }
+
     if (parsed.status === "INACTIVE") {
       return null;
     }

@@ -15,6 +15,12 @@ import {
   fetchSystemNotificationsAction,
   SystemNotificationItem,
 } from "@/modules/notifications/notifications.actions";
+import { ModalPortal } from "@/components/common/ModalPortal";
+import {
+  getDismissedNotificationIds,
+  dismissNotificationId,
+  dismissAllNotificationIds,
+} from "@/lib/notifications-client";
 
 interface NotificationDrawerProps {
   isOpen: boolean;
@@ -35,33 +41,59 @@ export function NotificationDrawer({
   useEffect(() => {
     let isMounted = true;
     async function load() {
-      const res = await fetchSystemNotificationsAction();
-      if (isMounted) {
-        setNotifications(res);
-        setLoading(false);
-        if (onCountChange) {
-          onCountChange(res.length);
+      try {
+        const res = await fetchSystemNotificationsAction();
+        if (isMounted) {
+          const savedDismissed = getDismissedNotificationIds();
+          setDismissedIds(savedDismissed);
+          setNotifications(res);
+          setLoading(false);
+          const activeCount = res.filter((n) => !savedDismissed.includes(n.id)).length;
+          if (onCountChange) {
+            onCountChange(activeCount);
+          }
+        }
+      } catch {
+        if (isMounted) {
+          setLoading(false);
         }
       }
     }
-    load();
+    if (isOpen) {
+      load();
+    }
     return () => {
       isMounted = false;
     };
-  }, [isOpen, onCountChange]);
+  }, [isOpen]);
 
   const activeNotifs = notifications.filter((n) => !dismissedIds.includes(n.id));
 
   const handleDismiss = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const updated = [...dismissedIds, id];
+    const updated = dismissNotificationId(id);
     setDismissedIds(updated);
     if (onCountChange) {
-      onCountChange(notifications.length - updated.length);
+      const remaining = notifications.filter((n) => !updated.includes(n.id)).length;
+      onCountChange(remaining);
     }
   };
 
-  const handleNavigate = (url: string) => {
+  const handleMarkAllRead = () => {
+    const updated = dismissAllNotificationIds(notifications.map((n) => n.id));
+    setDismissedIds(updated);
+    if (onCountChange) {
+      onCountChange(0);
+    }
+  };
+
+  const handleNavigate = (url: string, id: string) => {
+    const updated = dismissNotificationId(id);
+    setDismissedIds(updated);
+    if (onCountChange) {
+      const remaining = notifications.filter((n) => !updated.includes(n.id)).length;
+      onCountChange(remaining);
+    }
     onClose();
     router.push(url);
   };
@@ -69,14 +101,15 @@ export function NotificationDrawer({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-sm h-full shadow-2xl border-l border-slate-200 flex flex-col justify-between">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] modal-backdrop-clean flex justify-end bg-slate-950/50 backdrop-blur-sm animate-ios-fade">
+        <div className="bg-white w-full max-w-sm h-full shadow-2xl border-l border-slate-200/90 flex flex-col justify-between animate-ios-slide">
         {/* Top Header */}
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div className="p-4 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/70">
           <div className="flex items-center gap-2">
-            <Bell className="w-4 h-4 text-indigo-600" />
+            <Bell className="w-4 h-4 text-blue-600" />
             <h3 className="text-sm font-bold text-slate-900">Pusat Notifikasi</h3>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
               {activeNotifs.length}
             </span>
           </div>
@@ -97,22 +130,22 @@ export function NotificationDrawer({
           ) : activeNotifs.length === 0 ? (
             <div className="text-center py-16 space-y-2">
               <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
-              <p className="text-xs font-bold text-slate-700">Semua Berjalan Normal</p>
+              <p className="text-xs font-bold text-slate-700">Tidak ada notifikasi baru</p>
               <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-                Tidak ada permintaan approval tertunda, kendala blocker, atau garansi kritis saat ini.
+                Semua berjalan normal. Tidak ada permohonan approval tertunda, kendala blocker, atau garansi kritis saat ini.
               </p>
             </div>
           ) : (
             activeNotifs.map((item) => (
               <div
                 key={item.id}
-                onClick={() => handleNavigate(item.url)}
+                onClick={() => handleNavigate(item.url, item.id)}
                 className={`p-3.5 rounded-xl border text-xs space-y-1.5 cursor-pointer transition-all hover:shadow-sm ${
                   item.severity === "URGENT"
                     ? "bg-rose-50/70 border-rose-200 hover:border-rose-300"
                     : item.severity === "WARNING"
                     ? "bg-amber-50/70 border-amber-200 hover:border-amber-300"
-                    : "bg-indigo-50/60 border-indigo-200 hover:border-indigo-300"
+                    : "bg-blue-50/60 border-blue-200 hover:border-blue-300"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -124,7 +157,7 @@ export function NotificationDrawer({
                       <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
                     )}
                     {item.severity === "INFO" && (
-                      <Clock className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
+                      <Clock className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
                     )}
                     <span>{item.title}</span>
                   </div>
@@ -141,7 +174,7 @@ export function NotificationDrawer({
                   {item.description}
                 </p>
 
-                <div className="pt-1 flex items-center justify-between text-[10px] text-indigo-700 font-semibold">
+                <div className="pt-1 flex items-center justify-between text-[10px] text-blue-600 font-semibold">
                   <span className="flex items-center gap-1">
                     Buka Tindakan <ExternalLink className="w-2.5 h-2.5" />
                   </span>
@@ -154,8 +187,9 @@ export function NotificationDrawer({
         {/* Footer */}
         <div className="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
           <button
-            onClick={() => setDismissedIds(notifications.map((n) => n.id))}
-            className="text-[11px] text-slate-500 hover:text-slate-800 font-medium"
+            onClick={handleMarkAllRead}
+            disabled={activeNotifs.length === 0}
+            className="text-[11px] text-slate-500 hover:text-slate-800 font-medium active-press cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Tandai Semua Dibaca
           </button>
@@ -168,5 +202,6 @@ export function NotificationDrawer({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

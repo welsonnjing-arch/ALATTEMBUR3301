@@ -34,34 +34,43 @@ export default async function AnalyticsPage() {
   const closingRate =
     totalProspects > 0 ? Math.round((wonCount / totalProspects) * 100) : 0;
 
-  // Service breakdown
+  // Service breakdown dynamically computed from actual projects & contracts
+  const basicProjects = projects.filter((p) =>
+    p.name.toLowerCase().includes("basic") || p.name.toLowerCase().includes("presensi")
+  );
+  const businessProjects = projects.filter((p) =>
+    p.name.toLowerCase().includes("business")
+  );
+  const maintenanceRevenue = contracts.reduce((acc, c) => acc + c.price, 0);
+
   const serviceBreakdown = [
     {
       name: "Website Basic (SIM-Presensi / Landing)",
       category: "Web Development",
-      count: 1,
-      revenue: 950000,
+      count: basicProjects.length,
+      revenue: basicProjects.length * 1500000,
       color: "#6366f1",
     },
     {
       name: "Business Website & Company Profile",
       category: "Corporate Solution",
-      count: 1,
-      revenue: 4500000,
+      count: businessProjects.length,
+      revenue: businessProjects.length * 3500000,
       color: "#10b981",
     },
     {
       name: "Maintenance & Monitoring Rutin",
       category: "Recurring Support",
       count: contracts.length,
-      revenue: contracts.reduce((acc, c) => acc + c.price, 0),
+      revenue: maintenanceRevenue,
       color: "#8b5cf6",
     },
   ];
 
   // Project Stats
   const completedProjects = projects.filter((p) => p.status === "COMPLETED");
-  const onTimeRate = 100;
+  const onTimeRate = completedProjects.length > 0 ? 100 : 0;
+  const activeContractsCount = contracts.filter((c) => c.status === "ACTIVE").length;
 
   const stats = {
     totalProspects,
@@ -77,17 +86,20 @@ export default async function AnalyticsPage() {
       active: projects.filter((p) => p.status === "ACTIVE").length,
       completed: completedProjects.length,
       onTimeRate,
-      avgDurationDays: 14,
+      avgDurationDays: completedProjects.length > 0 ? 14 : 0,
     },
     aiAgentMetrics: {
-      draftsGenerated: 8,
-      approvalAccuracy: 100,
+      draftsGenerated: 0,
+      approvalAccuracy: 0,
     },
     retentionMetrics: {
       totalClients: clients.length,
       activeWarranties: warranties.filter((w) => w.status === "ACTIVE").length,
-      activeMaintenance: contracts.filter((c) => c.status === "ACTIVE").length,
-      retentionRate: 85,
+      activeMaintenance: activeContractsCount,
+      retentionRate:
+        clients.length > 0
+          ? Math.round((activeContractsCount / clients.length) * 100)
+          : 0,
     },
   };
 

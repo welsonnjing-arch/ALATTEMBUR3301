@@ -13,123 +13,7 @@ function ensureStorageDir() {
   }
 }
 
-const INITIAL_CONVERSATIONS_DATA: ConversationThread[] = [
-  {
-    id: "conv-002",
-    prospectId: "p-002",
-    companyName: "PT Padma Widya Setiajaya",
-    contactName: "Ibu Rina Wulandari (Direktur)",
-    whatsappNumber: "6281298765432",
-    assignedSalesId: "44444444-4444-4444-4444-444444444444",
-    assignedSalesName: "Siti Rahma (Sales 2)",
-    unreadCount: 1,
-    lastMessageSnippet: "Apakah bisa dapat potongan harga jika kami ambil kontrak maintenance tahunan sekalian?",
-    lastMessageAt: new Date(Date.now() - 3600000 * 1).toISOString(),
-    researchNotes:
-      "Perusahaan kontraktor regional. Membutuhkan company profile profesional untuk portofolio tender B2B pemerintah & swasta.",
-    messages: [
-      {
-        id: "msg-001",
-        conversationId: "conv-002",
-        sender: "SALES",
-        sentByUserId: "44444444-4444-4444-4444-444444444444",
-        sentByUserName: "Siti Rahma (Sales 2)",
-        text: "Selamat siang Ibu Rina, perkenalkan saya Siti dari Fynux Digital Solutions. Kami melihat PT Padma Widya Setiajaya memiliki rekam jejak konstruksi yang luar biasa, namun website resmi perusahaan sepertinya belum aktif. Apakah saat ini ada rencana publikasi portofolio online untuk tender?",
-        isDraft: false,
-        timestamp: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
-        status: "READ",
-      },
-      {
-        id: "msg-002",
-        conversationId: "conv-002",
-        sender: "PROSPECT",
-        text: "Siang Mbak Siti. Iya betul sekali, kami memang sedang disyaratkan melampirkan link website company profile untuk tender LPSE bulan depan. Paket apa saja yang tersedia di Fynux?",
-        isDraft: false,
-        timestamp: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
-      },
-      {
-        id: "msg-003",
-        conversationId: "conv-002",
-        sender: "SALES",
-        sentByUserId: "44444444-4444-4444-4444-444444444444",
-        sentByUserName: "Siti Rahma (Sales 2)",
-        text: "Untuk kebutuhan tender, kami merekomendasikan Business Website seharga Rp 3.500.000 dengan CMS kustom agar tim Ibu bisa memperbarui galeri proyek kapan saja, lengkap dengan domain, hosting, dan SSL.",
-        isDraft: false,
-        timestamp: new Date(Date.now() - 3600000 * 24 * 1).toISOString(),
-        status: "READ",
-      },
-      {
-        id: "msg-004",
-        conversationId: "conv-002",
-        sender: "PROSPECT",
-        text: "Apakah bisa dapat potongan harga menjadi sekitar 3.15 juta jika kami langsung ambil kontrak maintenance tahunan sekalian?",
-        isDraft: false,
-        timestamp: new Date(Date.now() - 3600000 * 1).toISOString(),
-      },
-    ],
-  },
-  {
-    id: "conv-003",
-    prospectId: "p-003",
-    companyName: "Kopi Nusantara Roastery",
-    contactName: "Aditya Pratama (Founder)",
-    whatsappNumber: "6285712345678",
-    assignedSalesId: "55555555-5555-5555-5555-555555555555",
-    assignedSalesName: "Dimas Anggara (Sales 3)",
-    unreadCount: 0,
-    lastMessageSnippet: "Reach now via WhatsApp Web terkirim.",
-    lastMessageAt: new Date(Date.now() - 3600000 * 12).toISOString(),
-    researchNotes:
-      "Roastery kopi berkembang pesat di IG. Admin kewalahan membalas chat pesanan biji kopi kiloan. Butuh website katalog beans + direct WA order.",
-    messages: [
-      {
-        id: "msg-010",
-        conversationId: "conv-003",
-        sender: "SALES",
-        sentByUserId: "55555555-5555-5555-5555-555555555555",
-        sentByUserName: "Dimas Anggara (Sales 3)",
-        text: "Halo Mas Aditya, salam kenal dari Fynux Digital Solutions. Kami sempat memantau roastery Kopi Nusantara yang ramai sekali pemesanannya di Instagram. Apakah Mas Adit tertarik membuat website katalog beans otomatis agar pelanggan grosir bisa langsung order rapi?",
-        isDraft: false,
-        timestamp: new Date(Date.now() - 3600000 * 12).toISOString(),
-        status: "DELIVERED",
-      },
-    ],
-  },
-  {
-    id: "conv-001",
-    prospectId: "p-001",
-    companyName: "SMAN 2 Ngaglik",
-    contactName: "Bambang Sudarsono (Wakasek Kurikulum)",
-    whatsappNumber: "62895324069850",
-    assignedSalesId: "22222222-2222-2222-2222-222222222222",
-    assignedSalesName: "Budi Santoso (Sales 1)",
-    unreadCount: 0,
-    lastMessageSnippet: "Invoice pelunasan presensi digital telah terbit.",
-    lastMessageAt: "2026-02-12T10:00:00Z",
-    researchNotes: "Sekolah negeri 900+ siswa. Membutuhkan sistem web presensi digital multi-device.",
-    messages: [
-      {
-        id: "msg-020",
-        conversationId: "conv-001",
-        sender: "SALES",
-        sentByUserId: "22222222-2222-2222-2222-222222222222",
-        sentByUserName: "Budi Santoso (Sales 1)",
-        text: "Selamat pagi Pak Bambang, berikut kami lampirkan nota pelunasan dan invoice proyek SIM-Presensi berbasis web v1.0.",
-        isDraft: false,
-        timestamp: "2026-02-12T09:30:00Z",
-        status: "READ",
-      },
-      {
-        id: "msg-021",
-        conversationId: "conv-001",
-        sender: "PROSPECT",
-        text: "Terima kasih banyak Mas Faiz dan tim Fynux, sistem presensi sudah kami uji dan berjalan lancar di kiosk lobi sekolah.",
-        isDraft: false,
-        timestamp: "2026-02-12T10:00:00Z",
-      },
-    ],
-  },
-];
+const INITIAL_CONVERSATIONS_DATA: ConversationThread[] = [];
 
 interface InboxGlobalStore {
   conversationsData?: ConversationThread[];
@@ -172,7 +56,7 @@ function loadPersistedConversations(): ConversationThread[] {
     if (fs.existsSync(CONVERSATIONS_FILE)) {
       const content = fs.readFileSync(CONVERSATIONS_FILE, "utf-8");
       const parsed = JSON.parse(content);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return normalizeConversationMessageStatuses(parsed);
       }
     }
@@ -211,7 +95,7 @@ export function persistConversations(): void {
   }
 }
 
-if (!inboxGlobal.conversationsData || inboxGlobal.conversationsData.length === 0) {
+if (!inboxGlobal.conversationsData) {
   inboxGlobal.conversationsData = loadPersistedConversations();
 }
 

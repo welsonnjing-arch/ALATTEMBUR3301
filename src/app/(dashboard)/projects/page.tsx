@@ -15,7 +15,7 @@ export default async function ProjectsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            <FolderGit2 className="w-6 h-6 text-indigo-600" />
+            <FolderGit2 className="w-6 h-6 text-blue-600" />
             Project Operations & Delivery
           </h1>
           <p className="text-xs text-slate-500 mt-1">

@@ -252,7 +252,7 @@ export function loadPersistedDriveItems(): DriveItem[] {
     if (fs.existsSync(METADATA_FILE)) {
       const raw = fs.readFileSync(METADATA_FILE, "utf-8");
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
@@ -263,18 +263,102 @@ export function loadPersistedDriveItems(): DriveItem[] {
   return createInitialDriveItems();
 }
 
+/**
+ * Otomatis memulihkan dan menyinkronkan file fisik di storage yang belum terdaftar di metadata
+ */
+export function reconcileStorageWithMetadata(store: DriveItem[]): boolean {
+  try {
+    ensureDriveDirs();
+    if (!fs.existsSync(DRIVE_STORAGE_DIR)) return false;
+
+    const filesOnDisk = fs.readdirSync(DRIVE_STORAGE_DIR);
+    let changed = false;
+
+    // Peta nama file lama yang terverifikasi di activity log pengguna
+    const KNOWN_RENAMES: Record<string, string> = {
+      "1793459359062-nvax-YTDown.com_YouTube_Media_XjWRWd-LkyI_DreamyBull_001_720p.mp4":
+        "VIRALLL!!! ORANG MAKAN KUNGKANG SAAT LIVE.mp4",
+      "1793460881494-9maw-FgoZslwUcAEsTLq.jpg": "colocolo.jpg",
+      "1793457656751-5h17-Perjanjian_Kerja_Sama_Internal_Fynux.pdf":
+        "Perjanjian_Kerja_Sama_Internal_Fynux.pdf",
+      "1793458901297-2l6n-Perjanjian_Kerja_Sama_Internal_Fynux.pdf":
+        "Perjanjian_Kerja_Sama_Internal_Fynux_v2.pdf",
+    };
+
+    for (const diskFile of filesOnDisk) {
+      if (diskFile.startsWith(".") || diskFile.endsWith(".tmp")) continue;
+
+      const alreadyExists = store.some((item) => item.storagePath === diskFile);
+      if (!alreadyExists) {
+        const fullPath = path.join(DRIVE_STORAGE_DIR, diskFile);
+        try {
+          const stat = fs.statSync(fullPath);
+          if (!stat.isFile()) continue;
+
+          const ext = path.extname(diskFile).replace(".", "").toLowerCase() || "bin";
+
+          let displayName = KNOWN_RENAMES[diskFile];
+          if (!displayName) {
+            const match = diskFile.match(/^\d+-[a-z0-9]+-(.+)$/);
+            displayName = match ? match[1] : diskFile;
+          }
+
+          let mimeType = "application/octet-stream";
+          if (["pdf"].includes(ext)) mimeType = "application/pdf";
+          else if (["png"].includes(ext)) mimeType = "image/png";
+          else if (["jpg", "jpeg"].includes(ext)) mimeType = "image/jpeg";
+          else if (["webp"].includes(ext)) mimeType = "image/webp";
+          else if (["mp4"].includes(ext)) mimeType = "video/mp4";
+          else if (["txt", "md"].includes(ext)) mimeType = "text/plain";
+
+          const recoveredItem: DriveItem = {
+            id: `file-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            name: displayName,
+            type: "FILE",
+            parentId: null,
+            extension: ext,
+            mimeType,
+            size: stat.size,
+            storagePath: diskFile,
+            uploadedByUserId: "ff3348a5-ed68-4551-899c-1a7120a87f60",
+            uploadedByUserName: "Faiz Aditama",
+            uploadedByRole: "OWNER",
+            isStarred: false,
+            tags: ["HQ Drive"],
+            createdAt: stat.birthtime?.toISOString() || new Date().toISOString(),
+            updatedAt: stat.mtime?.toISOString() || new Date().toISOString(),
+          };
+
+          store.unshift(recoveredItem);
+          changed = true;
+        } catch {}
+      }
+    }
+
+    return changed;
+  } catch (err) {
+    console.error("[DRIVE] Gagal reconcile storage dengan metadata:", err);
+    return false;
+  }
+}
+
 export function getDriveItemsStore(): DriveItem[] {
   ensureDriveDirs();
   try {
     if (fs.existsSync(METADATA_FILE)) {
       const raw = fs.readFileSync(METADATA_FILE, "utf-8");
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         if (!driveGlobal.driveItems) {
           driveGlobal.driveItems = parsed;
         } else {
           driveGlobal.driveItems.length = 0;
           driveGlobal.driveItems.push(...parsed);
+        }
+
+        const reconciled = reconcileStorageWithMetadata(driveGlobal.driveItems);
+        if (reconciled) {
+          persistDriveItems();
         }
         return driveGlobal.driveItems;
       }
@@ -285,6 +369,10 @@ export function getDriveItemsStore(): DriveItem[] {
 
   if (!driveGlobal.driveItems || driveGlobal.driveItems.length === 0) {
     driveGlobal.driveItems = loadPersistedDriveItems();
+    const reconciled = reconcileStorageWithMetadata(driveGlobal.driveItems);
+    if (reconciled) {
+      persistDriveItems();
+    }
   }
   return driveGlobal.driveItems;
 }

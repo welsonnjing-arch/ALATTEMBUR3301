@@ -10,7 +10,9 @@ export default async function CRMPage() {
 
   // Filter based on role & permissions
   const assignedSalesId =
-    session?.role === "OWNER" || session?.permissions.includes("crm.view_all")
+    session?.role === "OWNER" ||
+    session?.role === "DEVELOPER" ||
+    session?.permissions.includes("crm.view_all")
       ? undefined
       : session?.id;
 

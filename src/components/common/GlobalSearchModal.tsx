@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { searchGlobalAction, SearchResultItem } from "@/modules/search/search.actions";
+import { ModalPortal } from "@/components/common/ModalPortal";
 
 interface GlobalSearchModalProps {
   isOpen: boolean;
@@ -72,11 +73,12 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden relative">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[9999] modal-backdrop-clean flex items-start justify-center pt-16 sm:pt-20 p-4 bg-slate-950/40 backdrop-blur-xs animate-ios-fade">
+        <div className="bg-white rounded-2xl shadow-2xl border border-slate-200/90 w-full max-w-xl max-h-[85vh] flex flex-col overflow-hidden relative animate-ios-scale">
         {/* Search Input Bar */}
-        <div className="flex items-center px-4 py-3.5 border-b border-slate-200 gap-3 bg-slate-50/50">
-          <Search className="w-5 h-5 text-slate-400" />
+        <div className="shrink-0 flex items-center px-4 py-3.5 border-b border-slate-200/80 gap-3 bg-white">
+          <Search className="w-4 h-4 text-slate-400 shrink-0" />
           <input
             type="text"
             autoFocus
@@ -93,13 +95,13 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
               <X className="w-4 h-4" />
             </button>
           )}
-          <span className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono font-bold bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">
+          <span className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono font-bold bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.5 rounded">
             ESC
           </span>
         </div>
 
         {/* Results List */}
-        <div className="max-h-96 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto p-2">
           {isSearching && (
             <div className="text-center py-6 text-xs text-slate-400">
               Mencari di seluruh sistem...
@@ -133,7 +135,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                      <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
                         {item.title}
                       </span>
                       {item.badge && (
@@ -148,7 +150,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
                   </div>
                 </div>
 
-                <div className="text-slate-400 group-hover:text-indigo-600">
+                <div className="text-slate-400 group-hover:text-slate-700">
                   <ExternalLink className="w-3.5 h-3.5" />
                 </div>
               </div>
@@ -156,16 +158,17 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
         </div>
 
         {/* Footer shortcuts */}
-        <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+        <div className="shrink-0 px-4 py-2.5 bg-slate-50/90 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500 rounded-b-2xl">
           <span>Gunakan panah atau klik untuk membuka rute</span>
           <button
             onClick={onClose}
-            className="text-slate-500 hover:text-slate-700 font-semibold"
+            className="text-slate-600 hover:text-slate-900 font-semibold px-2 py-0.5 rounded hover:bg-slate-100 transition-colors"
           >
             Tutup
           </button>
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
