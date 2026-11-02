@@ -264,15 +264,47 @@ export function loadPersistedDriveItems(): DriveItem[] {
 }
 
 /**
- * Otomatis memulihkan dan menyinkronkan file fisik di storage yang belum terdaftar di metadata
+ * Otomatis memulihkan dan menyinkronkan file fisik di storage yang belum terdaftar di metadata,
+ * serta membersihkan duplikasi entri storagePath.
  */
 export function reconcileStorageWithMetadata(store: DriveItem[]): boolean {
   try {
     ensureDriveDirs();
     if (!fs.existsSync(DRIVE_STORAGE_DIR)) return false;
 
-    const filesOnDisk = fs.readdirSync(DRIVE_STORAGE_DIR);
     let changed = false;
+
+    // 1. Deduplikasi store: Pastikan tidak ada 2 DriveItem dengan storagePath yang sama
+    const seenStoragePaths = new Map<string, number>();
+    const indicesToRemove = new Set<number>();
+
+    store.forEach((item, index) => {
+      if (item.type === "FILE" && item.storagePath) {
+        if (seenStoragePaths.has(item.storagePath)) {
+          const prevIndex = seenStoragePaths.get(item.storagePath)!;
+          const prevItem = store[prevIndex];
+          // Simpan entri yang lebih kaya informasi (bukan entri fallback tag "HQ Drive")
+          if (item.tags?.includes("HQ Drive") && !prevItem.tags?.includes("HQ Drive")) {
+            indicesToRemove.add(index);
+          } else {
+            indicesToRemove.add(prevIndex);
+            seenStoragePaths.set(item.storagePath, index);
+          }
+          changed = true;
+        } else {
+          seenStoragePaths.set(item.storagePath, index);
+        }
+      }
+    });
+
+    if (indicesToRemove.size > 0) {
+      const filtered = store.filter((_, idx) => !indicesToRemove.has(idx));
+      store.length = 0;
+      store.push(...filtered);
+    }
+
+    const filesOnDisk = fs.readdirSync(DRIVE_STORAGE_DIR);
+    const nowMs = Date.now();
 
     // Peta nama file lama yang terverifikasi di activity log pengguna
     const KNOWN_RENAMES: Record<string, string> = {
@@ -294,6 +326,13 @@ export function reconcileStorageWithMetadata(store: DriveItem[]): boolean {
         try {
           const stat = fs.statSync(fullPath);
           if (!stat.isFile()) continue;
+
+          // JANGAN pulihkan file yang baru saja dibuat dalam 10 detik terakhir
+          // untuk mencegah tabrakan/duplikasi dengan proses upload yang sedang berlangsung
+          const fileAgeMs = nowMs - (stat.mtimeMs || nowMs);
+          if (fileAgeMs < 10000) {
+            continue;
+          }
 
           const ext = path.extname(diskFile).replace(".", "").toLowerCase() || "bin";
 
@@ -593,8 +632,25 @@ export async function registerUploadedFile(
   const parentId = input.parentId || null;
   const now = new Date().toISOString();
 
+  // Defensif: Jika storagePath sudah ada di store (misal karena race condition atau double request)
+  const existing = store.find((item) => item.storagePath === input.storagePath);
+  if (existing) {
+    existing.name = cleanName;
+    existing.parentId = parentId;
+    existing.extension = input.extension.toLowerCase();
+    existing.mimeType = input.mimeType;
+    existing.size = input.size;
+    existing.uploadedByUserId = actor.id;
+    existing.uploadedByUserName = actor.name;
+    existing.uploadedByRole = actor.role;
+    existing.tags = input.tags || [];
+    existing.updatedAt = now;
+    persistDriveItems();
+    return { success: true, item: existing };
+  }
+
   const newFile: DriveItem = {
-    id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    id: `file-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     name: cleanName,
     type: "FILE",
     parentId,

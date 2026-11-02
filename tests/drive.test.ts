@@ -194,10 +194,14 @@ describe("Shared Drive HQ — Storage & File Management Engine", () => {
     assert.equal(checkFolder, null);
   });
 
-  test("automatically reconciles orphaned physical files in storage into metadata", async () => {
+  test("automatically reconciles orphaned physical files in storage into metadata and prevents duplicate registration", async () => {
     const orphanFile = `test-orphan-${Date.now()}.pdf`;
     const fullOrphanPath = path.join(DRIVE_STORAGE_DIR, orphanFile);
     fs.writeFileSync(fullOrphanPath, "test content for orphan recovery", "utf-8");
+
+    // Simulasikan file yatim yang sudah ada lebih dari 15 detik di disk
+    const oldTime = (Date.now() - 20000) / 1000;
+    fs.utimesSync(fullOrphanPath, oldTime, oldTime);
 
     try {
       const store = getDriveItemsStore();
@@ -206,6 +210,30 @@ describe("Shared Drive HQ — Storage & File Management Engine", () => {
       assert.equal(recovered.extension, "pdf");
       assert.equal(recovered.type, "FILE");
       assert.equal(recovered.parentId, null);
+
+      // Verifikasi bahwa registerUploadedFile dengan storagePath yang sama tidak membuat entri ganda
+      const testActor = {
+        id: "11111111-1111-1111-1111-111111111111",
+        name: "Faiz Aditama (Owner)",
+        role: "OWNER",
+      };
+      const duplicateRegisterRes = await registerUploadedFile(
+        {
+          name: "Dokumen Final Reconcile.pdf",
+          parentId: null,
+          size: 1024,
+          mimeType: "application/pdf",
+          extension: "pdf",
+          storagePath: orphanFile,
+        },
+        testActor
+      );
+      assert.equal(duplicateRegisterRes.success, true);
+
+      // Pastikan hanya ada tepat 1 item dengan storagePath ini di seluruh store
+      const allMatching = store.filter((item) => item.storagePath === orphanFile);
+      assert.equal(allMatching.length, 1, "Wajib tidak ada duplikasi file dengan storagePath yang sama");
+      assert.equal(allMatching[0].name, "Dokumen Final Reconcile.pdf");
     } finally {
       if (fs.existsSync(fullOrphanPath)) {
         fs.unlinkSync(fullOrphanPath);

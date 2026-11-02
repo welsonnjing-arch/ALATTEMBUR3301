@@ -140,6 +140,11 @@ export function FileUploadModal({
 
     setQueue((prev) => [...prev, ...newItems]);
 
+    // Reset input value agar jika memilih ulang file yang sama, event onChange tetap terpanggil
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
     // Jalankan auto-upload langsung saat file dipilih/di-drop
     processUploadQueue(newItems, tagsInput);
   };
@@ -207,6 +212,7 @@ export function FileUploadModal({
               }}
               onDrop={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 setIsDragOver(false);
                 handleFilesSelected(e.dataTransfer.files);
               }}
