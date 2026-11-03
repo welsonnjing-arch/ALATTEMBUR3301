@@ -226,14 +226,110 @@ export async function getWhatsAppSession(): Promise<WhatsAppSessionInfo> {
 }
 
 /**
+ * Mengecek apakah kredensial autentikasi WhatsApp tersimpan di server
+ */
+export function hasPersistedWhatsAppAuth(): boolean {
+  try {
+    const credsPath = path.join(AUTH_DIR, "creds.json");
+    return fs.existsSync(credsPath);
+  } catch {
+    return false;
+  }
+}
+
+interface WhatsAppWatchdogStore {
+  watchdogInterval?: NodeJS.Timeout | null;
+  keepAlivePresenceInterval?: NodeJS.Timeout | null;
+  isWatchdogRunning?: boolean;
+}
+
+const waWatchdog = globalThis as unknown as WhatsAppWatchdogStore;
+
+/**
+ * Memulai Watchdog & Keep-Alive Daemon 24/7 di sisi server.
+ * Menjamin koneksi WhatsApp tetap menyambung dan pesan masuk tetap tertangkap
+ * meskipun tidak ada browser yang sedang membuka website /inbox.
+ */
+export function initWhatsAppKeepAlive(): void {
+  if (isTestEnv) return;
+  if (typeof window !== "undefined") return;
+  if (process.env.NEXT_PHASE === "phase-production-build") return;
+  if (waWatchdog.isWatchdogRunning) return;
+
+  waWatchdog.isWatchdogRunning = true;
+  console.log("[WA_KEEPALIVE] Fynux OS 24/7 WhatsApp Background Service aktif.");
+
+  // 1. Boot-time check: jika kredensial sudah ada di server, otomatis sambungkan tanpa tunggu akses web
+  if (hasPersistedWhatsAppAuth()) {
+    console.log("[WA_KEEPALIVE] Kredensial tersimpan ditemukan di server. Memulai auto-connect background...");
+    startWhatsAppPairing(false).catch((err) => {
+      console.warn("[WA_KEEPALIVE] Gagal auto-connect pada boot:", err);
+    });
+  }
+
+  // 2. Active Watchdog: periksa kesehatan socket setiap 30 detik
+  if (waWatchdog.watchdogInterval) clearInterval(waWatchdog.watchdogInterval);
+  waWatchdog.watchdogInterval = setInterval(() => {
+    try {
+      if (!hasPersistedWhatsAppAuth()) return;
+
+      const sock = waGlobal.waSocket;
+      const ws = (sock as any)?.ws;
+      const isAlive = ws && ws.readyState === 1; // WebSocket.OPEN
+
+      if (!isAlive && !waGlobal.isInitializing) {
+        console.log(
+          "[WA_WATCHDOG] WhatsApp socket offline/zombie terdeteksi. Memulihkan koneksi 24/7..."
+        );
+        startWhatsAppPairing(true).catch(console.error);
+      }
+    } catch (err) {
+      console.warn("[WA_WATCHDOG] Error saat memantau status socket:", err);
+    }
+  }, 30000);
+  if (typeof waWatchdog.watchdogInterval?.unref === "function") {
+    waWatchdog.watchdogInterval.unref();
+  }
+
+  // 3. Presence Keep-Alive: kirim update 'available' setiap 60 detik agar koneksi tidak idle timeout 408
+  if (waWatchdog.keepAlivePresenceInterval) clearInterval(waWatchdog.keepAlivePresenceInterval);
+  waWatchdog.keepAlivePresenceInterval = setInterval(() => {
+    try {
+      const sock = waGlobal.waSocket;
+      const ws = (sock as any)?.ws;
+      if (sock && ws && ws.readyState === 1 && waGlobal.waSession?.status === "CONNECTED") {
+        sock.sendPresenceUpdate("available").catch(() => {});
+      }
+    } catch {}
+  }, 60000);
+  if (typeof waWatchdog.keepAlivePresenceInterval?.unref === "function") {
+    waWatchdog.keepAlivePresenceInterval.unref();
+  }
+}
+
+// Inisialisasi otomatis jika berjalan di Node.js runtime server
+if (
+  typeof window === "undefined" &&
+  !isTestEnv &&
+  process.env.NEXT_PHASE !== "phase-production-build"
+) {
+  initWhatsAppKeepAlive();
+}
+
+/**
  * Memulai sesi Baileys WhatsApp Multi-Device resmi.
  * Menghubungkan WebSocket ke wss://web.whatsapp.com/ws/chat dan menerima QR code kriptografis asli dari WhatsApp.
  */
 export async function startWhatsAppPairing(
   forceRestart = false
 ): Promise<WhatsAppSessionInfo> {
-  // 1. Jika sudah terhubung, langsung kembalikan status aktif
-  if (!forceRestart && waGlobal.waSession?.status === "CONNECTED" && waGlobal.waSocket) {
+  const isSocketAlive =
+    waGlobal.waSocket &&
+    (waGlobal.waSocket as any)?.ws &&
+    (waGlobal.waSocket as any).ws.readyState === 1;
+
+  // 1. Jika sudah terhubung dan socket masih sehat, langsung kembalikan status aktif
+  if (!forceRestart && waGlobal.waSession?.status === "CONNECTED" && isSocketAlive) {
     return { ...waGlobal.waSession };
   }
 
@@ -355,14 +451,22 @@ export async function startWhatsAppPairing(
           const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
           const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
+          // Bersihkan socket lama yang sudah tertutup agar tidak menjadi zombie instance
+          if (waGlobal.waSocket) {
+            try {
+              waGlobal.waSocket.end(undefined);
+            } catch {}
+            waGlobal.waSocket = null;
+          }
+
           if (shouldReconnect) {
+            waGlobal.waSession!.status = "CONNECTING";
             console.log(
               `[WA_SOCKET] Koneksi terputus sementara (code ${statusCode}). Menyambung ulang dalam 3 detik...`
             );
             setTimeout(() => {
-              if (waGlobal.waSession?.status !== "DISCONNECTED") {
-                startWhatsAppPairing(false).catch(console.error);
-              }
+              // PENTING: Gunakan forceRestart = true agar membuat instance socket baru
+              startWhatsAppPairing(true).catch(console.error);
             }, 3000);
           } else {
             waGlobal.waSession = {

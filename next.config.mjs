@@ -3,6 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   experimental: {
+    instrumentationHook: true,
     serverActions: {
       bodySizeLimit: '25mb',
       allowedOrigins: [
