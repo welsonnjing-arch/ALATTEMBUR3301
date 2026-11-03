@@ -240,10 +240,43 @@ export function hasPersistedWhatsAppAuth(): boolean {
 interface WhatsAppWatchdogStore {
   watchdogInterval?: NodeJS.Timeout | null;
   keepAlivePresenceInterval?: NodeJS.Timeout | null;
+  reconnectTimeout?: NodeJS.Timeout | null;
   isWatchdogRunning?: boolean;
 }
 
 const waWatchdog = globalThis as unknown as WhatsAppWatchdogStore;
+
+/**
+ * Memeriksa apakah Baileys WebSocketClient masih terbuka dan aktif
+ */
+export function isBaileysSocketAlive(sock: any): boolean {
+  if (!sock) return false;
+  if (sock.isDecommissioned) return false;
+  if (typeof sock.ws?.isOpen === "boolean") return sock.ws.isOpen;
+  if (sock.ws?.socket?.readyState === 1) return true;
+  if (sock.ws?.readyState === 1) return true;
+  return false;
+}
+
+/**
+ * Menutup socket lama secara bersih tanpa memicu cascading event loop
+ */
+export function decommissionSocket(sockToClose: any): void {
+  if (!sockToClose) return;
+  try {
+    sockToClose.isDecommissioned = true;
+    if (sockToClose.ev && typeof sockToClose.ev.removeAllListeners === "function") {
+      sockToClose.ev.removeAllListeners("connection.update");
+      sockToClose.ev.removeAllListeners("creds.update");
+      sockToClose.ev.removeAllListeners("messages.upsert");
+      sockToClose.ev.removeAllListeners("chats.phoneNumberShare");
+      sockToClose.ev.removeAllListeners("contacts.upsert");
+      sockToClose.ev.removeAllListeners("contacts.update");
+      sockToClose.ev.removeAllListeners("messages.update");
+    }
+    sockToClose.end(undefined);
+  } catch {}
+}
 
 /**
  * Memulai Watchdog & Keep-Alive Daemon 24/7 di sisi server.
@@ -272,12 +305,14 @@ export function initWhatsAppKeepAlive(): void {
   waWatchdog.watchdogInterval = setInterval(() => {
     try {
       if (!hasPersistedWhatsAppAuth()) return;
+      if (waGlobal.isInitializing) return;
+      if (waWatchdog.reconnectTimeout) return; // Sedang ada antrean reconnect terjadwal
 
       const sock = waGlobal.waSocket;
-      const ws = (sock as any)?.ws;
-      const isAlive = ws && ws.readyState === 1; // WebSocket.OPEN
+      const isAlive = isBaileysSocketAlive(sock);
+      const isConnected = waGlobal.waSession?.status === "CONNECTED";
 
-      if (!isAlive && !waGlobal.isInitializing) {
+      if (!isAlive || !isConnected) {
         console.log(
           "[WA_WATCHDOG] WhatsApp socket offline/zombie terdeteksi. Memulihkan koneksi 24/7..."
         );
@@ -296,8 +331,7 @@ export function initWhatsAppKeepAlive(): void {
   waWatchdog.keepAlivePresenceInterval = setInterval(() => {
     try {
       const sock = waGlobal.waSocket;
-      const ws = (sock as any)?.ws;
-      if (sock && ws && ws.readyState === 1 && waGlobal.waSession?.status === "CONNECTED") {
+      if (isBaileysSocketAlive(sock) && waGlobal.waSession?.status === "CONNECTED") {
         sock.sendPresenceUpdate("available").catch(() => {});
       }
     } catch {}
@@ -323,10 +357,7 @@ if (
 export async function startWhatsAppPairing(
   forceRestart = false
 ): Promise<WhatsAppSessionInfo> {
-  const isSocketAlive =
-    waGlobal.waSocket &&
-    (waGlobal.waSocket as any)?.ws &&
-    (waGlobal.waSocket as any).ws.readyState === 1;
+  const isSocketAlive = isBaileysSocketAlive(waGlobal.waSocket);
 
   // 1. Jika sudah terhubung dan socket masih sehat, langsung kembalikan status aktif
   if (!forceRestart && waGlobal.waSession?.status === "CONNECTED" && isSocketAlive) {
@@ -340,20 +371,24 @@ export async function startWhatsAppPairing(
 
   // 3. Jika force restart atau socket lama perlu dibersihkan
   if (forceRestart && waGlobal.waSocket) {
-    try {
-      waGlobal.waSocket.end(undefined);
-    } catch {}
+    decommissionSocket(waGlobal.waSocket);
     waGlobal.waSocket = null;
     waGlobal.waSession!.qrCodeDataUrl = null;
-    waGlobal.waSession!.status = "DISCONNECTED";
+    waGlobal.waSession!.status = "CONNECTING";
   }
 
-  // 4. Cegah double-init yang macet (timeout 10 detik)
+  // 4. Cegah double-init yang berbarengan (timeout 12 detik)
   if (waGlobal.isInitializing) {
     const elapsed = Date.now() - (waGlobal.initStartTime || 0);
-    if (elapsed < 10000) {
+    if (elapsed < 12000) {
       return { ...waGlobal.waSession! };
     }
+  }
+
+  // Batalkan timer reconnect sebelumnya jika ada
+  if (waWatchdog.reconnectTimeout) {
+    clearTimeout(waWatchdog.reconnectTimeout);
+    waWatchdog.reconnectTimeout = null;
   }
 
   waGlobal.isInitializing = true;
@@ -397,6 +432,14 @@ export async function startWhatsAppPairing(
       }, 10000);
 
       const connHandler = async (update: any) => {
+        // PENTING: Jika socket ini sudah di-decommission atau digantikan oleh instance baru, abaikan!
+        if (
+          (sock as any).isDecommissioned ||
+          (waGlobal.waSocket && waGlobal.waSocket !== sock)
+        ) {
+          return;
+        }
+
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
@@ -421,6 +464,14 @@ export async function startWhatsAppPairing(
 
         if (connection === "open") {
           clearTimeout(timeout);
+          waGlobal.isInitializing = false;
+
+          // Batalkan segala jadwal reconnect yang mungkin tertinggal
+          if (waWatchdog.reconnectTimeout) {
+            clearTimeout(waWatchdog.reconnectTimeout);
+            waWatchdog.reconnectTimeout = null;
+          }
+
           const rawId = sock.user?.id || "";
           const phone = rawId.split("@")[0].split(":")[0];
           const pushName = sock.user?.name || "Akun Bisnis Fynux";
@@ -448,27 +499,24 @@ export async function startWhatsAppPairing(
         }
 
         if (connection === "close") {
-          const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
-          const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+          clearTimeout(timeout);
+          waGlobal.isInitializing = false;
 
-          // Bersihkan socket lama yang sudah tertutup agar tidak menjadi zombie instance
-          if (waGlobal.waSocket) {
-            try {
-              waGlobal.waSocket.end(undefined);
-            } catch {}
+          // Jika ini socket lama yang sudah kita tutup, jangan proses apapun!
+          if ((sock as any).isDecommissioned) {
+            return;
+          }
+
+          const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
+          const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+
+          // Bersihkan socket yang baru saja tertutup
+          decommissionSocket(sock);
+          if (waGlobal.waSocket === sock) {
             waGlobal.waSocket = null;
           }
 
-          if (shouldReconnect) {
-            waGlobal.waSession!.status = "CONNECTING";
-            console.log(
-              `[WA_SOCKET] Koneksi terputus sementara (code ${statusCode}). Menyambung ulang dalam 3 detik...`
-            );
-            setTimeout(() => {
-              // PENTING: Gunakan forceRestart = true agar membuat instance socket baru
-              startWhatsAppPairing(true).catch(console.error);
-            }, 3000);
-          } else {
+          if (isLoggedOut) {
             waGlobal.waSession = {
               status: "DISCONNECTED",
               qrCodeDataUrl: null,
@@ -482,8 +530,27 @@ export async function startWhatsAppPairing(
             try {
               fs.rmSync(AUTH_DIR, { recursive: true, force: true });
             } catch {}
-            waGlobal.waSocket = null;
+            resolve(null);
+            return;
           }
+
+          // Reconnect sementara karena gangguan jaringan / timeout
+          waGlobal.waSession!.status = "CONNECTING";
+          console.log(
+            `[WA_SOCKET] Koneksi terputus sementara (code ${statusCode}). Menyambung ulang dalam 5 detik...`
+          );
+
+          if (waWatchdog.reconnectTimeout) {
+            clearTimeout(waWatchdog.reconnectTimeout);
+            waWatchdog.reconnectTimeout = null;
+          }
+
+          waWatchdog.reconnectTimeout = setTimeout(() => {
+            waWatchdog.reconnectTimeout = null;
+            startWhatsAppPairing(true).catch(console.error);
+          }, 5000);
+
+          resolve(null);
         }
       };
 
@@ -782,13 +849,16 @@ export async function confirmWhatsAppPairing(
 export async function disconnectWhatsApp(): Promise<WhatsAppSessionInfo> {
   const previousPhone = waGlobal.waSession?.phoneNumber;
 
+  if (waWatchdog.reconnectTimeout) {
+    clearTimeout(waWatchdog.reconnectTimeout);
+    waWatchdog.reconnectTimeout = null;
+  }
+
   if (waGlobal.waSocket) {
     try {
       await waGlobal.waSocket.logout();
     } catch {}
-    try {
-      waGlobal.waSocket.end(undefined);
-    } catch {}
+    decommissionSocket(waGlobal.waSocket);
     waGlobal.waSocket = null;
   }
 
@@ -907,11 +977,33 @@ export async function sendWhatsAppMessage(
   let deliveredViaSocket = false;
   let socketError: string | undefined;
 
+  // Grace period: jika socket sesaat sedang menghubungkan ulang, tunggu hingga 3 detik
   if (
-    waGlobal.waSocket &&
-    waGlobal.waSession?.status === "CONNECTED" &&
-    waGlobal.waSocket.user
+    (!waGlobal.waSocket || !isBaileysSocketAlive(waGlobal.waSocket) || waGlobal.waSession?.status !== "CONNECTED") &&
+    hasPersistedWhatsAppAuth()
   ) {
+    if (!waGlobal.isInitializing && !waWatchdog.reconnectTimeout) {
+      startWhatsAppPairing(true).catch(console.error);
+    }
+    const waitStart = Date.now();
+    while (Date.now() - waitStart < 3000) {
+      if (
+        waGlobal.waSocket &&
+        isBaileysSocketAlive(waGlobal.waSocket) &&
+        waGlobal.waSession?.status === "CONNECTED"
+      ) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  }
+
+  const isReadyToSend =
+    waGlobal.waSocket &&
+    isBaileysSocketAlive(waGlobal.waSocket) &&
+    waGlobal.waSession?.status === "CONNECTED";
+
+  if (isReadyToSend && waGlobal.waSocket) {
     try {
       // Tentukan JID tujuan WhatsApp (gunakan remoteJid jika ada, atau format @lid / @s.whatsapp.net)
       let targetJid = matchedThread.remoteJid;

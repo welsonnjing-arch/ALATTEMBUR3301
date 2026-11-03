@@ -6,6 +6,8 @@ import {
   hasPersistedWhatsAppAuth,
   getWhatsAppSession,
   initWhatsAppKeepAlive,
+  isBaileysSocketAlive,
+  decommissionSocket,
 } from "../src/modules/whatsapp/whatsapp.service";
 
 describe("WhatsApp Keep-Alive & 24/7 Background Engine", () => {
@@ -28,5 +30,46 @@ describe("WhatsApp Keep-Alive & 24/7 Background Engine", () => {
       initWhatsAppKeepAlive();
       initWhatsAppKeepAlive();
     });
+  });
+
+  it("correctly identifies Baileys socket vitality via isOpen or readyState", () => {
+    assert.equal(isBaileysSocketAlive(null), false);
+    assert.equal(isBaileysSocketAlive(undefined), false);
+
+    // Mock Baileys WebSocketClient with isOpen getter
+    const mockOpenWsClient = { ws: { isOpen: true, socket: { readyState: 1 } } };
+    assert.equal(isBaileysSocketAlive(mockOpenWsClient), true);
+
+    const mockClosedWsClient = { ws: { isOpen: false, socket: { readyState: 3 } } };
+    assert.equal(isBaileysSocketAlive(mockClosedWsClient), false);
+
+    // Decommissioned socket is always dead
+    const mockDecommissioned = { ws: { isOpen: true }, isDecommissioned: true };
+    assert.equal(isBaileysSocketAlive(mockDecommissioned), false);
+  });
+
+  it("safely decommissions old socket and cleans up all event listeners", () => {
+    let listenersRemoved = false;
+    let endCalled = false;
+
+    const mockSocket = {
+      ev: {
+        removeAllListeners: (evt: string) => {
+          if (evt === "connection.update") listenersRemoved = true;
+        },
+      },
+      end: () => {
+        endCalled = true;
+      },
+      isDecommissioned: false,
+    };
+
+    decommissionSocket(mockSocket);
+    assert.equal(mockSocket.isDecommissioned, true);
+    assert.equal(listenersRemoved, true);
+    assert.equal(endCalled, true);
+
+    // Calling decommissionSocket on null or undefined does not throw
+    assert.doesNotThrow(() => decommissionSocket(null));
   });
 });

@@ -4,6 +4,7 @@ import {
   startWhatsAppPairing,
   confirmWhatsAppPairing,
   disconnectWhatsApp,
+  hasPersistedWhatsAppAuth,
 } from "@/modules/whatsapp/whatsapp.service";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +12,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   let session = await getWhatsAppSession();
 
-  // Jika belum ada QR atau disconnected, otomatis inisialisasi
-  if (session.status === "DISCONNECTED" || (!session.qrCodeDataUrl && session.status !== "CONNECTED")) {
+  // Inisialisasi pairing baru hanya jika benar-benar disconnected dan belum ada kredensial tersimpan
+  if (session.status === "DISCONNECTED" && !hasPersistedWhatsAppAuth()) {
     session = await startWhatsAppPairing();
   }
 
