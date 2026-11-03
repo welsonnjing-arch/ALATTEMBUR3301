@@ -331,7 +331,7 @@ export function initWhatsAppKeepAlive(): void {
   waWatchdog.keepAlivePresenceInterval = setInterval(() => {
     try {
       const sock = waGlobal.waSocket;
-      if (isBaileysSocketAlive(sock) && waGlobal.waSession?.status === "CONNECTED") {
+      if (sock && isBaileysSocketAlive(sock) && waGlobal.waSession?.status === "CONNECTED") {
         sock.sendPresenceUpdate("available").catch(() => {});
       }
     } catch {}
