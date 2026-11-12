@@ -53,9 +53,11 @@ export function useWebRTCVoice({
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const remoteAudiosRef = useRef<Map<string, HTMLAudioElement>>(new Map());
   const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+  const makingOfferRef = useRef<Map<string, boolean>>(new Map());
 
   // References for Web Audio API Voice Activity Detection (VAD)
   const audioContextRef = useRef<AudioContext | null>(null);
+  const audioSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const vadIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSpeakingStateRef = useRef(false);
@@ -155,6 +157,18 @@ export function useWebRTCVoice({
         existingPc.connectionState !== "closed" &&
         existingPc.connectionState !== "failed"
       ) {
+        // Jika stream lokal baru saja tersedia, pastikan track terhubung ke existing connection
+        if (localStreamRef.current) {
+          const audioTrack = localStreamRef.current.getAudioTracks()[0];
+          if (audioTrack) {
+            const sender = existingPc.getSenders().find((s) => s.track?.kind === "audio");
+            if (!sender) {
+              existingPc.addTrack(audioTrack, localStreamRef.current);
+            } else if (!sender.track || sender.track.id !== audioTrack.id) {
+              sender.replaceTrack(audioTrack).catch(() => {});
+            }
+          }
+        }
         return existingPc;
       }
 
@@ -166,14 +180,21 @@ export function useWebRTCVoice({
       const pc = new RTCPeerConnection(RTC_CONFIG);
 
       // Tambahkan trek mikrofon lokal ke koneksi
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => {
+      if (localStreamRef.current && localStreamRef.current.getAudioTracks().length > 0) {
+        localStreamRef.current.getAudioTracks().forEach((track) => {
           pc.addTrack(track, localStreamRef.current!);
         });
       } else {
         // Jika stream belum siap, tambahkan transceiver audio dua arah
         pc.addTransceiver("audio", { direction: "sendrecv" });
       }
+
+      // Pastikan seluruh transceiver audio diset eksplisit ke "sendrecv" (Full Duplex)
+      pc.getTransceivers().forEach((t) => {
+        if (t.receiver.track?.kind === "audio" || t.sender.track?.kind === "audio") {
+          t.direction = "sendrecv";
+        }
+      });
 
       // Kirim kandidat ICE saat ditemukan oleh browser
       pc.onicecandidate = (event) => {
@@ -252,6 +273,9 @@ export function useWebRTCVoice({
 
       const audioCtx = new AudioCtx();
       const source = audioCtx.createMediaStreamSource(stream);
+      // Pin source node ke ref agar Chromium tidak meng-garbage-collect dan mematikan mic stream
+      audioSourceNodeRef.current = source;
+
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 512;
       analyser.smoothingTimeConstant = 0.4;
@@ -349,6 +373,12 @@ export function useWebRTCVoice({
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
     }
+    if (audioSourceNodeRef.current) {
+      try {
+        audioSourceNodeRef.current.disconnect();
+      } catch {}
+      audioSourceNodeRef.current = null;
+    }
     if (audioContextRef.current) {
       try {
         audioContextRef.current.close();
@@ -364,6 +394,7 @@ export function useWebRTCVoice({
     peerConnectionsRef.current.forEach((pc) => pc.close());
     peerConnectionsRef.current.clear();
     pendingCandidatesRef.current.clear();
+    makingOfferRef.current.clear();
 
     // Hapus elemen audio remote dari DOM
     remoteAudiosRef.current.forEach((el) => el.remove());
@@ -397,6 +428,23 @@ export function useWebRTCVoice({
 
         localStreamRef.current = stream;
         setupVAD(stream, channelId);
+
+        // Sinkronkan local track ke semua peer connection yang sudah terbuka
+        peerConnectionsRef.current.forEach((pc) => {
+          stream.getAudioTracks().forEach((track) => {
+            const sender = pc.getSenders().find((s) => s.track?.kind === "audio");
+            if (sender) {
+              sender.replaceTrack(track).catch(() => {});
+            } else {
+              pc.addTrack(track, stream);
+            }
+          });
+          pc.getTransceivers().forEach((t) => {
+            if (t.receiver.track?.kind === "audio" || t.sender.track?.kind === "audio") {
+              t.direction = "sendrecv";
+            }
+          });
+        });
 
         // Beritahu server bahwa kita bergabung
         const res = await fetch("/api/team-lounge/sync", {
@@ -503,14 +551,29 @@ export function useWebRTCVoice({
   const initiateOffer = useCallback(
     async (peerId: string, channelId: string) => {
       try {
+        makingOfferRef.current.set(peerId, true);
         const pc = createPeerConnection(peerId, channelId);
+
+        // Pastikan transceiver audio selalu memiliki arah "sendrecv" (Full Duplex)
+        pc.getTransceivers().forEach((t) => {
+          if (t.receiver.track?.kind === "audio" || t.sender.track?.kind === "audio") {
+            t.direction = "sendrecv";
+          }
+        });
+
         const offer = await pc.createOffer({
           offerToReceiveAudio: true,
         });
+
+        // Hindari collision jika signaling state berubah saat createOffer berlangsung
+        if (pc.signalingState !== "stable") return;
+
         await pc.setLocalDescription(offer);
         await sendSignal(peerId, channelId, "offer", { offer });
       } catch (err) {
         console.error("[INITIATE_OFFER_ERR]", err);
+      } finally {
+        makingOfferRef.current.set(peerId, false);
       }
     },
     [createPeerConnection, sendSignal]
@@ -556,7 +619,8 @@ export function useWebRTCVoice({
               const needsConnection =
                 !existingPc ||
                 existingPc.connectionState === "closed" ||
-                existingPc.connectionState === "failed";
+                existingPc.connectionState === "failed" ||
+                existingPc.connectionState === "disconnected";
 
               // Gunakan aturan tie-breaker deterministik (lexicographical user ID):
               // User dengan ID lebih kecil yang mengambil inisiatif membuat Offer
@@ -575,23 +639,55 @@ export function useWebRTCVoice({
             if (peerId === currentUserId) continue;
 
             if (signal.type === "join") {
-              // Peer baru bergabung -> Buat offer dan kirim ke peer baru tersebut
-              initiateOffer(peerId, currentChannel);
+              // Hanya inisiator deterministik (currentUserId < peerId) yang memulai offer saat peer baru join
+              if (currentUserId < peerId) {
+                initiateOffer(peerId, currentChannel);
+              }
             } else if (signal.type === "offer") {
-              // Terima offer dari peer -> Set remote, buat answer, dan kirim balik
+              // Terima offer dari peer -> Implementasi W3C Perfect Negotiation Glare Handling
               const pc = createPeerConnection(peerId, currentChannel);
+              const isPolite = currentUserId > peerId;
+              const isMakingOffer = makingOfferRef.current.get(peerId) || false;
+
+              const offerCollision = isMakingOffer || pc.signalingState !== "stable";
+
+              if (offerCollision) {
+                if (!isPolite) {
+                  // Impolite peer mengabaikan colliding offer karena offer lokalnya sedang in flight
+                  console.warn("[WEBRTC_GLARE] Impolite peer mengabaikan colliding offer dari:", peerId);
+                  continue;
+                }
+                // Polite peer melakukan rollback local description agar dapat menerima remote offer
+                console.info("[WEBRTC_GLARE] Polite peer melakukan rollback untuk offer dari:", peerId);
+                try {
+                  await pc.setLocalDescription({ type: "rollback" });
+                } catch (rbErr) {
+                  console.warn("[WEBRTC_ROLLBACK_WARN]", rbErr);
+                }
+              }
+
               await pc.setRemoteDescription(new RTCSessionDescription(signal.payload.offer));
               await drainPendingCandidates(peerId, pc);
 
-              const answer = await pc.createAnswer({
-                offerToReceiveAudio: true,
+              // Pastikan seluruh transceiver audio diset "sendrecv" (Full Duplex)
+              pc.getTransceivers().forEach((t) => {
+                if (t.receiver.track?.kind === "audio" || t.sender.track?.kind === "audio") {
+                  t.direction = "sendrecv";
+                }
               });
+
+              // Standar W3C createAnswer tanpa parameter ilegal offerToReceiveAudio
+              const answer = await pc.createAnswer();
               await pc.setLocalDescription(answer);
               await sendSignal(peerId, currentChannel, "answer", { answer });
             } else if (signal.type === "answer") {
               // Terima answer dari peer
               const pc = peerConnectionsRef.current.get(peerId);
-              if (pc) {
+              if (
+                pc &&
+                (pc.signalingState === "have-local-offer" ||
+                  pc.signalingState === "have-remote-pranswer")
+              ) {
                 await pc.setRemoteDescription(new RTCSessionDescription(signal.payload.answer));
                 await drainPendingCandidates(peerId, pc);
               }
